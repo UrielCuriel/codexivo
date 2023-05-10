@@ -18,8 +18,11 @@ export class Lexer {
   public nextToken(): Token {
     let token: Token;
     this.skipWhitespace();
+
     if (/^=$/.test(this.character))
-      token = new Token(TokenType.ASSIGN, this.character);
+      if (this.peekCharacter() === "=") {
+        token = this.makeTwoCharacterToken(TokenType.EQ);
+      } else token = new Token(TokenType.ASSIGN, this.character);
     else if (/^\+$/.test(this.character))
       token = new Token(TokenType.PLUS, this.character);
     else if (/^\-$/.test(this.character))
@@ -29,9 +32,13 @@ export class Lexer {
     else if (/^\/$/.test(this.character))
       token = new Token(TokenType.SLASH, this.character);
     else if (/^<$/.test(this.character))
-      token = new Token(TokenType.LT, this.character);
+      if (this.peekCharacter() === "=") {
+        token = this.makeTwoCharacterToken(TokenType.LT_EQ);
+      } else token = new Token(TokenType.LT, this.character);
     else if (/^>$/.test(this.character))
-      token = new Token(TokenType.GT, this.character);
+      if (this.peekCharacter() === "=") {
+        token = this.makeTwoCharacterToken(TokenType.GT_EQ);
+      } else token = new Token(TokenType.GT, this.character);
     else if (/^,$/.test(this.character))
       token = new Token(TokenType.COMMA, this.character);
     else if (/^;$/.test(this.character))
@@ -44,6 +51,10 @@ export class Lexer {
       token = new Token(TokenType.LBRACE, this.character);
     else if (/^\}$/.test(this.character))
       token = new Token(TokenType.RBRACE, this.character);
+    else if (/^!$/.test(this.character))
+      if (this.peekCharacter() === "=") {
+        token = this.makeTwoCharacterToken(TokenType.NEQ);
+      } else token = new Token(TokenType.BANG, this.character);
     else if (/^$/.test(this.character))
       token = new Token(TokenType.EOF, this.character);
     else if (this.isLetter(this.character)) {
@@ -67,6 +78,13 @@ export class Lexer {
     return /^\d$/.test(character);
   }
 
+  private makeTwoCharacterToken(type: TokenType): Token {
+    const initialPosition = this.position;
+    this.readCharacter();
+    const literal = this.source.substring(initialPosition, this.position + 1);
+    return new Token(type, literal);
+  }
+
   private readCharacter(): void {
     if (this.readPosition >= this.source.length) this.character = "";
     else {
@@ -78,7 +96,11 @@ export class Lexer {
 
   private readIdentifier(): string {
     const initialPosition = this.position;
-    while (this.isLetter(this.character)) this.readCharacter();
+    while (
+      this.isLetter(this.character) ||
+      (this.position > initialPosition && this.isNumber(this.character))
+    )
+      this.readCharacter();
     const identifier = this.source.substring(initialPosition, this.position);
     this.position -= 1;
     this.readPosition -= 1;
@@ -92,6 +114,11 @@ export class Lexer {
     this.position -= 1;
     this.readPosition -= 1;
     return number;
+  }
+
+  private peekCharacter(): string {
+    if (this.readPosition >= this.source.length) return "";
+    return this.source[this.readPosition];
   }
 
   private skipWhitespace(): void {
