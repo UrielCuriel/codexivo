@@ -3,6 +3,7 @@ import { it, describe, expect } from "vitest";
 import { Parser } from "../parser";
 import { Lexer } from "../lexer";
 import {
+  Boolean,
   Identifier,
   Integer,
   Program,
@@ -10,6 +11,7 @@ import {
   ReturnStatement,
   ExpressionStatement,
   PrefixExpression,
+  InfixExpression,
 } from "../ast";
 
 function testProgramStatement(
@@ -37,6 +39,8 @@ function testLiteralExpression(
     testIdentifier(expression, expectedValue, expectedType);
   } else if (typeof expectedValue === "number") {
     testInteger(expression, expectedValue, expectedType);
+  } else if (typeof expectedValue === "boolean") {
+    testBoolean(expression, expectedValue);
   } else {
     throw new Error("Not implemented");
   }
@@ -71,10 +75,17 @@ function testInfixExpression(
   right: any
 ) {
   expect(expression).not.toBeNull();
-  expect(expression).toBeInstanceOf(PrefixExpression);
+  expect(expression).toBeInstanceOf(InfixExpression);
   expect(expression.operator).toBe(operator);
   testLiteralExpression(expression.left, left);
   testLiteralExpression(expression.right, right);
+}
+
+function testBoolean(expression: any, value: boolean) {
+  expect(expression).not.toBeNull();
+  expect(expression).toBeInstanceOf(Boolean);
+  expect(expression.value).toBe(value);
+  expect(expression.tokenLiteral()).toBe(value.toString());
 }
 
 describe("parse", () => {
@@ -93,7 +104,7 @@ describe("parse", () => {
   it("should parse a program with a let statements", () => {
     const source = `
       variable x = 5;
-      variable y = 10;
+      variable n = 10;
       variable foobar = 838383;
       `;
     const lexer = new Lexer(source);
@@ -111,7 +122,7 @@ describe("parse", () => {
   it("should parse a program with a let statements and correct identifiers", () => {
     const source = `
     variable x = 5;
-    variable y = 10;
+    variable n = 10;
     variable foobar = 838383;
     `;
     const lexer = new Lexer(source);
@@ -121,7 +132,7 @@ describe("parse", () => {
     //expect program with 3 statements
     expect(program.statements.length).toBe(3);
     //expect every statement is a let statement and correct identifier
-    const expectedIdentifiers = ["x", "y", "foobar"];
+    const expectedIdentifiers = ["x", "n", "foobar"];
     program.statements.forEach((statement, index) => {
       expect(statement.tokenLiteral()).toBe("variable");
       expect((statement as any).name).not.toBeNull();
@@ -214,12 +225,23 @@ describe("parse", () => {
     });
   });
   it("should parse a program with infix expression", () => {
-    const source = `5 + 5; 5 - 5; 5 * 5; 5 / 5; 5 > 5; 5 < 5; 5 == 5; 5 != 5;`;
+    const source = `
+      5 + 5;
+      5 - 5;
+      5 * 5;
+      5 / 5;
+      5 > 5;
+      5 < 5;
+      5 >= 5;
+      5 <= 5;
+      5 == 5;
+      5 != 5;
+    `;
     const lexer = new Lexer(source);
     const parse = new Parser(lexer);
     const program = parse.parseProgram();
 
-    testProgramStatement(parse, program, 8);
+    testProgramStatement(parse, program, 10);
 
     const expectedOperatorsAndValues = [
       [5, "+", 5],
@@ -228,6 +250,8 @@ describe("parse", () => {
       [5, "/", 5],
       [5, ">", 5],
       [5, "<", 5],
+      [5, ">=", 5],
+      [5, "<=", 5],
       [5, "==", 5],
       [5, "!=", 5],
     ];
@@ -246,6 +270,23 @@ describe("parse", () => {
         expected[1] as string,
         expected[2]
       );
+    });
+  });
+  it("should parse a program with boolean expression", () => {
+    const source = `verdadero; falso;`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+
+    testProgramStatement(parse, program, 2);
+
+    const expectedValues = [true, false];
+
+    program.statements.forEach((statement: ExpressionStatement, index) => {
+      expect(statement.expression).not.toBeNull();
+      expect(statement.expression).not.toBeUndefined();
+
+      testLiteralExpression(statement.expression, expectedValues[index]);
     });
   });
 });

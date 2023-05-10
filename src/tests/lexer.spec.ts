@@ -105,14 +105,15 @@ describe("lexer", () => {
     expect(tokens).toEqual(expectedTokens);
   });
   it("lexer function declaration", () => {
-    const source = `variable suma = procedimiento(x, y) { 
-      x + y; 
+    const source = `variable suma = procedimiento(x, n) { 
+      x + n; 
     };`;
     const lexer = new Lexer(source);
     const tokens: Token[] = [];
     for (let i = 0; i < 16; i++) {
       tokens.push(lexer.nextToken());
     }
+
     const expectedTokens: Token[] = [
       new Token(TokenType.LET, "variable"),
       new Token(TokenType.IDENT, "suma"),
@@ -121,12 +122,12 @@ describe("lexer", () => {
       new Token(TokenType.LPAREN, "("),
       new Token(TokenType.IDENT, "x"),
       new Token(TokenType.COMMA, ","),
-      new Token(TokenType.IDENT, "y"),
+      new Token(TokenType.IDENT, "n"),
       new Token(TokenType.RPAREN, ")"),
       new Token(TokenType.LBRACE, "{"),
       new Token(TokenType.IDENT, "x"),
       new Token(TokenType.PLUS, "+"),
-      new Token(TokenType.IDENT, "y"),
+      new Token(TokenType.IDENT, "n"),
       new Token(TokenType.SEMICOLON, ";"),
       new Token(TokenType.RBRACE, "}"),
       new Token(TokenType.SEMICOLON, ";"),

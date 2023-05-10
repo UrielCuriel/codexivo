@@ -132,3 +132,12 @@ export class InfixExpression extends Expression {
     })`;
   }
 }
+
+export class Boolean extends Expression {
+  constructor(token: Token, public value?: boolean) {
+    super(token);
+  }
+  toString(): string {
+    return this.value?.toString() ?? "";
+  }
+}
