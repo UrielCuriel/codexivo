@@ -19,52 +19,49 @@ export class Lexer {
     let token: Token;
     this.skipWhitespace();
 
-    if (/^=$/.test(this.character))
-      if (this.peekCharacter() === "=") {
-        token = this.makeTwoCharacterToken(TokenType.EQ);
-      } else token = new Token(TokenType.ASSIGN, this.character);
-    else if (/^\+$/.test(this.character))
-      token = new Token(TokenType.PLUS, this.character);
-    else if (/^\-$/.test(this.character))
-      token = new Token(TokenType.MINUS, this.character);
-    else if (/^\*$/.test(this.character))
-      token = new Token(TokenType.ASTERISK, this.character);
-    else if (/^\/$/.test(this.character))
-      token = new Token(TokenType.SLASH, this.character);
-    else if (/^<$/.test(this.character))
-      if (this.peekCharacter() === "=") {
-        token = this.makeTwoCharacterToken(TokenType.LT_EQ);
-      } else token = new Token(TokenType.LT, this.character);
-    else if (/^>$/.test(this.character))
-      if (this.peekCharacter() === "=") {
-        token = this.makeTwoCharacterToken(TokenType.GT_EQ);
-      } else token = new Token(TokenType.GT, this.character);
-    else if (/^,$/.test(this.character))
-      token = new Token(TokenType.COMMA, this.character);
-    else if (/^;$/.test(this.character))
-      token = new Token(TokenType.SEMICOLON, this.character);
-    else if (/^\($/.test(this.character))
-      token = new Token(TokenType.LPAREN, this.character);
-    else if (/^\)$/.test(this.character))
-      token = new Token(TokenType.RPAREN, this.character);
-    else if (/^\{$/.test(this.character))
-      token = new Token(TokenType.LBRACE, this.character);
-    else if (/^\}$/.test(this.character))
-      token = new Token(TokenType.RBRACE, this.character);
-    else if (/^!$/.test(this.character))
-      if (this.peekCharacter() === "=") {
-        token = this.makeTwoCharacterToken(TokenType.NEQ);
-      } else token = new Token(TokenType.BANG, this.character);
-    else if (/^$/.test(this.character))
-      token = new Token(TokenType.EOF, this.character);
-    else if (this.isLetter(this.character)) {
+    const tokenPatterns = {
+      "=": [TokenType.ASSIGN, ["=", TokenType.EQ]],
+      "+": [TokenType.PLUS],
+      "-": [TokenType.MINUS],
+      "*": [TokenType.ASTERISK],
+      "/": [TokenType.SLASH],
+      "<": [TokenType.LT, ["=", TokenType.LT_EQ]],
+      ">": [TokenType.GT, ["=", TokenType.GT_EQ]],
+      "!": [TokenType.BANG, ["=", TokenType.NEQ]],
+      ",": [TokenType.COMMA],
+      ";": [TokenType.SEMICOLON],
+      "(": [TokenType.LPAREN],
+      ")": [TokenType.RPAREN],
+      "{": [TokenType.LBRACE],
+      "}": [TokenType.RBRACE],
+      "": [TokenType.EOF],
+      y: [TokenType.AND],
+      o: [TokenType.OR],
+    };
+
+    if (tokenPatterns[this.character]) {
+      if (tokenPatterns[this.character].length === 2) {
+        if (this.peekCharacter() === tokenPatterns[this.character][1][0]) {
+          token = this.makeTwoCharacterToken(
+            tokenPatterns[this.character][1][1]
+          );
+        } else {
+          token = new Token(tokenPatterns[this.character][0], this.character);
+        }
+      } else {
+        token = new Token(tokenPatterns[this.character][0], this.character);
+      }
+    } else if (this.isLetter(this.character)) {
       const literal = this.readIdentifier();
-      const type = lookupIdentifier(literal);
+      const type = lookupIdentifier(literal) || TokenType.IDENT;
       token = new Token(type, literal);
     } else if (this.isNumber(this.character)) {
       const literal = this.readNumber();
       token = new Token(TokenType.INT, literal);
-    } else token = new Token(TokenType.ILLEGAL, this.character);
+    } else {
+      token = new Token(TokenType.ILLEGAL, this.character);
+    }
+
     this.readCharacter();
     return token;
   }
