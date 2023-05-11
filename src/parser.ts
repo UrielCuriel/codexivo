@@ -1,6 +1,7 @@
 import { Lexer } from './lexer';
 import {
   Boolean,
+  Call,
   Function,
   Identifier,
   Integer,
@@ -52,6 +53,8 @@ const precedences: { [K in TokenType]?: Precedence } = {
   [TokenType.ASTERISK]: Precedence.PRODUCT,
   [TokenType.DO]: Precedence.CALL,
   [TokenType.WHILE]: Precedence.CALL,
+  [TokenType.FOR]: Precedence.CALL,
+  [TokenType.LPAREN]: Precedence.CALL,
 };
 
 export class Parser {
@@ -153,6 +156,37 @@ export class Parser {
   private parseBoolean(): Boolean | null {
     this.assertCurrentToken();
     return new Boolean(this.currentToken, this.currentToken.type === TokenType.TRUE);
+  }
+
+  private parseCall(expression: Expression): Call | null {
+    this.assertCurrentToken();
+    const call = new Call(this.currentToken, expression);
+    call.arguments_ = this.parseCallArguments();
+    return call;
+  }
+
+  private parseCallArguments(): Expression[] {
+    const args: Expression[] = [];
+
+    if (this.peekToken.type === TokenType.RPAREN) {
+      this.advanceTokens();
+      return args;
+    }
+
+    this.advanceTokens();
+    args.push(this.parseExpression(Precedence.LOWEST));
+
+    while (this.peekToken.type === TokenType.COMMA) {
+      this.advanceTokens();
+      this.advanceTokens();
+      args.push(this.parseExpression(Precedence.LOWEST));
+    }
+
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      return [];
+    }
+
+    return args;
   }
 
   private parseDo(): Expression | null {
@@ -532,6 +566,7 @@ export class Parser {
       [TokenType.GT]: this.parseInfix.bind(this),
       [TokenType.LT_EQ]: this.parseInfix.bind(this),
       [TokenType.GT_EQ]: this.parseInfix.bind(this),
+      [TokenType.LPAREN]: this.parseCall.bind(this),
     };
   }
 }

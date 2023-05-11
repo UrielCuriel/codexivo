@@ -196,3 +196,13 @@ export class Function extends Expression {
       .join(', ')}) ${this.body?.toString()}`;
   }
 }
+
+export class Call extends Expression {
+  constructor(token: Token, public function_: Expression, public arguments_?: Expression[]) {
+    super(token);
+  }
+
+  toString(): string {
+    return `${this.function_.toString()}(${this.arguments_.map(a => a.toString()).join(', ')})`;
+  }
+}

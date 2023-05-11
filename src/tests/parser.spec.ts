@@ -4,6 +4,7 @@ import { Parser } from '../parser';
 import { Lexer } from '../lexer';
 import {
   Boolean,
+  Call,
   Identifier,
   If,
   Integer,
@@ -299,6 +300,10 @@ describe('parse', () => {
       ['(5 + 5) * 2;', '((5 + 5) * 2)', 1],
       ['2 / (5 + 5);', '(2 / (5 + 5))', 1],
       ['-(5 + 5);', '(-(5 + 5))', 1],
+      ['suma(3,7) + suma(2,3);', '(suma(3, 7) + suma(2, 3))', 1],
+      ['suma(3, suma(2,3));', 'suma(3, suma(2, 3))', 1],
+      ['2 * 4 + resta(10, 5);', '((2 * 4) + resta(10, 5))', 1],
+      ['resta(suma(2,3), suma(2,3));', 'resta(suma(2, 3), suma(2, 3))', 1],
     ];
 
     testsSources.forEach(test => {
@@ -546,5 +551,26 @@ describe('parse', () => {
         testLiteralExpression(functionLiteral.parameters[index], param);
       });
     });
+  });
+  it('should parse a program with call expression', () => {
+    const source = `suma(1, 2 * 3, 4 + 5);`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+
+    testProgramStatement(parse, program, 1);
+
+    // Test call expression
+    const callExpression: Call = (program.statements[0] as ExpressionStatement).expression as Call;
+
+    expect(callExpression).toBeInstanceOf(Call);
+
+    testIdentifier(callExpression.function_, 'suma');
+
+    // Test arguments
+    expect(callExpression.arguments_?.length).toBe(3);
+    testLiteralExpression(callExpression.arguments_[0], 1);
+    testInfix(callExpression.arguments_[1], 2, '*', 3);
+    testInfix(callExpression.arguments_[2], 4, '+', 5);
   });
 });
