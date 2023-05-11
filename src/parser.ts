@@ -467,9 +467,13 @@ export class Parser {
       return null;
     }
 
-    //TODO: terminar cuando sepamos como parsear expresiones
+    this.advanceTokens();
 
-    while (this.currentToken.type != TokenType.SEMICOLON) {
+    letStatement.value = this.parseExpression(Precedence.LOWEST);
+
+    this.assertPeekToken();
+
+    if (this.peekToken.type === TokenType.SEMICOLON) {
       this.advanceTokens();
     }
 
@@ -493,9 +497,11 @@ export class Parser {
 
     this.advanceTokens();
 
-    //TODO: terminar cuando sepamos como parsear expresiones
+    returnStatement.returnValue = this.parseExpression(Precedence.LOWEST);
 
-    while (this.currentToken.type != TokenType.SEMICOLON) {
+    this.assertPeekToken();
+
+    if (this.peekToken.type === TokenType.SEMICOLON) {
       this.advanceTokens();
     }
 
