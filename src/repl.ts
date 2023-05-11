@@ -1,8 +1,8 @@
-import { Lexer } from "./lexer";
-import { Token, TokenType } from "./token";
-import * as readline from "readline";
+import { Lexer } from './lexer';
+import { Token, TokenType } from './token';
+import * as readline from 'readline';
 
-const EOF_TOKEN = new Token(TokenType.EOF, "");
+const EOF_TOKEN = new Token(TokenType.EOF, '');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -11,7 +11,7 @@ const rl = readline.createInterface({
 
 function prompt(question: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    rl.question(question, (answer) => {
+    rl.question(question, answer => {
       resolve(answer);
     });
   });
@@ -22,9 +22,9 @@ function prompt(question: string): Promise<string> {
  */
 export async function start_repl() {
   while (true) {
-    const input = (await prompt(">> ")) ?? "";
-    if (input === "salir") {
-      console.log("Adios!");
+    const input = (await prompt('>> ')) ?? '';
+    if (input === 'salir') {
+      console.log('Adios!');
       rl.close();
       break;
     }

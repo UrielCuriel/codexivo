@@ -1,4 +1,4 @@
-import { Token } from "./token";
+import { Token } from './token';
 
 export interface ASTNode {
   tokenLiteral(): string;
@@ -40,12 +40,12 @@ export class Program implements ASTNode {
     if (this.statements.length > 0) {
       return this.statements[0].tokenLiteral();
     } else {
-      return "";
+      return '';
     }
   }
 
   toString(): string {
-    return this.statements.map((s) => s.toString()).join("");
+    return this.statements.map(s => s.toString()).join('');
   }
 }
 
@@ -65,7 +65,7 @@ export class LetStatement extends Statement {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} ${this.name.toString()} = ${this.value?.toString() ?? ""};`;
+    return `${this.tokenLiteral()} ${this.name.toString()} = ${this.value?.toString() ?? ''};`;
   }
 }
 
@@ -75,7 +75,7 @@ export class ReturnStatement extends Statement {
   }
 
   toString(): string {
-    return `${this.tokenLiteral()} ${this.returnValue?.toString() ?? ""};`;
+    return `${this.tokenLiteral()} ${this.returnValue?.toString() ?? ''};`;
   }
 }
 
@@ -85,7 +85,7 @@ export class ExpressionStatement extends Statement {
   }
 
   toString(): string {
-    return `${this.expression?.toString() ?? ""}`;
+    return `${this.expression?.toString() ?? ''}`;
   }
 }
 
@@ -94,7 +94,7 @@ export class Integer extends Expression {
     super(token);
   }
   toString(): string {
-    return this.value?.toString() ?? "";
+    return this.value?.toString() ?? '';
   }
 }
 
@@ -103,7 +103,7 @@ export class Prefix extends Expression {
     super(token);
   }
   toString(): string {
-    return `(${this.operator}${this.right?.toString() ?? ""})`;
+    return `(${this.operator}${this.right?.toString() ?? ''})`;
   }
 }
 
@@ -112,7 +112,7 @@ export class Infix extends Expression {
     super(token);
   }
   toString(): string {
-    return `(${this.left?.toString() ?? ""} ${this.operator} ${this.right?.toString() ?? ""})`;
+    return `(${this.left?.toString() ?? ''} ${this.operator} ${this.right?.toString() ?? ''})`;
   }
 }
 
@@ -130,7 +130,7 @@ export class Block extends Statement {
     super(token);
   }
   toString(): string {
-    return this.statements.map((s) => s.toString()).join("");
+    return this.statements.map(s => s.toString()).join('');
   }
 }
 
@@ -141,26 +141,43 @@ export class If extends Expression {
   toString(): string {
     let result = `si ${this.condition?.toString()} ${this.consequence?.toString()}`;
     if (this.alternative) {
-      result += `si_no ${this.alternative.toString()}`;
+      result += ` si_no ${this.alternative.toString()}`;
     }
     return result;
   }
 }
 
 export class While extends Expression {
-  constructor(token: Token, public condition?: Expression, public consequence?: Block) {
+  constructor(token: Token, public condition?: Expression, public body?: Block) {
     super(token);
   }
   toString(): string {
-    return `mientras ${this.condition?.toString()} ${this.consequence?.toString()}`;
+    return `mientras ${this.condition?.toString()} ${this.body?.toString()}`;
   }
 }
 
 export class DoWhile extends Expression {
-  constructor(token: Token, public condition?: Expression, public consequence?: Block) {
+  constructor(token: Token, public condition?: Expression, public body?: Block) {
     super(token);
   }
   toString(): string {
-    return `hacer ${this.consequence?.toString()} hasta_que ${this.condition?.toString()}`;
+    return `hacer ${this.body?.toString()} hasta_que ${this.condition?.toString()}`;
+  }
+}
+
+export class Function extends Expression {
+  constructor(
+    token: Token,
+    public parameters?: Identifier[],
+    public body?: Block,
+    public name?: Identifier,
+    public isAnonymous: boolean = false,
+  ) {
+    super(token);
+  }
+  toString(): string {
+    return `${this.tokenLiteral()} ${this.name?.toString()}(${this.parameters
+      .map(p => p.toString())
+      .join(', ')}) ${this.body?.toString()}`;
   }
 }

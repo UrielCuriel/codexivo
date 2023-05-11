@@ -1,7 +1,7 @@
-import { start_repl } from "./repl";
+import { start_repl } from './repl';
 
 function main() {
-  console.log("Bienvenido al REPL de: ");
+  console.log('Bienvenido al REPL de: ');
   console.log(`
               
 ░█████╗░░█████╗░██████╗░███████╗██╗░░██╗██╗██╗░░░██╗░█████╗░
