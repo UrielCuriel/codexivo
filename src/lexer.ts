@@ -35,8 +35,6 @@ export class Lexer {
       '{': [TokenType.LBRACE],
       '}': [TokenType.RBRACE],
       '': [TokenType.EOF],
-      y: [TokenType.AND],
-      o: [TokenType.OR],
     };
 
     if (tokenPatterns[this.character]) {

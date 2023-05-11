@@ -16,6 +16,7 @@ import {
   Block,
   DoWhile,
   While,
+  For,
 } from './ast';
 import { Token, TokenType } from './token';
 
@@ -198,6 +199,77 @@ export class Parser {
     }
 
     return leftExpression;
+  }
+
+  private parseFor(): Statement | null {
+    this.assertCurrentToken();
+    const forStatement = new For(this.currentToken);
+
+    if (!this.expectPeek(TokenType.LPAREN)) {
+      return null;
+    }
+
+    // Parsear la inicialización del bucle
+    if (this.peekToken.type === TokenType.SEMICOLON) {
+      // Si no hay inicialización, avanzar al siguiente token
+      this.advanceTokens();
+    } else if (this.peekToken.type === TokenType.LET) {
+      // Si hay una declaración 'let', analizarla como una declaración de variable
+      this.advanceTokens();
+      const letStatement = this.parseLetStatement();
+      if (letStatement === null) {
+        return null;
+      }
+      forStatement.initializer = letStatement;
+    } else {
+      // Si no se cumple ninguna de las condiciones anteriores, analizarlo como una expresión
+      const expression = this.parseExpression(Precedence.LOWEST);
+      if (expression === null) {
+        return null;
+      }
+      forStatement.initializer = new ExpressionStatement(this.currentToken, expression);
+      if (!this.expectPeek(TokenType.SEMICOLON)) {
+        return null;
+      }
+    }
+
+    // Parsear la condición del bucle
+    if (this.peekToken.type !== TokenType.SEMICOLON) {
+      const condition = this.parseExpression(Precedence.LOWEST);
+      if (condition === null) {
+        return null;
+      }
+      forStatement.condition = condition;
+      if (!this.expectPeek(TokenType.SEMICOLON)) {
+        return null;
+      }
+    } else {
+      this.advanceTokens();
+    }
+
+    // Parsear el incremento del bucle
+    if (this.peekToken.type !== TokenType.RPAREN) {
+      const increment = this.parseExpression(Precedence.LOWEST);
+      if (increment === null) {
+        return null;
+      }
+      forStatement.increment = increment;
+      if (!this.expectPeek(TokenType.RPAREN)) {
+        return null;
+      }
+    } else {
+      this.advanceTokens();
+    }
+
+    // Parsear el cuerpo del bucle
+    if (this.peekToken.type !== TokenType.LBRACE) {
+      this.expectedTokenError(TokenType.LBRACE);
+      return null;
+    }
+    this.advanceTokens();
+    forStatement.body = this.parseBlock();
+
+    return forStatement;
   }
 
   private parseFunction(): Expression | null {
@@ -434,6 +506,7 @@ export class Parser {
       [TokenType.BANG]: this.parsePrefix.bind(this),
       [TokenType.DO]: this.parseDo.bind(this),
       [TokenType.FALSE]: this.parseBoolean.bind(this),
+      [TokenType.FOR]: this.parseFor.bind(this),
       [TokenType.FUNCTION]: this.parseFunction.bind(this),
       [TokenType.IDENT]: this.parseIdentifier.bind(this),
       [TokenType.INT]: this.parseInteger.bind(this),

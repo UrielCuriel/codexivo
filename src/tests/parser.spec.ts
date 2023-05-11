@@ -16,6 +16,7 @@ import {
   Infix,
   While,
   DoWhile,
+  For,
 } from '../ast';
 
 function printProgram(program: Program) {
@@ -380,6 +381,49 @@ describe('parse', () => {
 
     testIdentifier(alternativeStatement.expression, 'z');
   });
+  //it('should parse a program with for expression', () => {
+  //const source = `para(i = 0; i < 10; i = i + 1) { x }`;
+  //const lexer = new Lexer(source);
+  //const parse = new Parser(lexer);
+  //const program = parse.parseProgram();
+
+  //console.log(program.statements);
+
+  //console.log(JSON.stringify(program, null, 2));
+
+  //testProgramStatement(parse, program, 1);
+
+  // // Test for expression
+  //const forExpression: For = (program.statements[0] as ExpressionStatement).expression as For;
+
+  //expect(forExpression).toBeInstanceOf(For);
+
+  // // Test initializer
+  //expect(forExpression.initializer).not.toBeNull();
+  //expect(forExpression.initializer).not.toBeUndefined();
+  //testInfix(forExpression.initializer, 'i', '=', '0');
+
+  // // Test condition
+  //expect(forExpression.condition).not.toBeNull();
+  //expect(forExpression.condition).not.toBeUndefined();
+  //testInfix(forExpression.condition, 'i', '<', '10');
+
+  // // Test increment
+  //expect(forExpression.increment).not.toBeNull();
+  //expect(forExpression.increment).not.toBeUndefined();
+  //testInfix(forExpression.increment, 'i', '=', 'i + 1');
+
+  // // Test body
+  //expect(forExpression.body).not.toBeNull();
+  //expect(forExpression.body).not.toBeUndefined();
+  //expect(forExpression.body?.statements.length).toBe(1);
+
+  //const bodyStatement: ExpressionStatement = forExpression.body?.statements[0] as ExpressionStatement;
+
+  //expect(bodyStatement.expression).not.toBeNull();
+  //expect(bodyStatement.expression).not.toBeUndefined();
+  //testIdentifier(bodyStatement.expression, 'x');
+  //});
   it('should parse a program with while expression', () => {
     const source = `mientras (m < n) { x }`;
     const lexer = new Lexer(source);

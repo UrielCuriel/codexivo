@@ -165,6 +165,21 @@ export class DoWhile extends Expression {
   }
 }
 
+export class For extends Expression {
+  constructor(
+    token: Token,
+    public initializer?: Expression,
+    public condition?: Expression,
+    public increment?: Expression,
+    public body?: Block,
+  ) {
+    super(token);
+  }
+  toString(): string {
+    return `para ${this.initializer?.toString()} ${this.condition?.toString()} ${this.increment?.toString()} ${this.body?.toString()}`;
+  }
+}
+
 export class Function extends Expression {
   constructor(
     token: Token,

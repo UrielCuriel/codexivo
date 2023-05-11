@@ -9,6 +9,7 @@ export enum TokenType {
   EOF = 'EOF',
   EQ = 'EQ',
   FALSE = 'FALSE',
+  FOR = 'FOR',
   FUNCTION = 'FUNCTION',
   GT = 'GT',
   GT_EQ = 'GT_EQ',
@@ -60,6 +61,9 @@ export const lookupIdentifier = (literal: string): TokenType => {
     mientras: TokenType.WHILE,
     hacer: TokenType.DO,
     hasta_que: TokenType.WHILE,
+    y: TokenType.AND,
+    o: TokenType.OR,
+    para: TokenType.FOR,
   };
 
   return keywords[literal] || TokenType.IDENT;
