@@ -4,6 +4,7 @@ export enum TokenType {
   ASTERISK = "ASTERISK",
   BANG = "BANG",
   COMMA = "COMMA",
+  DO = "DO",
   ELSE = "ELSE",
   EOF = "EOF",
   EQ = "EQ",
@@ -30,6 +31,7 @@ export enum TokenType {
   SEMICOLON = "SEMICOLON",
   SLASH = "SLASH",
   TRUE = "TRUE",
+  WHILE = "WHILE",
 }
 
 export class Token {
@@ -52,9 +54,12 @@ export const lookupIdentifier = (literal: string): TokenType => {
     procedimiento: TokenType.FUNCTION,
     regresa: TokenType.RETURN,
     si: TokenType.IF,
-    sino: TokenType.ELSE,
+    si_no: TokenType.ELSE,
     variable: TokenType.LET,
     verdadero: TokenType.TRUE,
+    mientras: TokenType.WHILE,
+    hacer: TokenType.DO,
+    hasta_que: TokenType.WHILE,
   };
 
   return keywords[literal] || TokenType.IDENT;

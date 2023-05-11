@@ -158,7 +158,7 @@ describe("lexer", () => {
   it("lexer control statement", () => {
     const source = `si (5 < 10) {
       regresa verdadero;
-    } sino {
+    } si_no {
       regresa falso;
     }`;
 
@@ -179,7 +179,7 @@ describe("lexer", () => {
       new Token(TokenType.TRUE, "verdadero"),
       new Token(TokenType.SEMICOLON, ";"),
       new Token(TokenType.RBRACE, "}"),
-      new Token(TokenType.ELSE, "sino"),
+      new Token(TokenType.ELSE, "si_no"),
       new Token(TokenType.LBRACE, "{"),
       new Token(TokenType.RETURN, "regresa"),
       new Token(TokenType.FALSE, "falso"),

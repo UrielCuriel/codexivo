@@ -61,17 +61,11 @@ export class Identifier extends Expression {
 }
 
 export class LetStatement extends Statement {
-  constructor(
-    token: Token,
-    public name?: Identifier,
-    public value?: Expression
-  ) {
+  constructor(token: Token, public name?: Identifier, public value?: Expression) {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} ${this.name.toString()} = ${
-      this.value?.toString() ?? ""
-    };`;
+    return `${this.tokenLiteral()} ${this.name.toString()} = ${this.value?.toString() ?? ""};`;
   }
 }
 
@@ -104,12 +98,8 @@ export class Integer extends Expression {
   }
 }
 
-export class PrefixExpression extends Expression {
-  constructor(
-    token: Token,
-    public operator?: string,
-    public right?: Expression
-  ) {
+export class Prefix extends Expression {
+  constructor(token: Token, public operator?: string, public right?: Expression) {
     super(token);
   }
   toString(): string {
@@ -117,19 +107,12 @@ export class PrefixExpression extends Expression {
   }
 }
 
-export class InfixExpression extends Expression {
-  constructor(
-    token: Token,
-    public left?: Expression,
-    public operator?: string,
-    public right?: Expression
-  ) {
+export class Infix extends Expression {
+  constructor(token: Token, public left?: Expression, public operator?: string, public right?: Expression) {
     super(token);
   }
   toString(): string {
-    return `(${this.left?.toString() ?? ""} ${this.operator} ${
-      this.right?.toString() ?? ""
-    })`;
+    return `(${this.left?.toString() ?? ""} ${this.operator} ${this.right?.toString() ?? ""})`;
   }
 }
 
@@ -138,6 +121,46 @@ export class Boolean extends Expression {
     super(token);
   }
   toString(): string {
-    return this.value?.toString() ?? "";
+    return this.tokenLiteral();
+  }
+}
+
+export class Block extends Statement {
+  constructor(token: Token, public statements: Statement[]) {
+    super(token);
+  }
+  toString(): string {
+    return this.statements.map((s) => s.toString()).join("");
+  }
+}
+
+export class If extends Expression {
+  constructor(token: Token, public condition?: Expression, public consequence?: Block, public alternative?: Block) {
+    super(token);
+  }
+  toString(): string {
+    let result = `si ${this.condition?.toString()} ${this.consequence?.toString()}`;
+    if (this.alternative) {
+      result += `si_no ${this.alternative.toString()}`;
+    }
+    return result;
+  }
+}
+
+export class While extends Expression {
+  constructor(token: Token, public condition?: Expression, public consequence?: Block) {
+    super(token);
+  }
+  toString(): string {
+    return `mientras ${this.condition?.toString()} ${this.consequence?.toString()}`;
+  }
+}
+
+export class DoWhile extends Expression {
+  constructor(token: Token, public condition?: Expression, public consequence?: Block) {
+    super(token);
+  }
+  toString(): string {
+    return `hacer ${this.consequence?.toString()} hasta_que ${this.condition?.toString()}`;
   }
 }
