@@ -48,6 +48,7 @@ const precedences: { [K in TokenType]?: Precedence } = {
   [TokenType.LT_EQ]: Precedence.LESS_GREATER,
   [TokenType.GT_EQ]: Precedence.LESS_GREATER,
   [TokenType.PLUS]: Precedence.SUM,
+  [TokenType.PLUS_EQ]: Precedence.SUM,
   [TokenType.MINUS]: Precedence.SUM,
   [TokenType.SLASH]: Precedence.PRODUCT,
   [TokenType.ASTERISK]: Precedence.PRODUCT,
@@ -231,79 +232,63 @@ export class Parser {
     if (prefixParseFn === undefined && leftExpression === undefined) {
       this._errors.push(`no se encontró ninguna función de parseo para el token ${this.currentToken.literal}`);
     }
-
     return leftExpression;
   }
 
-  private parseFor(): Statement | null {
+  private parseFor(): For | null {
+    // para(variable i = 0; i < 10; i = i + 1) { x }
     this.assertCurrentToken();
-    const forStatement = new For(this.currentToken);
+    const forExpression = new For(this.currentToken);
 
     if (!this.expectPeek(TokenType.LPAREN)) {
       return null;
     }
 
-    // Parsear la inicialización del bucle
-    if (this.peekToken.type === TokenType.SEMICOLON) {
-      // Si no hay inicialización, avanzar al siguiente token
+    // parsear la variable de iteración
+    if (this.peekToken.type === TokenType.LET) {
       this.advanceTokens();
-    } else if (this.peekToken.type === TokenType.LET) {
-      // Si hay una declaración 'let', analizarla como una declaración de variable
-      this.advanceTokens();
-      const letStatement = this.parseLetStatement();
-      if (letStatement === null) {
-        return null;
-      }
-      forStatement.initializer = letStatement;
-    } else {
-      // Si no se cumple ninguna de las condiciones anteriores, analizarlo como una expresión
-      const expression = this.parseExpression(Precedence.LOWEST);
-      if (expression === null) {
-        return null;
-      }
-      forStatement.initializer = new ExpressionStatement(this.currentToken, expression);
-      if (!this.expectPeek(TokenType.SEMICOLON)) {
-        return null;
-      }
+      forExpression.initializer = this.parseLetStatement();
     }
 
-    // Parsear la condición del bucle
-    if (this.peekToken.type !== TokenType.SEMICOLON) {
-      const condition = this.parseExpression(Precedence.LOWEST);
-      if (condition === null) {
-        return null;
-      }
-      forStatement.condition = condition;
-      if (!this.expectPeek(TokenType.SEMICOLON)) {
-        return null;
-      }
-    } else {
-      this.advanceTokens();
-    }
-
-    // Parsear el incremento del bucle
-    if (this.peekToken.type !== TokenType.RPAREN) {
-      const increment = this.parseExpression(Precedence.LOWEST);
-      if (increment === null) {
-        return null;
-      }
-      forStatement.increment = increment;
-      if (!this.expectPeek(TokenType.RPAREN)) {
-        return null;
-      }
-    } else {
-      this.advanceTokens();
-    }
-
-    // Parsear el cuerpo del bucle
-    if (this.peekToken.type !== TokenType.LBRACE) {
-      this.expectedTokenError(TokenType.LBRACE);
+    if (!this.expectToken(TokenType.SEMICOLON)) {
       return null;
     }
-    this.advanceTokens();
-    forStatement.body = this.parseBlock();
 
-    return forStatement;
+    this.advanceTokens();
+
+    // parsear la condición
+    if (this.peekToken.type !== TokenType.SEMICOLON) {
+      forExpression.condition = this.parseExpression(Precedence.LOWEST);
+    }
+
+    if (!this.expectPeek(TokenType.SEMICOLON)) {
+      return null;
+    }
+
+    this.advanceTokens();
+
+    // parsear el incremento
+    if (this.peekToken.type !== TokenType.RPAREN) {
+      forExpression.increment = this.parseExpression(Precedence.LOWEST);
+    }
+
+    if (!this.expectPeek(TokenType.RPAREN)) {
+      return null;
+    }
+
+    // parsear el bloque de código
+    if (!this.expectPeek(TokenType.LBRACE)) {
+      return null;
+    }
+
+    this.advanceTokens();
+
+    forExpression.body = this.parseBlock();
+
+    return forExpression;
+  }
+  private expectToken(tokenType: TokenType): boolean {
+    return this.currentToken.type === tokenType;
   }
 
   private parseFunction(): Expression | null {
@@ -562,6 +547,7 @@ export class Parser {
     return {
       [TokenType.AND]: this.parseInfix.bind(this),
       [TokenType.PLUS]: this.parseInfix.bind(this),
+      [TokenType.PLUS_EQ]: this.parseInfix.bind(this),
       [TokenType.MINUS]: this.parseInfix.bind(this),
       [TokenType.SLASH]: this.parseInfix.bind(this),
       [TokenType.ASTERISK]: this.parseInfix.bind(this),

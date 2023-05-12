@@ -21,7 +21,7 @@ export class Lexer {
 
     const tokenPatterns = {
       '=': [TokenType.ASSIGN, ['=', TokenType.EQ]],
-      '+': [TokenType.PLUS],
+      '+': [TokenType.PLUS, ['=', TokenType.PLUS_EQ]],
       '-': [TokenType.MINUS],
       '*': [TokenType.ASTERISK],
       '/': [TokenType.SLASH],

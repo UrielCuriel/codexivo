@@ -48,6 +48,13 @@ function testLiteralExpression(expression: any, expectedValue: any, expectedType
   }
 }
 
+function testLetStatement(statement: any, expectedName: string) {
+  expect(statement).not.toBeNull();
+  expect(statement).toBeInstanceOf(LetStatement);
+  expect(statement.name.value).toBe(expectedName);
+  expect(statement.name.tokenLiteral()).toBe(expectedName);
+}
+
 function testIdentifier(expression: any, expectedValue: string) {
   expect(expression).not.toBeNull();
   expect(expression).toBeInstanceOf(Identifier);
@@ -386,49 +393,45 @@ describe('parse', () => {
 
     testIdentifier(alternativeStatement.expression, 'z');
   });
-  //it('should parse a program with for expression', () => {
-  //const source = `para(i = 0; i < 10; i = i + 1) { x }`;
-  //const lexer = new Lexer(source);
-  //const parse = new Parser(lexer);
-  //const program = parse.parseProgram();
+  it('should parse a program with for expression', () => {
+    const source = `para(variable i = 0; i < 10; i += 1) { regresa x }`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
 
-  //console.log(program.statements);
+    testProgramStatement(parse, program, 1);
 
-  //console.log(JSON.stringify(program, null, 2));
+    // Test for expression
+    const forExpression: For = (program.statements[0] as ExpressionStatement).expression as For;
 
-  //testProgramStatement(parse, program, 1);
+    expect(forExpression).toBeInstanceOf(For);
 
-  // // Test for expression
-  //const forExpression: For = (program.statements[0] as ExpressionStatement).expression as For;
+    // Test initializer
+    expect(forExpression.initializer).not.toBeNull();
+    expect(forExpression.initializer).not.toBeUndefined();
+    testLetStatement(forExpression.initializer as LetStatement, 'i');
 
-  //expect(forExpression).toBeInstanceOf(For);
+    // Test condition
+    expect(forExpression.condition).not.toBeNull();
+    expect(forExpression.condition).not.toBeUndefined();
+    testInfix(forExpression.condition, 'i', '<', 10);
 
-  // // Test initializer
-  //expect(forExpression.initializer).not.toBeNull();
-  //expect(forExpression.initializer).not.toBeUndefined();
-  //testInfix(forExpression.initializer, 'i', '=', '0');
+    // Test increment
+    expect(forExpression.increment).not.toBeNull();
+    expect(forExpression.increment).not.toBeUndefined();
+    testInfix(forExpression.increment, 'i', '+=', 1);
 
-  // // Test condition
-  //expect(forExpression.condition).not.toBeNull();
-  //expect(forExpression.condition).not.toBeUndefined();
-  //testInfix(forExpression.condition, 'i', '<', '10');
+    // Test body
+    expect(forExpression.body).not.toBeNull();
+    expect(forExpression.body).not.toBeUndefined();
+    expect(forExpression.body?.statements.length).toBe(1);
 
-  // // Test increment
-  //expect(forExpression.increment).not.toBeNull();
-  //expect(forExpression.increment).not.toBeUndefined();
-  //testInfix(forExpression.increment, 'i', '=', 'i + 1');
+    const bodyStatement: ExpressionStatement = forExpression.body?.statements[0] as ExpressionStatement;
 
-  // // Test body
-  //expect(forExpression.body).not.toBeNull();
-  //expect(forExpression.body).not.toBeUndefined();
-  //expect(forExpression.body?.statements.length).toBe(1);
-
-  //const bodyStatement: ExpressionStatement = forExpression.body?.statements[0] as ExpressionStatement;
-
-  //expect(bodyStatement.expression).not.toBeNull();
-  //expect(bodyStatement.expression).not.toBeUndefined();
-  //testIdentifier(bodyStatement.expression, 'x');
-  //});
+    expect(bodyStatement.expression).not.toBeNull();
+    expect(bodyStatement.expression).not.toBeUndefined();
+    testIdentifier(bodyStatement.expression, 'x');
+  });
   it('should parse a program with while expression', () => {
     const source = `mientras (m < n) { x }`;
     const lexer = new Lexer(source);
@@ -493,7 +496,7 @@ describe('parse', () => {
     const parse = new Parser(lexer);
     const program = parse.parseProgram();
 
-    console.log(program.statements.length);
+    //console.log(program.statements.length);
 
     testProgramStatement(parse, program);
 

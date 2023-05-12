@@ -26,6 +26,7 @@ export enum TokenType {
   NEQ = 'NEQ',
   OR = 'OR',
   PLUS = 'PLUS',
+  PLUS_EQ = 'PLUS_EQ',
   RBRACE = 'RBRACE',
   RETURN = 'RETURN',
   RPAREN = 'RPAREN',

@@ -44,8 +44,13 @@ export class Program implements ASTNode {
     }
   }
 
-  toString(): string {
-    return this.statements.map(s => s.toString()).join('');
+  toString(indentation = ''): string {
+    let result = this.statements.map(statement => statement.toString()).join('');
+    return result;
+  }
+
+  inspect(): string {
+    return JSON.stringify(this, null, 2);
   }
 }
 
@@ -130,7 +135,7 @@ export class Block extends Statement {
     super(token);
   }
   toString(): string {
-    return this.statements.map(s => s.toString()).join('');
+    return this.statements.map(s => s.toString()).join(' ');
   }
 }
 
@@ -191,9 +196,7 @@ export class Function extends Expression {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} ${this.name?.toString()}(${this.parameters
-      .map(p => p.toString())
-      .join(', ')}) ${this.body?.toString()}`;
+    return `${this.tokenLiteral()} (${this.parameters.map(p => p.toString()).join(', ')}) ${this.body?.toString()}`;
   }
 }
 
