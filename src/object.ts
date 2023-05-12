@@ -10,7 +10,7 @@ export interface Object {
 }
 
 export class Integer implements Object {
-  constructor(private value: number) {}
+  constructor(public value: number) {}
 
   type(): ObjectType {
     return ObjectType.INTEGER;
@@ -22,7 +22,7 @@ export class Integer implements Object {
 }
 
 export class Boolean implements Object {
-  constructor(private value: number) {}
+  constructor(public value: boolean) {}
 
   type(): ObjectType {
     return ObjectType.BOOLEAN;
@@ -34,8 +34,6 @@ export class Boolean implements Object {
 }
 
 export class Null implements Object {
-  constructor(private value: number) {}
-
   type(): ObjectType {
     return ObjectType.NULL;
   }

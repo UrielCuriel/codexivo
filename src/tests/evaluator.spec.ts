@@ -18,6 +18,11 @@ const testIntegerObject = (obj: Object, expected: number) => {
   expect((obj as Integer).value).toBe(expected);
 };
 
+const testBooleanObject = (obj: Object, expected: boolean) => {
+  expect(obj).toBeInstanceOf(Boolean);
+  expect((obj as Boolean).value).toBe(expected);
+};
+
 describe('evaluator', () => {
   it('should evaluate integer expression', () => {
     const tests = [
@@ -28,6 +33,17 @@ describe('evaluator', () => {
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
       testIntegerObject(evaluated, expected as number);
+    });
+  });
+  it('should evaluate boolean expression', () => {
+    const tests = [
+      ['verdadero;', true],
+      ['falso;', false],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testBooleanObject(evaluated, expected as boolean);
     });
   });
 });
