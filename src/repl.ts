@@ -1,6 +1,9 @@
 import { Lexer } from './lexer';
 import { Token, TokenType } from './token';
+import { Program } from './ast';
 import * as readline from 'readline';
+import { Parser } from './parser';
+import { inspect } from './inspector';
 
 const EOF_TOKEN = new Token(TokenType.EOF, '');
 
@@ -29,11 +32,18 @@ export async function start_repl() {
       break;
     }
     const lexer = new Lexer(input);
-    let token = lexer.nextToken();
-    while (token.type !== TokenType.EOF) {
-      console.log(token.toString());
-      token = lexer.nextToken();
+    const parser = new Parser(lexer);
+    const program = parser.parseProgram();
+    if (parser.errors.length > 0) {
+      printParserErrors(parser.errors);
+      continue;
     }
+    console.log(program.toString());
+    inspect(program);
   }
   return;
+}
+
+function printParserErrors(errors: string[]) {
+  errors.forEach(error => console.log(error));
 }
