@@ -28,6 +28,8 @@ describe('evaluator', () => {
     const tests = [
       ['5;', 5],
       ['10;', 10],
+      ['-5;', -5],
+      ['-10;', -10],
     ];
 
     tests.forEach(([input, expected]) => {
@@ -39,6 +41,20 @@ describe('evaluator', () => {
     const tests = [
       ['verdadero;', true],
       ['falso;', false],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testBooleanObject(evaluated, expected as boolean);
+    });
+  });
+  it('should evaluate bang operator', () => {
+    const tests = [
+      ['!verdadero;', false],
+      ['!falso;', true],
+      ['!!verdadero;', true],
+      ['!5;', false],
+      ['!!5;', true],
     ];
 
     tests.forEach(([input, expected]) => {
