@@ -7,7 +7,7 @@ import {
   Call,
   Identifier,
   If,
-  Integer,
+  Number,
   Function,
   Program,
   LetStatement,
@@ -40,7 +40,7 @@ function testLiteralExpression(expression: any, expectedValue: any, expectedType
   if (typeof expectedValue === 'string') {
     testIdentifier(expression, expectedValue);
   } else if (typeof expectedValue === 'number') {
-    testInteger(expression, expectedValue, expectedType);
+    testNumber(expression, expectedValue, expectedType);
   } else if (typeof expectedValue === 'boolean') {
     testBoolean(expression, expectedValue);
   } else {
@@ -62,9 +62,9 @@ function testIdentifier(expression: any, expectedValue: string) {
   expect(expression.tokenLiteral()).toBe(expectedValue);
 }
 
-function testInteger(expression: any, expectedValue: number, expectedType: any) {
+function testNumber(expression: any, expectedValue: number, expectedType: any) {
   expect(expression).not.toBeNull();
-  expect(expression).toBeInstanceOf(Integer);
+  expect(expression).toBeInstanceOf(Number);
   expect(expression.value).toBe(expectedValue);
   expect(expression.tokenLiteral()).toBe(expectedValue.toString());
 }
@@ -147,7 +147,7 @@ describe('parse', () => {
     //expect program with 1 errors
     expect(parse.errors.length).toBe(1);
     //expect correct error message
-    expect(parse.errors[0]).toBe('se esperaba que el siguiente token fuera ASSIGN pero se obtuvo INT');
+    expect(parse.errors[0]).toBe('se esperaba que el siguiente token fuera ASSIGN pero se obtuvo NUM');
   });
   it('should parse a program with return statements', () => {
     const source = `

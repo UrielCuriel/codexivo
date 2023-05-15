@@ -16,7 +16,6 @@ export enum TokenType {
   IDENT = 'IDENT',
   IF = 'IF',
   ILLEGAL = 'ILLEGAL',
-  INT = 'INT',
   LBRACE = 'LBRACE',
   LET = 'LET',
   LPAREN = 'LPAREN',
@@ -24,6 +23,8 @@ export enum TokenType {
   LT_EQ = 'LT_EQ',
   MINUS = 'MINUS',
   NEQ = 'NEQ',
+  NOT = 'NOT',
+  NUM = 'NUM',
   OR = 'OR',
   PLUS = 'PLUS',
   PLUS_EQ = 'PLUS_EQ',
@@ -65,6 +66,7 @@ export const lookupIdentifier = (literal: string): TokenType => {
     y: TokenType.AND,
     o: TokenType.OR,
     para: TokenType.FOR,
+    no: TokenType.NOT,
   };
 
   return keywords[literal] || TokenType.IDENT;

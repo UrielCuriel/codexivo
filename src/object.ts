@@ -1,6 +1,6 @@
 export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
-  INTEGER = 'INTEGER',
+  NUMBER = 'NUMBER',
   NULL = 'NULL',
 }
 
@@ -9,13 +9,11 @@ export interface Object {
   inspect(): string;
 }
 
-export class Integer implements Object {
-  constructor(public value: number) {
-    this.value = parseInt(value.toString());
-  }
+export class Number implements Object {
+  constructor(public value: number) {}
 
   type(): ObjectType {
-    return ObjectType.INTEGER;
+    return ObjectType.NUMBER;
   }
 
   inspect(): string {

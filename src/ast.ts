@@ -94,7 +94,7 @@ export class ExpressionStatement extends Statement {
   }
 }
 
-export class Integer extends Expression {
+export class Number extends Expression {
   constructor(token: Token, public value?: number) {
     super(token);
   }

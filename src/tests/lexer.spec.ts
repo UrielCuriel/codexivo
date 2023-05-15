@@ -82,7 +82,7 @@ describe('lexer', () => {
       new Token(TokenType.LET, 'variable'),
       new Token(TokenType.IDENT, 'cinco'),
       new Token(TokenType.ASSIGN, '='),
-      new Token(TokenType.INT, '55'),
+      new Token(TokenType.NUM, '55'),
       new Token(TokenType.SEMICOLON, ';'),
     ];
     expect(tokens).toEqual(expectedTokens);
@@ -144,9 +144,9 @@ describe('lexer', () => {
       new Token(TokenType.ASSIGN, '='),
       new Token(TokenType.IDENT, 'suma'),
       new Token(TokenType.LPAREN, '('),
-      new Token(TokenType.INT, '2'),
+      new Token(TokenType.NUM, '2'),
       new Token(TokenType.COMMA, ','),
-      new Token(TokenType.INT, '3'),
+      new Token(TokenType.NUM, '3'),
       new Token(TokenType.RPAREN, ')'),
       new Token(TokenType.SEMICOLON, ';'),
     ];
@@ -167,9 +167,9 @@ describe('lexer', () => {
     const expectedTokens: Token[] = [
       new Token(TokenType.IF, 'si'),
       new Token(TokenType.LPAREN, '('),
-      new Token(TokenType.INT, '5'),
+      new Token(TokenType.NUM, '5'),
       new Token(TokenType.LT, '<'),
-      new Token(TokenType.INT, '10'),
+      new Token(TokenType.NUM, '10'),
       new Token(TokenType.RPAREN, ')'),
       new Token(TokenType.LBRACE, '{'),
       new Token(TokenType.RETURN, 'regresa'),
@@ -196,13 +196,13 @@ describe('lexer', () => {
       tokens.push(lexer.nextToken());
     }
     const expectedTokens: Token[] = [
-      new Token(TokenType.INT, '10'),
+      new Token(TokenType.NUM, '10'),
       new Token(TokenType.EQ, '=='),
-      new Token(TokenType.INT, '10'),
+      new Token(TokenType.NUM, '10'),
       new Token(TokenType.SEMICOLON, ';'),
-      new Token(TokenType.INT, '10'),
+      new Token(TokenType.NUM, '10'),
       new Token(TokenType.NEQ, '!='),
-      new Token(TokenType.INT, '9'),
+      new Token(TokenType.NUM, '9'),
       new Token(TokenType.SEMICOLON, ';'),
     ];
     expect(tokens).toEqual(expectedTokens);

@@ -1,5 +1,5 @@
 import * as ast from './ast';
-import { Integer, Object, Boolean, Null } from './object';
+import { Number as NumberObj, Object, Boolean, Null } from './object';
 
 const TRUE = new Boolean(true);
 const FALSE = new Boolean(false);
@@ -12,9 +12,10 @@ export const evaluate = (node: ast.ASTNode): Object => {
   } else if (node instanceof ast.ExpressionStatement) {
     assertValue(node.expression);
     return evaluate(node.expression);
-  } else if (node instanceof ast.Integer) {
+  } else if (node instanceof ast.Number) {
     assertValue(node.value);
-    return new Integer(node.value);
+    assertNumber(node.value);
+    return new NumberObj(node.value);
   } else if (node instanceof ast.Boolean) {
     assertValue(node.value);
     return toBooleanObject(node.value);
@@ -39,6 +40,12 @@ export const evaluate = (node: ast.ASTNode): Object => {
 const assertValue = (value: unknown): void => {
   if (value === null || value === undefined) {
     throw new Error('value is null or undefined');
+  }
+};
+
+const assertNumber = (value: unknown): void => {
+  if (Number.isNaN(value)) {
+    throw new Error('value is NaN');
   }
 };
 
@@ -67,8 +74,8 @@ const evaluateBooleanInfixExpression = (nodeOperator: string, left: Boolean, rig
 };
 
 const evaluateInfixExpression = (nodeOperator: string, left: Object, right: Object): Object => {
-  if (left instanceof Integer && right instanceof Integer) {
-    return evaluateIntegerInfixExpression(nodeOperator, left, right);
+  if (left instanceof NumberObj && right instanceof NumberObj) {
+    return evaluateNumberInfixExpression(nodeOperator, left, right);
   } else if (nodeOperator === '==') {
     return toBooleanObject(left === right);
   } else if (nodeOperator === '!=') {
@@ -80,16 +87,16 @@ const evaluateInfixExpression = (nodeOperator: string, left: Object, right: Obje
   }
 };
 
-const evaluateIntegerInfixExpression = (nodeOperator: string, left: Integer, right: Integer): Object => {
+const evaluateNumberInfixExpression = (nodeOperator: string, left: NumberObj, right: NumberObj): Object => {
   switch (nodeOperator) {
     case '+':
-      return new Integer(left.value + right.value);
+      return new NumberObj(left.value + right.value);
     case '-':
-      return new Integer(left.value - right.value);
+      return new NumberObj(left.value - right.value);
     case '*':
-      return new Integer(left.value * right.value);
+      return new NumberObj(left.value * right.value);
     case '/':
-      return new Integer(left.value / right.value);
+      return new NumberObj(left.value / right.value);
     case '<':
       return toBooleanObject(left.value < right.value);
     case '>':
@@ -108,12 +115,12 @@ const evaluateIntegerInfixExpression = (nodeOperator: string, left: Integer, rig
 };
 
 const evaluateMinusPrefixOperatorExpression = (right: Object): Object => {
-  if (!(right instanceof Integer)) {
+  if (!(right instanceof NumberObj)) {
     return NULL;
   }
 
   const value = right.value;
-  return new Integer(-value);
+  return new NumberObj(-value);
 };
 
 const evaluateStatements = (statements: ast.Statement[]): Object => {

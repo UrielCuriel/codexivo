@@ -4,7 +4,7 @@ import { Program } from '../ast';
 import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
-import { Integer, Boolean, Null, Object } from '../object';
+import { Number, Boolean, Null, Object } from '../object';
 
 const testEval = (input: string): Object => {
   const lexer = new Lexer(input);
@@ -13,9 +13,9 @@ const testEval = (input: string): Object => {
   return evaluate(program);
 };
 
-const testIntegerObject = (obj: Object, expected: number) => {
-  expect(obj).toBeInstanceOf(Integer);
-  expect((obj as Integer).value).toBe(expected);
+const testNumberObject = (obj: Object, expected: number) => {
+  expect(obj).toBeInstanceOf(Number);
+  expect((obj as Number).value).toBe(expected);
 };
 
 const testBooleanObject = (obj: Object, expected: boolean) => {
@@ -38,12 +38,17 @@ describe('evaluator', () => {
       ['20 + 2 * -10;', 0],
       ['50 / 2 * (2 + 10);', 300],
       ['(5 + 10 * 2 + 15 / 3) * 2 + -10;', 50],
-      ['5/2;', 2],
+      ['5 / 2;', 2.5],
+      ['5.0/2;', 2.5],
+      ['5/2.0;', 2.5],
+      ['.8;', 0.8],
+      ['0.8;', 0.8],
+      ['0.8 + 0.2;', 1],
     ];
 
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
-      testIntegerObject(evaluated, expected as number);
+      testNumberObject(evaluated, expected as number);
     });
   });
   it('should evaluate boolean expression', () => {

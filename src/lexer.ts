@@ -53,7 +53,7 @@ export class Lexer {
       token = new Token(type, literal);
     } else if (this.isNumber(this.character)) {
       const literal = this.readNumber();
-      token = new Token(TokenType.INT, literal);
+      token = new Token(TokenType.NUM, literal);
     } else {
       token = new Token(TokenType.ILLEGAL, this.character);
     }
@@ -68,6 +68,10 @@ export class Lexer {
   }
 
   private isNumber(character: string): boolean {
+    return /^[\d.]$/.test(character);
+  }
+
+  private isInteger(character: string): boolean {
     return /^\d$/.test(character);
   }
 
@@ -91,7 +95,7 @@ export class Lexer {
 
   private readIdentifier(): string {
     const initialPosition = this.position;
-    while (this.isLetter(this.character) || (this.position > initialPosition && this.isNumber(this.character)))
+    while (this.isLetter(this.character) || (this.position > initialPosition && this.isInteger(this.character)))
       this.readCharacter();
     const diff = this.position - initialPosition;
 
@@ -99,6 +103,7 @@ export class Lexer {
     if (this.character !== '') {
       this.readPosition -= 1;
     }
+
     return identifier;
   }
 

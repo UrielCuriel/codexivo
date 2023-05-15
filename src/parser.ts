@@ -4,7 +4,7 @@ import {
   Call,
   Function,
   Identifier,
-  Integer,
+  Number,
   LetStatement,
   Program,
   ReturnStatement,
@@ -413,17 +413,19 @@ export class Parser {
     return infix;
   }
 
-  private parseInteger(): Expression | null {
+  private parseNumber(): Expression | null {
     this.assertCurrentToken();
-    const integer = new Integer(this.currentToken);
+    const number = new Number(this.currentToken);
 
     try {
-      integer.value = parseInt(this.currentToken.literal);
+      number.value = this.currentToken.literal.includes('.')
+        ? parseFloat(this.currentToken.literal)
+        : parseInt(this.currentToken.literal);
     } catch (error) {
       this._errors.push(`no se pudo parsear ${this.currentToken.literal} como entero`);
       return null;
     }
-    return integer;
+    return number;
   }
 
   private parseStatement(): Statement | null {
@@ -534,7 +536,7 @@ export class Parser {
       [TokenType.FOR]: this.parseFor.bind(this),
       [TokenType.FUNCTION]: this.parseFunction.bind(this),
       [TokenType.IDENT]: this.parseIdentifier.bind(this),
-      [TokenType.INT]: this.parseInteger.bind(this),
+      [TokenType.NUM]: this.parseNumber.bind(this),
       [TokenType.IF]: this.parseIf.bind(this),
       [TokenType.LPAREN]: this.parseGroupedExpression.bind(this),
       [TokenType.MINUS]: this.parsePrefix.bind(this),
