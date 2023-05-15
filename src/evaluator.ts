@@ -23,6 +23,14 @@ export const evaluate = (node: ast.ASTNode): Object => {
     const right = evaluate(node.right);
     assertValue(right);
     return evaluatePrefixExpression(node.operator, right);
+  } else if (node instanceof ast.Infix) {
+    assertValue(node.left);
+    assertValue(node.right);
+    const left = evaluate(node.left);
+    const right = evaluate(node.right);
+    assertValue(left);
+    assertValue(right);
+    return evaluateInfixExpression(node.operator, left, right);
   } else {
     return NULL;
   }
@@ -44,6 +52,58 @@ const evaluateBangOperatorExpression = (right: Object): Object => {
       return TRUE;
     default:
       return FALSE;
+  }
+};
+
+const evaluateBooleanInfixExpression = (nodeOperator: string, left: Boolean, right: Boolean): Object => {
+  switch (nodeOperator) {
+    case '==':
+      return toBooleanObject(left.value === right.value);
+    case '!=':
+      return toBooleanObject(left.value !== right.value);
+    default:
+      return NULL;
+  }
+};
+
+const evaluateInfixExpression = (nodeOperator: string, left: Object, right: Object): Object => {
+  if (left instanceof Integer && right instanceof Integer) {
+    return evaluateIntegerInfixExpression(nodeOperator, left, right);
+  } else if (nodeOperator === '==') {
+    return toBooleanObject(left === right);
+  } else if (nodeOperator === '!=') {
+    return toBooleanObject(left !== right);
+  } else if (left instanceof Boolean && right instanceof Boolean) {
+    return evaluateBooleanInfixExpression(nodeOperator, left, right);
+  } else {
+    return NULL;
+  }
+};
+
+const evaluateIntegerInfixExpression = (nodeOperator: string, left: Integer, right: Integer): Object => {
+  switch (nodeOperator) {
+    case '+':
+      return new Integer(left.value + right.value);
+    case '-':
+      return new Integer(left.value - right.value);
+    case '*':
+      return new Integer(left.value * right.value);
+    case '/':
+      return new Integer(left.value / right.value);
+    case '<':
+      return toBooleanObject(left.value < right.value);
+    case '>':
+      return toBooleanObject(left.value > right.value);
+    case '==':
+      return toBooleanObject(left.value === right.value);
+    case '!=':
+      return toBooleanObject(left.value !== right.value);
+    case '<=':
+      return toBooleanObject(left.value <= right.value);
+    case '>=':
+      return toBooleanObject(left.value >= right.value);
+    default:
+      return NULL;
   }
 };
 

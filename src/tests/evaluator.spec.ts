@@ -30,6 +30,15 @@ describe('evaluator', () => {
       ['10;', 10],
       ['-5;', -5],
       ['-10;', -10],
+      ['5 + 5 + 5 + 5 - 10;', 10],
+      ['2 * 2 * 2 * 2 * 2;', 32],
+      ['-50 + 100 + -50;', 0],
+      ['5 * 2 + 10;', 20],
+      ['5 + 2 * 10;', 25],
+      ['20 + 2 * -10;', 0],
+      ['50 / 2 * (2 + 10);', 300],
+      ['(5 + 10 * 2 + 15 / 3) * 2 + -10;', 50],
+      ['5/2;', 2],
     ];
 
     tests.forEach(([input, expected]) => {
@@ -41,6 +50,26 @@ describe('evaluator', () => {
     const tests = [
       ['verdadero;', true],
       ['falso;', false],
+      ['1 < 2;', true],
+      ['1 > 2;', false],
+      ['1 < 1;', false],
+      ['1 > 1;', false],
+      ['1 >= 1;', true],
+      ['1 <= 1;', true],
+      ['1 <= 2;', true],
+      ['1 >= 2;', false],
+      ['1 == 1;', true],
+      ['1 != 1;', false],
+      ['1 == 2;', false],
+      ['1 != 2;', true],
+      ['verdadero == verdadero;', true],
+      ['falso == falso;', true],
+      ['verdadero == falso;', false],
+      ['verdadero != falso;', true],
+      ['(1 < 2) == verdadero;', true],
+      ['(1 < 2) == falso;', false],
+      ['(1 > 2) == verdadero;', false],
+      ['(1 > 2) == falso;', true],
     ];
 
     tests.forEach(([input, expected]) => {

@@ -10,7 +10,9 @@ export interface Object {
 }
 
 export class Integer implements Object {
-  constructor(public value: number) {}
+  constructor(public value: number) {
+    this.value = parseInt(value.toString());
+  }
 
   type(): ObjectType {
     return ObjectType.INTEGER;
