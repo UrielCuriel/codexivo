@@ -4,6 +4,7 @@ import { Program } from './ast';
 import * as readline from 'readline';
 import { Parser } from './parser';
 import { inspect } from './inspector';
+import { evaluate } from './evaluator';
 
 const EOF_TOKEN = new Token(TokenType.EOF, '');
 
@@ -38,8 +39,10 @@ export async function start_repl() {
       printParserErrors(parser.errors);
       continue;
     }
-    console.log(program.toString());
-    inspect(program);
+    const evaluated = evaluate(program);
+    if (evaluated) {
+      console.log(evaluated.inspect());
+    }
   }
   return;
 }

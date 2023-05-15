@@ -79,31 +79,40 @@ export class Lexer {
   }
 
   private readCharacter(): void {
-    if (this.readPosition >= this.source.length) this.character = '';
-    else {
+    if (this.readPosition >= this.source.length) {
+      this.character = '';
+      this.position = this.readPosition;
+    } else {
+      this.position = this.readPosition;
       this.character = this.source[this.readPosition];
       this.readPosition += 1;
     }
-    this.position = this.readPosition - 1;
   }
 
   private readIdentifier(): string {
     const initialPosition = this.position;
     while (this.isLetter(this.character) || (this.position > initialPosition && this.isNumber(this.character)))
       this.readCharacter();
-    const identifier = this.source.substring(initialPosition, this.position);
-    this.position -= 1;
-    this.readPosition -= 1;
+    const diff = this.position - initialPosition;
+
+    const identifier = this.source.substring(initialPosition, diff > 0 ? this.position : this.position + 1);
+    if (this.character !== '') {
+      this.readPosition -= 1;
+    }
     return identifier;
   }
 
   private readNumber(): string {
     const initialPosition = this.position;
     while (this.isNumber(this.character)) this.readCharacter();
-    const number = this.source.substring(initialPosition, this.position);
-    this.position -= 1;
-    this.readPosition -= 1;
+    const diff = this.position - initialPosition;
+    const number = this.source.substring(initialPosition, diff > 0 ? this.position : this.position + 1);
+    if (this.character !== '') this.readPosition -= 1;
     return number;
+  }
+
+  private isEOF(): boolean {
+    if (this.readPosition >= this.source.length) return true;
   }
 
   private peekCharacter(): string {
