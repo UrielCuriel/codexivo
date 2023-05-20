@@ -23,6 +23,8 @@ const testBooleanObject = (obj: Object, expected: boolean) => {
   expect((obj as Boolean).value).toBe(expected);
 };
 
+const isTruthy = (obj: Object) => {};
+
 describe('evaluator', () => {
   it('should evaluate integer expression', () => {
     const tests = [
@@ -94,6 +96,28 @@ describe('evaluator', () => {
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
       testBooleanObject(evaluated, expected as boolean);
+    });
+  });
+  it('should evaluate if else expression', () => {
+    const tests = [
+      ['si (verdadero) { 10 }', 10],
+      ['si (falso) { 10 }', null],
+      ['si (1) { 10 }', 10],
+      ['si (1 < 2) { 10 }', 10],
+      ['si (1 > 2) { 10 }', null],
+      ['si (1 > 2) { 10 } si_no { 20 }', 20],
+      ['si (1 < 2) { 10 } si_no { 20 }', 10],
+      ['si (1 > 2) { 10 } pero_si (1 < 2) { 20 }', 20],
+      ['si (1 > 2) { 10 } pero_si (1 > 2) { 20 } si_no { 30 }', 30],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      if (expected) {
+        testNumberObject(evaluated, expected as number);
+      } else {
+        expect(evaluated).toBeInstanceOf(Null);
+      }
     });
   });
 });

@@ -389,6 +389,30 @@ export class Parser {
 
     ifExpression.consequence = this.parseBlock();
 
+    while (this.peekToken.type === TokenType.ELSEIF) {
+      this.advanceTokens(); // Avanzar al token "elseif"
+
+      if (!this.expectPeek(TokenType.LPAREN)) {
+        return null;
+      }
+
+      this.advanceTokens();
+      const elseIfExpression = this.parseExpression(Precedence.LOWEST);
+
+      if (!this.expectPeek(TokenType.RPAREN)) {
+        return null;
+      }
+
+      if (!this.expectPeek(TokenType.LBRACE)) {
+        return null;
+      }
+
+      const block = this.parseBlock();
+      ifExpression.alternative = new If(this.currentToken);
+      ifExpression.alternative.condition = elseIfExpression;
+      ifExpression.alternative.consequence = block;
+    }
+
     if (this.peekToken.type === TokenType.ELSE) {
       this.advanceTokens();
 

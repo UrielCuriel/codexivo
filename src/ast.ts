@@ -140,7 +140,12 @@ export class Block extends Statement {
 }
 
 export class If extends Expression {
-  constructor(token: Token, public condition?: Expression, public consequence?: Block, public alternative?: Block) {
+  constructor(
+    token: Token,
+    public condition?: Expression,
+    public consequence?: Block,
+    public alternative?: Block | If,
+  ) {
     super(token);
   }
   toString(): string {

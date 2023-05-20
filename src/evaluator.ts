@@ -32,6 +32,10 @@ export const evaluate = (node: ast.ASTNode): Object => {
     assertValue(left);
     assertValue(right);
     return evaluateInfixExpression(node.operator, left, right);
+  } else if (node instanceof ast.Block) {
+    return evaluateStatements(node.statements);
+  } else if (node instanceof ast.If) {
+    return evaluateIfExpression(node);
   } else {
     return NULL;
   }
@@ -70,6 +74,35 @@ const evaluateBooleanInfixExpression = (nodeOperator: string, left: Boolean, rig
       return toBooleanObject(left.value !== right.value);
     default:
       return NULL;
+  }
+};
+
+const evaluateIfExpression = (node: ast.If): Object => {
+  assertValue(node.condition);
+  const condition = evaluate(node.condition);
+  assertValue(condition);
+
+  if (isTruthy(condition)) {
+    assertValue(node.consequence);
+    return evaluate(node.consequence);
+  } else if (node.alternative) {
+    assertValue(node.alternative);
+    return evaluate(node.alternative);
+  } else {
+    return NULL;
+  }
+};
+
+const isTruthy = (obj: Object): boolean => {
+  switch (obj) {
+    case NULL:
+      return false;
+    case TRUE:
+      return true;
+    case FALSE:
+      return false;
+    default:
+      return true;
   }
 };
 
