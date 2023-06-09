@@ -4,13 +4,17 @@ import { Program } from '../ast';
 import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
-import { Number, Boolean, Null, Object } from '../object';
+import { Number, Boolean, Null, Object, Error, Environment } from '../object';
 
 const testEval = (input: string): Object => {
   const lexer = new Lexer(input);
   const parser = new Parser(lexer);
   const program = parser.parseProgram();
-  return evaluate(program);
+  const env = new Environment();
+  const evaluated = evaluate(program, env);
+  expect(evaluated).not.toBeUndefined();
+  expect(evaluated).not.toBeNull();
+  return evaluated;
 };
 
 const testNumberObject = (obj: Object, expected: number) => {
@@ -23,6 +27,11 @@ const testBooleanObject = (obj: Object, expected: boolean) => {
   expect((obj as Boolean).value).toBe(expected);
 };
 
+const testErrorObject = (obj: Object, expected: string) => {
+  expect(obj).toBeInstanceOf(Error);
+  expect((obj as Error).message).toBe(expected);
+  console.log((obj as Error).message);
+};
 const isTruthy = (obj: Object) => {};
 
 describe('evaluator', () => {
@@ -137,6 +146,45 @@ describe('evaluator', () => {
         `,
         10,
       ],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testNumberObject(evaluated, expected as number);
+    });
+  });
+  it('should handling errors', () => {
+    const tests = [
+      ['5 + verdadero;', 'tipo de operando desconocido: NUMBER + BOOLEAN en la linea 1 columna 3'],
+      ['5 + verdadero; 5;', 'tipo de operando desconocido: NUMBER + BOOLEAN en la linea 1 columna 3'],
+      ['-verdadero', 'operador desconocido: -BOOLEAN en la linea 1 columna 1'],
+      ['verdadero + falso;', 'operador desconocido: BOOLEAN + BOOLEAN en la linea 1 columna 11'],
+      ['5; verdadero + falso; 5', 'operador desconocido: BOOLEAN + BOOLEAN en la linea 1 columna 14'],
+      ['si (10 > 1) { verdadero + falso; }', 'operador desconocido: BOOLEAN + BOOLEAN en la linea 1 columna 25'],
+      [
+        `
+        si (10 > 1) {
+          si (10 > 1) {
+            regresa verdadero / falso;
+          }
+          regresa 1;
+        }
+        `,
+        'operador desconocido: BOOLEAN / BOOLEAN en la linea 4 columna 31',
+      ],
+      ['foobar', 'identificador no encontrado: foobar en la linea 1 columna 1'],
+    ];
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testErrorObject(evaluated, expected as string);
+    });
+  });
+  it('should assignment evaluation', () => {
+    const tests = [
+      ['variable a = 5; a;', 5],
+      ['variable a = 5 * 5; a;', 25],
+      ['variable a = 5; variable b = a; b;', 5],
+      ['variable a = 5; variable b = a; variable c = a + b + 5; c;', 15],
     ];
 
     tests.forEach(([input, expected]) => {

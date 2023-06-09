@@ -5,6 +5,7 @@ import * as readline from 'readline';
 import { Parser } from './parser';
 import { inspect } from './inspector';
 import { evaluate } from './evaluator';
+import { Environment } from './object';
 
 const EOF_TOKEN = new Token(TokenType.EOF, '');
 
@@ -35,11 +36,12 @@ export async function start_repl() {
     const lexer = new Lexer(input);
     const parser = new Parser(lexer);
     const program = parser.parseProgram();
+    const env = new Environment();
     if (parser.errors.length > 0) {
       printParserErrors(parser.errors);
       continue;
     }
-    const evaluated = evaluate(program);
+    const evaluated = evaluate(program, env);
     if (evaluated) {
       console.log(evaluated.inspect());
     }

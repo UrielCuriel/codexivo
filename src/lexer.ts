@@ -5,12 +5,16 @@ export class Lexer {
   private character: string;
   private readPosition: number = 0;
   private position: number = 0;
+  private line: number = 1;
+  private column: number = 0;
 
   constructor(source: string) {
     this.source = source;
     this.character = '';
     this.readPosition = 0;
     this.position = 0;
+    this.line = 1;
+    this.column = 0;
 
     this.readCharacter();
   }
@@ -42,20 +46,20 @@ export class Lexer {
         if (this.peekCharacter() === tokenPatterns[this.character][1][0]) {
           token = this.makeTwoCharacterToken(tokenPatterns[this.character][1][1]);
         } else {
-          token = new Token(tokenPatterns[this.character][0], this.character);
+          token = new Token(tokenPatterns[this.character][0], this.character, this.line, this.column);
         }
       } else {
-        token = new Token(tokenPatterns[this.character][0], this.character);
+        token = new Token(tokenPatterns[this.character][0], this.character, this.line, this.column);
       }
     } else if (this.isLetter(this.character)) {
-      const literal = this.readIdentifier();
+      const [literal, initialColumn] = this.readIdentifier();
       const type = lookupIdentifier(literal) || TokenType.IDENT;
-      token = new Token(type, literal);
+      token = new Token(type, literal, this.line, initialColumn);
     } else if (this.isNumber(this.character)) {
-      const literal = this.readNumber();
-      token = new Token(TokenType.NUM, literal);
+      const [literal, initialColumn] = this.readNumber();
+      token = new Token(TokenType.NUM, literal, this.line, initialColumn);
     } else {
-      token = new Token(TokenType.ILLEGAL, this.character);
+      token = new Token(TokenType.ILLEGAL, this.character, this.line, this.column);
     }
 
     this.readCharacter();
@@ -77,24 +81,35 @@ export class Lexer {
 
   private makeTwoCharacterToken(type: TokenType): Token {
     const initialPosition = this.position;
+    const initialColumn = this.column;
     this.readCharacter();
     const literal = this.source.substring(initialPosition, this.position + 1);
-    return new Token(type, literal);
+    return new Token(type, literal, this.line, initialColumn);
   }
 
   private readCharacter(): void {
     if (this.readPosition >= this.source.length) {
       this.character = '';
+      this.column += 1;
       this.position = this.readPosition;
     } else {
+      if (this.character === '\n') {
+        this.line += 1;
+        this.column = 1;
+      } else {
+        if (this.character === '\t') {
+          this.column += 3;
+        } else this.column += 1;
+      }
       this.position = this.readPosition;
       this.character = this.source[this.readPosition];
       this.readPosition += 1;
     }
   }
 
-  private readIdentifier(): string {
+  private readIdentifier(): [string, number] {
     const initialPosition = this.position;
+    const initialColumn = this.column;
     while (this.isLetter(this.character) || (this.position > initialPosition && this.isInteger(this.character)))
       this.readCharacter();
     const diff = this.position - initialPosition;
@@ -102,18 +117,23 @@ export class Lexer {
     const identifier = this.source.substring(initialPosition, diff > 0 ? this.position : this.position + 1);
     if (this.character !== '') {
       this.readPosition -= 1;
+      this.column -= 1;
     }
 
-    return identifier;
+    return [identifier, initialColumn];
   }
 
-  private readNumber(): string {
+  private readNumber(): [string, number] {
     const initialPosition = this.position;
+    const initialColumn = this.column;
     while (this.isNumber(this.character)) this.readCharacter();
     const diff = this.position - initialPosition;
     const number = this.source.substring(initialPosition, diff > 0 ? this.position : this.position + 1);
-    if (this.character !== '') this.readPosition -= 1;
-    return number;
+    if (this.character !== '') {
+      this.readPosition -= 1;
+      this.column -= 1;
+    }
+    return [number, initialColumn];
   }
 
   private isEOF(): boolean {

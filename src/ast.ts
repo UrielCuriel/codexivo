@@ -1,14 +1,20 @@
 import { Token } from './token';
 
 export interface ASTNode {
+  line: number;
+  column: number;
   tokenLiteral(): string;
   toString(): string;
 }
 
 export class Statement implements ASTNode {
   token: Token;
+  line: number;
+  column: number;
   constructor(token: Token) {
     this.token = token;
+    this.line = token.line;
+    this.column = token.column;
   }
   tokenLiteral(): string {
     return this.token.literal;
@@ -20,9 +26,15 @@ export class Statement implements ASTNode {
 
 export class Expression implements ASTNode {
   token: Token;
+  line: number;
+  column: number;
+
   constructor(token: Token) {
     this.token = token;
+    this.line = token.line;
+    this.column = token.column;
   }
+
   tokenLiteral(): string {
     return this.token.literal;
   }
@@ -32,8 +44,17 @@ export class Expression implements ASTNode {
 }
 
 export class Program implements ASTNode {
+  line: number;
+  column: number;
   constructor(public statements: Statement[]) {
     this.statements = statements;
+    if (this.statements.length > 0) {
+      this.line = this.statements[0].line;
+      this.column = this.statements[0].column;
+    } else {
+      this.line = 0;
+      this.column = 0;
+    }
   }
 
   tokenLiteral(): string {

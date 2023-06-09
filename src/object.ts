@@ -1,5 +1,6 @@
 export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
+  ERROR = 'ERROR',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
   RETURN = 'RETURN',
@@ -53,5 +54,48 @@ export class Return implements Object {
 
   inspect(): string {
     return this.value.inspect();
+  }
+}
+
+export class Error implements Object {
+  constructor(public message: string) {}
+
+  type(): ObjectType {
+    return ObjectType.ERROR;
+  }
+
+  inspect(): string {
+    return `ERROR: ${this.message}`;
+  }
+}
+
+export class Environment {
+  store: Map<string, Object> = new Map();
+  outer?: Environment;
+
+  constructor(outer?: Environment) {
+    this.outer = outer;
+  }
+
+  get(name: string): Object | undefined {
+    const obj = this.store.get(name);
+    if (obj) {
+      return obj;
+    }
+
+    if (this.outer) {
+      return this.outer.get(name);
+    }
+
+    return undefined;
+  }
+
+  set(name: string, value: Object): Object {
+    this.store.set(name, value);
+    return value;
+  }
+
+  delete(name: string): void {
+    this.store.delete(name);
   }
 }
