@@ -1,5 +1,5 @@
 import * as ast from './ast';
-import { Number as NumberObj, Object, Boolean, Null } from './object';
+import { Number as NumberObj, Object, Boolean, Null, Return } from './object';
 
 const TRUE = new Boolean(true);
 const FALSE = new Boolean(false);
@@ -8,7 +8,7 @@ const NULL = new Null();
 export const evaluate = (node: ast.ASTNode): Object => {
   if (node instanceof ast.Program) {
     assertValue(node.statements);
-    return evaluateStatements(node.statements);
+    return evaluateProgram(node);
   } else if (node instanceof ast.ExpressionStatement) {
     assertValue(node.expression);
     return evaluate(node.expression);
@@ -33,9 +33,14 @@ export const evaluate = (node: ast.ASTNode): Object => {
     assertValue(right);
     return evaluateInfixExpression(node.operator, left, right);
   } else if (node instanceof ast.Block) {
-    return evaluateStatements(node.statements);
+    return evaluateBlockStatement(node);
   } else if (node instanceof ast.If) {
     return evaluateIfExpression(node);
+  } else if (node instanceof ast.ReturnStatement) {
+    assertValue(node.returnValue);
+    const value = evaluate(node.returnValue);
+    assertValue(value);
+    return new Return(value);
   } else {
     return NULL;
   }
@@ -156,11 +161,28 @@ const evaluateMinusPrefixOperatorExpression = (right: Object): Object => {
   return new NumberObj(-value);
 };
 
-const evaluateStatements = (statements: ast.Statement[]): Object => {
+const evaluateProgram = (program: ast.Program): Object => {
   let result: Object;
 
-  for (const statement of statements) {
+  for (const statement of program.statements) {
     result = evaluate(statement);
+    if (result instanceof Return) {
+      return result.value;
+    }
+  }
+
+  return result;
+};
+
+const evaluateBlockStatement = (block: ast.Block): Object => {
+  let result: Object;
+
+  for (const statement of block.statements) {
+    result = evaluate(statement);
+
+    if (result instanceof Return || result instanceof Error) {
+      return result;
+    }
   }
 
   return result;

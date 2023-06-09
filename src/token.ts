@@ -54,21 +54,21 @@ export class Token {
 
 export const lookupIdentifier = (literal: string): TokenType => {
   const keywords: { [key: string]: TokenType } = {
-    falso: TokenType.FALSE,
+    hacer: TokenType.DO,
+    hasta_que: TokenType.WHILE,
+    pero_si: TokenType.ELSEIF,
     procedimiento: TokenType.FUNCTION,
     regresa: TokenType.RETURN,
     si: TokenType.IF,
     si_no: TokenType.ELSE,
-    pero_si: TokenType.ELSEIF,
+    falso: TokenType.FALSE,
     variable: TokenType.LET,
     verdadero: TokenType.TRUE,
     mientras: TokenType.WHILE,
-    hacer: TokenType.DO,
-    hasta_que: TokenType.WHILE,
-    y: TokenType.AND,
+    no: TokenType.NOT,
     o: TokenType.OR,
     para: TokenType.FOR,
-    no: TokenType.NOT,
+    y: TokenType.AND,
   };
 
   return keywords[literal] || TokenType.IDENT;

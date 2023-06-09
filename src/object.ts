@@ -2,6 +2,7 @@ export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
+  RETURN = 'RETURN',
 }
 
 export interface Object {
@@ -40,5 +41,17 @@ export class Null implements Object {
 
   inspect(): string {
     return 'nulo';
+  }
+}
+
+export class Return implements Object {
+  constructor(public value: Object) {}
+
+  type(): ObjectType {
+    return ObjectType.RETURN;
+  }
+
+  inspect(): string {
+    return this.value.inspect();
   }
 }

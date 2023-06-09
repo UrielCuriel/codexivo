@@ -120,4 +120,28 @@ describe('evaluator', () => {
       }
     });
   });
+  it('should evaluate return statement', () => {
+    const tests = [
+      ['regresa 10;', 10],
+      ['regresa 10; 9;', 10],
+      ['regresa 2 * 5; 9;', 10],
+      ['9; regresa 2 * 5; 9;', 10],
+      [
+        `
+        si (10 > 1) {
+          si (10 > 1) {
+            regresa 10;
+          }
+          regresa 1;
+        }
+        `,
+        10,
+      ],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testNumberObject(evaluated, expected as number);
+    });
+  });
 });
