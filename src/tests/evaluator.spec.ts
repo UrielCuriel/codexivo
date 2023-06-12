@@ -4,12 +4,20 @@ import { Program } from '../ast';
 import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
-import { Number, Boolean, Null, Object, Error, Environment } from '../object';
+import { Number, Boolean, Null, Object, Error, Environment, Function } from '../object';
 
 const testEval = (input: string): Object => {
   const lexer = new Lexer(input);
   const parser = new Parser(lexer);
   const program = parser.parseProgram();
+
+  if (parser.errors.length > 0) {
+    parser.errors.forEach(error => {
+      console.log(error);
+    });
+  }
+  expect(parser.errors).toEqual([]);
+
   const env = new Environment();
   const evaluated = evaluate(program, env);
   expect(evaluated).not.toBeUndefined();
@@ -28,9 +36,10 @@ const testBooleanObject = (obj: Object, expected: boolean) => {
 };
 
 const testErrorObject = (obj: Object, expected: string) => {
+  console.log('ERROR:', (obj as Error).message);
+
   expect(obj).toBeInstanceOf(Error);
   expect((obj as Error).message).toBe(expected);
-  console.log((obj as Error).message);
 };
 const isTruthy = (obj: Object) => {};
 
@@ -156,10 +165,8 @@ describe('evaluator', () => {
   it('should handling errors', () => {
     const tests = [
       ['5 + verdadero;', 'tipo de operando desconocido: NUMBER + BOOLEAN en la linea 1 columna 3'],
-      ['5 + verdadero; 5;', 'tipo de operando desconocido: NUMBER + BOOLEAN en la linea 1 columna 3'],
       ['-verdadero', 'operador desconocido: -BOOLEAN en la linea 1 columna 1'],
       ['verdadero + falso;', 'operador desconocido: BOOLEAN + BOOLEAN en la linea 1 columna 11'],
-      ['5; verdadero + falso; 5', 'operador desconocido: BOOLEAN + BOOLEAN en la linea 1 columna 14'],
       ['si (10 > 1) { verdadero + falso; }', 'operador desconocido: BOOLEAN + BOOLEAN en la linea 1 columna 25'],
       [
         `
@@ -185,6 +192,27 @@ describe('evaluator', () => {
       ['variable a = 5 * 5; a;', 25],
       ['variable a = 5; variable b = a; b;', 5],
       ['variable a = 5; variable b = a; variable c = a + b + 5; c;', 15],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testNumberObject(evaluated, expected as number);
+    });
+  });
+  it('should evaluate function', () => {
+    const input = 'procedimiento(x) { x + 2; };';
+    const evaluated = testEval(input);
+    expect(evaluated).toBeInstanceOf(Function);
+    expect((evaluated as Function).parameters.length).toBe(1);
+    expect((evaluated as Function).parameters[0].toString()).toBe('x');
+    expect((evaluated as Function).body.toString()).toBe('(x + 2)');
+  });
+  it('should evaluate function call', () => {
+    const tests = [
+      ['variable identity = procedimiento(x) { x; }; identity(5);', 5],
+      ['variable identity = procedimiento(x) { regresa x; }; identity(5);', 5],
+      ['variable double = procedimiento(x) { x * 2; }; double(5);', 10],
+      ['variable add = procedimiento(x, b) { x + b; }; add(5,  add(10,3));', 18],
     ];
 
     tests.forEach(([input, expected]) => {

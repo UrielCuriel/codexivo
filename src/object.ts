@@ -1,6 +1,9 @@
+import { Block, Identifier } from './ast';
+
 export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
   ERROR = 'ERROR',
+  FUNCTION = 'FUNCTION',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
   RETURN = 'RETURN',
@@ -97,5 +100,19 @@ export class Environment {
 
   delete(name: string): void {
     this.store.delete(name);
+  }
+}
+
+export class Function implements Object {
+  constructor(public parameters: Identifier[], public body: Block, public env: Environment) {}
+
+  type(): ObjectType {
+    return ObjectType.FUNCTION;
+  }
+
+  inspect(): string {
+    return `procedimiento(${this.parameters.map(p => p.toString()).join(', ')}) {\n${this.body.statements
+      .map(s => s.toString())
+      .join('\n')}\n}`;
   }
 }

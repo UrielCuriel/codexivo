@@ -26,14 +26,16 @@ function prompt(question: string): Promise<string> {
  * REPL (Read-Eval-Print-Loop) para el lenguaje Codexivo
  */
 export async function start_repl() {
+  const scanned: string[] = [];
   while (true) {
     const input = (await prompt('>> ')) ?? '';
-    if (input === 'salir') {
+    if (input === 'salir();') {
       console.log('Adios!');
       rl.close();
       break;
     }
-    const lexer = new Lexer(input);
+    scanned.push(input);
+    const lexer = new Lexer(scanned.join('\n'));
     const parser = new Parser(lexer);
     const program = parser.parseProgram();
     const env = new Environment();

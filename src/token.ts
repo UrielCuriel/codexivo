@@ -46,6 +46,24 @@ export class Token {
   }
 }
 
+export const reservedKeywords = [
+  'hacer',
+  'hasta_que',
+  'pero_si',
+  'procedimiento',
+  'regresa',
+  'si',
+  'si_no',
+  'falso',
+  'variable',
+  'verdadero',
+  'mientras',
+  'no',
+  'o',
+  'para',
+  'y',
+];
+
 export const lookupIdentifier = (literal: string): TokenType => {
   const keywords: { [key: string]: TokenType } = {
     hacer: TokenType.DO,

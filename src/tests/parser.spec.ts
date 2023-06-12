@@ -572,8 +572,32 @@ describe('parse', () => {
 
     // Test arguments
     expect(callExpression.arguments_?.length).toBe(3);
+    if (!callExpression.arguments_) return;
     testLiteralExpression(callExpression.arguments_[0], 1);
     testInfix(callExpression.arguments_[1], 2, '*', 3);
     testInfix(callExpression.arguments_[2], 4, '+', 5);
+  });
+
+  it('should parse a program with reserved words as identifiers and return errors', () => {
+    const testsSources = [
+      ['variable variable = 1;', 'variable', 'variable'],
+      ['variable si = 1;', 'si', 'variable'],
+      ['variable no = 1;', 'no', 'variable'],
+      ['variable mientras = 1;', 'mientras', 'variable'],
+      ['variable hacer = 1;', 'hacer', 'variable'],
+      ['variable hasta_que = 1;', 'hasta_que', 'variable'],
+      ['variable procedimiento = 1;', 'procedimiento', 'variable'],
+      ['variable función = procedimiento(x,y) { x + y; };', 'y', 'parámetro'],
+    ];
+
+    testsSources.forEach(test => {
+      const lexer = new Lexer(test[0] as string);
+      const parse = new Parser(lexer);
+      const program = parse.parseProgram();
+
+      expect(parse.errors.length).toBeGreaterThan(0);
+
+      expect(parse.errors[0]).toBe(`no se puede usar la palabra reservada '${test[1]}' como nombre de ${test[2]}`);
+    });
   });
 });

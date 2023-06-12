@@ -19,7 +19,7 @@ import {
   While,
   For,
 } from './ast';
-import { Token, TokenType } from './token';
+import { reservedKeywords, Token, TokenType } from './token';
 
 export type PrefixParseFn = () => Expression | null;
 export type InfixParseFn = (expression: Expression) => Expression | null;
@@ -328,6 +328,11 @@ export class Parser {
       this.advanceTokens();
       this.advanceTokens();
       this.assertCurrentToken();
+      if (reservedKeywords.includes(this.currentToken.literal)) {
+        this._errors.push(
+          `no se puede usar la palabra reservada '${this.currentToken.literal}' como nombre de parámetro`,
+        );
+      }
       identifiers.push(new Identifier(this.currentToken, this.currentToken.literal));
     }
 
@@ -365,6 +370,10 @@ export class Parser {
 
   private parseIdentifier(): Identifier | null {
     this.assertCurrentToken();
+    if (reservedKeywords.includes(this.currentToken.literal)) {
+      this._errors.push(`no se puede usar la palabra reservada ${this.currentToken.literal} como identificador`);
+      return null;
+    }
     return new Identifier(this.currentToken, this.currentToken.literal);
   }
 
@@ -468,6 +477,12 @@ export class Parser {
   private parseLetStatement(): Statement | null {
     this.assertCurrentToken();
     const letStatement = new LetStatement(this.currentToken);
+
+    if (reservedKeywords.includes(this.peekToken.literal)) {
+      this._errors.push(`no se puede usar la palabra reservada '${this.peekToken.literal}' como nombre de variable`);
+      return null;
+    }
+
     if (!this.expectPeek(TokenType.IDENT)) {
       return null;
     }
