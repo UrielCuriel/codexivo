@@ -7,6 +7,7 @@ export enum ObjectType {
   NUMBER = 'NUMBER',
   NULL = 'NULL',
   RETURN = 'RETURN',
+  STRING = 'STRING',
 }
 
 export interface Object {
@@ -114,5 +115,16 @@ export class Function implements Object {
     return `procedimiento(${this.parameters.map(p => p.toString()).join(', ')}) {\n${this.body.statements
       .map(s => s.toString())
       .join('\n')}\n}`;
+  }
+}
+export class String implements Object {
+  constructor(public value: string) {}
+
+  type(): ObjectType {
+    return ObjectType.STRING;
+  }
+
+  inspect(): string {
+    return this.value;
   }
 }

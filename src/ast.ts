@@ -235,3 +235,13 @@ export class Call extends Expression {
     return `${this.function_.toString()}(${this.arguments_.map(a => a.toString()).join(', ')})`;
   }
 }
+
+export class StringLiteral extends Expression {
+  constructor(token: Token, public value: string) {
+    super(token);
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}

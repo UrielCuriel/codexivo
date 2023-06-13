@@ -34,6 +34,7 @@ export enum TokenType {
   RPAREN = 'RPAREN',
   SEMICOLON = 'SEMICOLON',
   SLASH = 'SLASH',
+  STRING = 'STRING',
   TRUE = 'TRUE',
   WHILE = 'WHILE',
 }

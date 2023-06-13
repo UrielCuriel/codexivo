@@ -18,6 +18,7 @@ import {
   While,
   DoWhile,
   For,
+  StringLiteral,
 } from '../ast';
 
 function printProgram(program: Program) {
@@ -599,5 +600,15 @@ describe('parse', () => {
 
       expect(parse.errors[0]).toBe(`no se puede usar la palabra reservada '${test[1]}' como nombre de ${test[2]}`);
     });
+  });
+  it('should parse a program with string literal', () => {
+    const source = `"hola mundo!";`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+    const expressionStatement = program.statements[0] as ExpressionStatement;
+    const stringLiteral = expressionStatement.expression as StringLiteral;
+    expect(stringLiteral).toBeInstanceOf(StringLiteral);
+    expect(stringLiteral.value).toBe('hola mundo!');
   });
 });

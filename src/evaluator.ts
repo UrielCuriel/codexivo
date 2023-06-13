@@ -1,5 +1,15 @@
 import * as ast from './ast';
-import { Number as NumberObj, Object, Boolean, Null, Return, Error as ErrorObj, Environment, Function } from './object';
+import {
+  Number as NumberObj,
+  Object,
+  Boolean,
+  Null,
+  Return,
+  Error as ErrorObj,
+  Environment,
+  Function,
+  String,
+} from './object';
 import { reservedKeywords } from './token';
 
 const TRUE = new Boolean(true);
@@ -77,6 +87,9 @@ export const evaluate = (node: ast.ASTNode, env: Environment, line?: number, col
     assertValue(args);
     assertValue(functionObj);
     return applyFunction(functionObj, args, node.line, node.column);
+  } else if (node instanceof ast.StringLiteral) {
+    assertValue(node.value);
+    return new String(node.value);
   } else {
     return NULL;
   }
@@ -208,6 +221,8 @@ const evaluateInfixExpression = (
 ): Object => {
   if (left instanceof NumberObj && right instanceof NumberObj) {
     return evaluateNumberInfixExpression(nodeOperator, left, right, line, column);
+  } else if (left instanceof String && right instanceof String) {
+    return evaluateStringInfixExpression(nodeOperator, left, right, line, column);
   } else if (nodeOperator === '==') {
     return toBooleanObject(left === right);
   } else if (nodeOperator === '!=') {
@@ -251,6 +266,30 @@ const evaluateNumberInfixExpression = (
       return toBooleanObject(left.value <= right.value);
     case '>=':
       return toBooleanObject(left.value >= right.value);
+    default:
+      return newError(
+        _UNKNOWN_INFIX_OPERATOR({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }),
+      );
+  }
+};
+
+const evaluateStringInfixExpression = (
+  nodeOperator: string,
+  left: String,
+  right: String,
+  line: number,
+  column: number,
+): Object => {
+  const leftValue = left.value;
+  const rightValue = right.value;
+
+  switch (nodeOperator) {
+    case '+':
+      return new String(leftValue + rightValue);
+    case '==':
+      return toBooleanObject(leftValue === rightValue);
+    case '!=':
+      return toBooleanObject(leftValue !== rightValue);
     default:
       return newError(
         _UNKNOWN_INFIX_OPERATOR({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }),

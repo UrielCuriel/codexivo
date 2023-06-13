@@ -201,4 +201,23 @@ describe('lexer', () => {
     ];
     expect(tokens).toEqual(expectedTokens);
   });
+  it('lexer string', () => {
+    const source = `
+    "foo";
+    "foo bar";
+    `;
+    const lexer = new Lexer(source);
+    const tokens: Token[] = [];
+    for (let i = 0; i < 5; i++) {
+      tokens.push(lexer.nextToken());
+    }
+    const expectedTokens: Token[] = [
+      new Token(TokenType.STRING, 'foo', 2, 5),
+      new Token(TokenType.SEMICOLON, ';', 2, 10),
+      new Token(TokenType.STRING, 'foo bar', 3, 5),
+      new Token(TokenType.SEMICOLON, ';', 3, 14),
+      new Token(TokenType.EOF, '', 4, 5),
+    ];
+    expect(tokens).toEqual(expectedTokens);
+  });
 });

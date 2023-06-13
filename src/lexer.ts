@@ -58,6 +58,9 @@ export class Lexer {
     } else if (this.isNumber(this.character)) {
       const [literal, initialColumn] = this.readNumber();
       token = new Token(TokenType.NUM, literal, this.line, initialColumn);
+    } else if (/^\"|'/.test(this.character)) {
+      const [literal, initialColumn] = this.readString();
+      token = new Token(TokenType.STRING, literal, this.line, initialColumn);
     } else {
       token = new Token(TokenType.ILLEGAL, this.character, this.line, this.column);
     }
@@ -134,6 +137,22 @@ export class Lexer {
       this.column -= 1;
     }
     return [number, initialColumn];
+  }
+
+  private readString(): [string, number] {
+    const initialPosition = this.position;
+    const initialColumn = this.column;
+    const quote = this.character;
+    this.readCharacter();
+    while (this.character !== quote && !this.isEOF()) this.readCharacter();
+    const diff = this.position - initialPosition;
+    const string = this.source.substring(initialPosition + 1, diff > 0 ? this.position : this.position + 1);
+    this.readCharacter();
+    if (this.character !== '') {
+      this.readPosition -= 1;
+      this.column -= 1;
+    }
+    return [string, initialColumn];
   }
 
   private isEOF(): boolean {

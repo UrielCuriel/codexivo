@@ -5,6 +5,7 @@ import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
 import { Number, Boolean, Null, Object, Error, Environment, Function } from '../object';
+import { Number, Boolean, Null, Object, Error, Environment, Function, String } from '../object';
 
 const testEval = (input: string): Object => {
   const lexer = new Lexer(input);
@@ -22,6 +23,9 @@ const testEval = (input: string): Object => {
   const evaluated = evaluate(program, env);
   expect(evaluated).not.toBeUndefined();
   expect(evaluated).not.toBeNull();
+  if (evaluated instanceof Error) {
+    console.log('ERROR:', evaluated.message);
+  }
   return evaluated;
 };
 
@@ -33,6 +37,11 @@ const testNumberObject = (obj: Object, expected: number) => {
 const testBooleanObject = (obj: Object, expected: boolean) => {
   expect(obj).toBeInstanceOf(Boolean);
   expect((obj as Boolean).value).toBe(expected);
+};
+
+const testStringObject = (obj: Object, expected: string) => {
+  expect(obj).toBeInstanceOf(String);
+  expect((obj as String).value).toBe(expected);
 };
 
 const testErrorObject = (obj: Object, expected: string) => {
@@ -180,6 +189,7 @@ describe('evaluator', () => {
         'operador desconocido: BOOLEAN / BOOLEAN en la linea 4 columna 31',
       ],
       ['foobar', 'identificador no encontrado: foobar en la linea 1 columna 1'],
+      ['"Hello" - "World"', 'operador desconocido: STRING - STRING en la linea 1 columna 9'],
     ];
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
@@ -218,6 +228,54 @@ describe('evaluator', () => {
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
       testNumberObject(evaluated, expected as number);
+    });
+  });
+  it('should evaluate string literal', () => {
+    const tests = [
+      ['"hola mundo"', 'hola mundo'],
+      ['procedimiento() { regresa "hola mundo"; }();', 'hola mundo'],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testStringObject(evaluated, expected as string);
+    });
+  });
+  it('should evaluate string concatenation', () => {
+    const tests = [
+      ['"hola" + " " + "mundo"', 'hola mundo'],
+      ['"Foo" + "bar"', 'Foobar'],
+      [
+        `
+          variable saludo = procedimiento(nombre) {
+            regresa "Hola " + nombre + "!";
+          };
+          saludo("Uriel");
+        `,
+        'Hola Uriel!',
+      ],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testStringObject(evaluated, expected as string);
+    });
+  });
+  it('should evaluate string comparison', () => {
+    const tests = [
+      ['"hola" == "hola"', true],
+      ['"hola" == "mundo"', false],
+      ['"hola" != "hola"', false],
+      ['"hola" != "mundo"', true],
+      ['"hola" == 1', false],
+      ['"hola" != 1', true],
+      ['1 == "hola"', false],
+      ['1 != "hola"', true],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testBooleanObject(evaluated, expected as boolean);
     });
   });
 });

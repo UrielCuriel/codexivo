@@ -18,6 +18,7 @@ import {
   DoWhile,
   While,
   For,
+  StringLiteral,
 } from './ast';
 import { reservedKeywords, Token, TokenType } from './token';
 
@@ -534,6 +535,10 @@ export class Parser {
     return returnStatement;
   }
 
+  private parseStringLiteral(): Expression | null {
+    this.assertCurrentToken();
+    return new StringLiteral(this.currentToken, this.currentToken.literal);
+  }
   private parseWhile(): Expression | null {
     this.assertCurrentToken();
     const whileExpression = new While(this.currentToken);
@@ -580,6 +585,7 @@ export class Parser {
       [TokenType.LPAREN]: this.parseGroupedExpression.bind(this),
       [TokenType.MINUS]: this.parsePrefix.bind(this),
       [TokenType.TRUE]: this.parseBoolean.bind(this),
+      [TokenType.STRING]: this.parseStringLiteral.bind(this),
       [TokenType.WHILE]: this.parseWhile.bind(this),
     };
   }
