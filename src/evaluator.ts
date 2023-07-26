@@ -9,30 +9,15 @@ import {
   Environment,
   Function,
   String,
+  Builtin,
 } from './object';
 import { reservedKeywords } from './token';
+import { builtins } from './builtins';
+import { newError } from './errors';
 
 const TRUE = new Boolean(true);
 const FALSE = new Boolean(false);
 const NULL = new Null();
-
-function template(strings: TemplateStringsArray, ...keys: any[]) {
-  return (values: { [key: string]: any }) => {
-    const result = [strings[0]];
-    keys.forEach((key, i) => {
-      const value = values[key];
-      result.push(value, strings[i + 1]);
-    });
-    return result.join('');
-  };
-}
-
-const _TYPE_MISMATCH = template`tipo de operando desconocido: ${'type1'} ${'operator'} ${'type2'} en la linea ${'line'} columna ${'column'}`;
-const _UNKNOWN_PREFIX_OPERATOR = template`operador desconocido: ${'operator'}${'type'} en la linea ${'line'} columna ${'column'}`;
-const _UNKNOWN_INFIX_OPERATOR = template`operador desconocido: ${'type1'} ${'operator'} ${'type2'} en la linea ${'line'} columna ${'column'}`;
-const _UNKNOWN_IDENTIFIER = template`identificador no encontrado: ${'name'} en la linea ${'line'} columna ${'column'}`;
-const _NOT_A_FUNCTION = template`${'name'} no es una función en la linea ${'line'} columna ${'column'}`;
-const _RESERVED_WORD = template`no puedes usar la palabra reservada como identificador: ${'name'} en la linea ${'line'} columna ${'column'}`;
 
 export const evaluate = (node: ast.ASTNode, env: Environment, line?: number, column?: number): Object => {
   if (node instanceof ast.Program) {
@@ -96,13 +81,20 @@ export const evaluate = (node: ast.ASTNode, env: Environment, line?: number, col
 };
 
 const applyFunction = (fn: Object, args: Object[], line: number, column: number): Object => {
-  if (!(fn instanceof Function)) {
-    return newError(_NOT_A_FUNCTION({ name: fn.type(), line, column }));
+  if (fn instanceof Function) {
+    const extendedEnv = extendFunctionEnv(fn, args);
+    const evaluated = evaluate(fn.body, extendedEnv);
+    assertValue(evaluated);
+    return unwrapReturnValue(evaluated);
+  } else if (fn instanceof Builtin) {
+    const result = fn.fn(...args);
+    if (result instanceof ErrorObj) {
+      return newError('GENERIC_ERROR', { message: result.message, line, column });
+    }
+    return result;
+  } else {
+    return newError('NOT_A_FUNCTION', { line, column, name: fn.type() });
   }
-  const extendedEnv = extendFunctionEnv(fn, args);
-  const evaluated = evaluate(fn.body, extendedEnv);
-  assertValue(evaluated);
-  return unwrapReturnValue(evaluated);
 };
 const assertValue = (value: unknown): void => {
   if (value === null || value === undefined) {
@@ -150,11 +142,14 @@ const evaluateExpression = (
 
 const evaluateIdentifier = (node: ast.Identifier, env: Environment, line: number, column: number): Object => {
   if (isReservedWord(node.tokenLiteral())) {
-    return newError(_RESERVED_WORD({ name: node.value, line, column }));
+    return newError('RESERVED_WORD', { name: node.value, line, column });
   }
   const value = env.get(node.value);
   if (!value) {
-    return newError(_UNKNOWN_IDENTIFIER({ name: node.value, line, column }));
+    if (builtins[node.value]) {
+      return builtins[node.value];
+    }
+    return newError('UNKNOWN_IDENTIFIER', { name: node.value, line, column });
   }
 
   return value;
@@ -177,9 +172,13 @@ const evaluateBooleanInfixExpression = (
     case '!=':
       return toBooleanObject(left.value !== right.value);
     default:
-      return newError(
-        _UNKNOWN_INFIX_OPERATOR({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }),
-      );
+      return newError('UNKNOWN_INFIX_OPERATOR', {
+        operator: nodeOperator,
+        left: left.type(),
+        right: right.type(),
+        line,
+        column,
+      });
   }
 };
 
@@ -230,11 +229,21 @@ const evaluateInfixExpression = (
   } else if (left instanceof Boolean && right instanceof Boolean) {
     return evaluateBooleanInfixExpression(nodeOperator, left, right, line, column);
   } else if (left.type() !== right.type()) {
-    return newError(_TYPE_MISMATCH({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }));
+    return newError('TYPE_MISMATCH', {
+      operator: nodeOperator,
+      left: left.type(),
+      right: right.type(),
+      line,
+      column,
+    });
   } else {
-    return newError(
-      _UNKNOWN_INFIX_OPERATOR({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }),
-    );
+    return newError('UNKNOWN_OPERATOR', {
+      operator: nodeOperator,
+      left: left.type(),
+      right: right.type(),
+      line,
+      column,
+    });
   }
 };
 
@@ -267,9 +276,13 @@ const evaluateNumberInfixExpression = (
     case '>=':
       return toBooleanObject(left.value >= right.value);
     default:
-      return newError(
-        _UNKNOWN_INFIX_OPERATOR({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }),
-      );
+      return newError('UNKNOWN_INFIX_OPERATOR', {
+        type1: left.type(),
+        operator: nodeOperator,
+        type2: right.type(),
+        line,
+        column,
+      });
   }
 };
 
@@ -291,15 +304,19 @@ const evaluateStringInfixExpression = (
     case '!=':
       return toBooleanObject(leftValue !== rightValue);
     default:
-      return newError(
-        _UNKNOWN_INFIX_OPERATOR({ type1: left.type(), operator: nodeOperator, type2: right.type(), line, column }),
-      );
+      return newError('UNKNOWN_INFIX_OPERATOR', {
+        left: left.type(),
+        operator: nodeOperator,
+        right: right.type(),
+        line,
+        column,
+      });
   }
 };
 
 const evaluateMinusPrefixOperatorExpression = (right: Object, line: number, column: number): Object => {
   if (!(right instanceof NumberObj)) {
-    return newError(_UNKNOWN_PREFIX_OPERATOR({ operator: '-', type: right.type(), line, column }));
+    return newError('UNKNOWN_PREFIX_OPERATOR', { operator: '-', right: right.type(), line, column });
   }
 
   const value = right.value;
@@ -342,12 +359,8 @@ const evaluatePrefixExpression = (operator: string, right: Object, line: number,
     case '-':
       return evaluateMinusPrefixOperatorExpression(right, line, column);
     default:
-      return newError(_UNKNOWN_PREFIX_OPERATOR({ operator, type: right.type.name, line, column }));
+      return newError('UNKNOWN_PREFIX_OPERATOR', { operator, right: right.type(), line, column });
   }
-};
-
-const newError = (message: string): ErrorObj => {
-  return new ErrorObj(message);
 };
 
 const toBooleanObject = (value: boolean): Boolean => {
