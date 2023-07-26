@@ -4,7 +4,6 @@ import { Program } from '../ast';
 import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
-import { Number, Boolean, Null, Object, Error, Environment, Function } from '../object';
 import { Number, Boolean, Null, Object, Error, Environment, Function, String } from '../object';
 
 const testEval = (input: string): Object => {
@@ -45,8 +44,6 @@ const testStringObject = (obj: Object, expected: string) => {
 };
 
 const testErrorObject = (obj: Object, expected: string) => {
-  console.log('ERROR:', (obj as Error).message);
-
   expect(obj).toBeInstanceOf(Error);
   expect((obj as Error).message).toBe(expected);
 };
@@ -276,6 +273,30 @@ describe('evaluator', () => {
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
       testBooleanObject(evaluated, expected as boolean);
+    });
+  });
+  it('should evaluate built-in functions', () => {
+    const tests = [
+      ['longitud("")', 0],
+      ['longitud("cuatro")', 6],
+      ['longitud("hola mundo")', 10],
+      [
+        'longitud(1)',
+        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING en la linea 1 columna 9`,
+      ],
+      [
+        'longitud("uno", "dos")',
+        `numero incorrecto de argumentos para 'longitud' se recibieron 2, se esperaban 1 en la linea 1 columna 9`,
+      ],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      if (typeof expected === 'number') {
+        testNumberObject(evaluated, expected);
+      } else {
+        testErrorObject(evaluated, expected);
+      }
     });
   });
 });

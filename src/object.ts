@@ -2,6 +2,7 @@ import { Block, Identifier } from './ast';
 
 export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
+  BUILTIN = 'BUILTIN',
   ERROR = 'ERROR',
   FUNCTION = 'FUNCTION',
   NUMBER = 'NUMBER',
@@ -117,6 +118,7 @@ export class Function implements Object {
       .join('\n')}\n}`;
   }
 }
+
 export class String implements Object {
   constructor(public value: string) {}
 
@@ -126,5 +128,21 @@ export class String implements Object {
 
   inspect(): string {
     return this.value;
+  }
+}
+
+export interface BuiltinFunction {
+  (...args: Object[]): Object;
+}
+
+export class Builtin implements Object {
+  constructor(public fn: BuiltinFunction) {}
+
+  type(): ObjectType {
+    return ObjectType.BUILTIN;
+  }
+
+  inspect(): string {
+    return 'builtin function';
   }
 }
