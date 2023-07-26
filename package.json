@@ -16,6 +16,7 @@
   },
   "scripts": {
     "test": "vitest --ui",
+    "repl": "node .",
     "build": "tsc"
   },
   "keywords": [],
