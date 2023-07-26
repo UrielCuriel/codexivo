@@ -245,3 +245,23 @@ export class StringLiteral extends Expression {
     return this.value;
   }
 }
+
+export class ArrayLiteral extends Expression {
+  constructor(token: Token, public elements?: Expression[]) {
+    super(token);
+  }
+
+  toString(): string {
+    return `[${this.elements.map(e => e.toString()).join(', ')}]`;
+  }
+}
+
+export class Index extends Expression {
+  constructor(token: Token, public left: Expression, public index?: Expression) {
+    super(token);
+  }
+
+  toString(): string {
+    return `${this.left.toString()}[${this.index.toString()}]`;
+  }
+}

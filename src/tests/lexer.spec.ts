@@ -220,4 +220,24 @@ describe('lexer', () => {
     ];
     expect(tokens).toEqual(expectedTokens);
   });
+  it('lexer array', () => {
+    const source = `[1, 2, 3];`;
+    const lexer = new Lexer(source);
+    const tokens: Token[] = [];
+    for (let i = 0; i < 9; i++) {
+      tokens.push(lexer.nextToken());
+    }
+    const expectedTokens: Token[] = [
+      new Token(TokenType.LBRACKET, '[', 1, 1),
+      new Token(TokenType.NUM, '1', 1, 2),
+      new Token(TokenType.COMMA, ',', 1, 3),
+      new Token(TokenType.NUM, '2', 1, 5),
+      new Token(TokenType.COMMA, ',', 1, 6),
+      new Token(TokenType.NUM, '3', 1, 8),
+      new Token(TokenType.RBRACKET, ']', 1, 9),
+      new Token(TokenType.SEMICOLON, ';', 1, 10),
+      new Token(TokenType.EOF, '', 1, 11),
+    ];
+    expect(tokens).toEqual(expectedTokens);
+  });
 });

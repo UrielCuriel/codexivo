@@ -19,6 +19,8 @@ import {
   While,
   For,
   StringLiteral,
+  ArrayLiteral,
+  Index,
 } from './ast';
 import { reservedKeywords, Token, TokenType } from './token';
 
@@ -139,6 +141,13 @@ export class Parser {
     this._errors.push(msg);
   }
 
+  private parseArray(): Expression | null {
+    this.assertCurrentToken();
+    const elements = this.parseExpressionList();
+    const array = new ArrayLiteral(this.currentToken, elements);
+    return array;
+  }
+
   private parseBlock(): Block {
     this.assertCurrentToken();
     const block = new Block(this.currentToken, []);
@@ -223,6 +232,7 @@ export class Parser {
     this.assertPeekToken();
     while (this.peekToken.type !== TokenType.SEMICOLON && precedence < this.peekPrecedence()) {
       const infixParseFn = this.infixParseFns[this.peekToken.type];
+      console.log(`${this.peekToken.type} => ${infixParseFn}`);
       if (infixParseFn === undefined) {
         return leftExpression;
       }
@@ -234,6 +244,34 @@ export class Parser {
       this._errors.push(`no se encontró ninguna función de parseo para el token ${this.currentToken.literal}`);
     }
     return leftExpression;
+  }
+
+  private parseExpressionList(): Expression[] {
+    const list: Expression[] = [];
+
+    this.assertPeekToken();
+
+    if (this.peekToken.type === TokenType.RBRACKET) {
+      this.advanceTokens();
+      return list;
+    }
+
+    this.advanceTokens();
+    this.assertCurrentToken();
+    list.push(this.parseExpression(Precedence.LOWEST));
+    while (this.peekToken.type === TokenType.COMMA) {
+      this.advanceTokens();
+      this.advanceTokens();
+      this.assertCurrentToken();
+      if (reservedKeywords.includes(this.currentToken.literal)) {
+        this._errors.push(`no se puede usar ${this.currentToken.literal} como identificador`);
+      }
+      list.push(this.parseExpression(Precedence.LOWEST));
+    }
+    if (!this.expectPeek(TokenType.RBRACKET)) {
+      return [];
+    }
+    return list;
   }
 
   private parseFor(): For | null {
@@ -347,6 +385,7 @@ export class Parser {
   private parseExpressionStatement(): ExpressionStatement | null {
     this.assertCurrentToken();
     const expressionStatement = new ExpressionStatement(this.currentToken, this.parseExpression(Precedence.LOWEST));
+    console.log(expressionStatement);
 
     this.assertPeekToken();
 
@@ -434,6 +473,24 @@ export class Parser {
     }
 
     return ifExpression;
+  }
+
+  private parseIndexExpression(left: Expression): Expression | null {
+    this.assertCurrentToken();
+    const indexExpression = new Index(this.currentToken, left);
+
+    if (this.peekToken.type === TokenType.RBRACKET) {
+      this._errors.push('no se puede acceder a un array sin índice');
+    }
+
+    this.advanceTokens();
+    indexExpression.index = this.parseExpression(Precedence.LOWEST);
+
+    if (!this.expectPeek(TokenType.RBRACKET)) {
+      this._errors.push('se esperaba un corchete de cierre');
+    }
+
+    return indexExpression;
   }
 
   private parseInfix(left: Expression): Expression | null {
@@ -583,6 +640,7 @@ export class Parser {
       [TokenType.NUM]: this.parseNumber.bind(this),
       [TokenType.IF]: this.parseIf.bind(this),
       [TokenType.LPAREN]: this.parseGroupedExpression.bind(this),
+      [TokenType.LBRACKET]: this.parseArray.bind(this),
       [TokenType.MINUS]: this.parsePrefix.bind(this),
       [TokenType.TRUE]: this.parseBoolean.bind(this),
       [TokenType.STRING]: this.parseStringLiteral.bind(this),
@@ -606,6 +664,7 @@ export class Parser {
       [TokenType.LT_EQ]: this.parseInfix.bind(this),
       [TokenType.GT_EQ]: this.parseInfix.bind(this),
       [TokenType.LPAREN]: this.parseCall.bind(this),
+      [TokenType.LBRACKET]: this.parseIndexExpression.bind(this),
     };
   }
 }

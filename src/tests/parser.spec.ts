@@ -19,6 +19,7 @@ import {
   DoWhile,
   For,
   StringLiteral,
+  ArrayLiteral,
 } from '../ast';
 
 function printProgram(program: Program) {
@@ -610,5 +611,16 @@ describe('parse', () => {
     const stringLiteral = expressionStatement.expression as StringLiteral;
     expect(stringLiteral).toBeInstanceOf(StringLiteral);
     expect(stringLiteral.value).toBe('hola mundo!');
+  });
+
+  it('should parse a program with array literal', () => {
+    const source = `[1, 2 * 2, 3 + 3];`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+    const expressionStatement = program.statements[0] as ExpressionStatement;
+    const arrayLiteral = expressionStatement.expression as ArrayLiteral;
+    expect(arrayLiteral).toBeInstanceOf(ArrayLiteral);
+    expect(arrayLiteral.elements.length).toBe(3);
   });
 });
