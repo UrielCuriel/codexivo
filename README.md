@@ -155,4 +155,4 @@ Si desea contribuir a este proyecto, puede hacerlo de las siguientes maneras:
 Mi nombre es [Uriel Curiel](https://twitter.com/UrielCuriel), soy un desarrollador de software con más de 8 años de
 experiencia en el desarrollo de aplicaciones web y móviles. Me apasiona la tecnología y el aprendizaje, y me encanta compartir mis conocimientos con los demás. Puedes encontrarme en [Twitter](https://twitter.com/UrielCuriel) y [LinkedIn](https://www.linkedin.com/in/urielcuriel/).
 
-Puedes seguir las actualizaciones de este proyecto en mi blog [urielcuriel.com](https://urielcuriel.dev/blog).
+Puedes seguir las actualizaciones de este proyecto en mi blog [urielcuriel.dev](https://urielcuriel.dev/blog).
