@@ -1,7 +1,7 @@
 import { Program } from './ast';
 
 /**
- * function para reprecentar el AST de un programa en un arbol como este:
+ * function para representar el AST de un programa en un arbol como este:
  *  Program
  *  |- Statements
  *  | |- variable orden =
