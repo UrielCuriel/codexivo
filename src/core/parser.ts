@@ -1,6 +1,6 @@
 import { Lexer } from './lexer';
 import {
-  Boolean,
+  BooleanLiteral,
   Call,
   Function,
   Identifier,
@@ -63,12 +63,12 @@ const precedences: { [K in TokenType]?: Precedence } = {
 };
 
 export class Parser {
-  private lexer: Lexer;
+  private readonly lexer: Lexer;
   private currentToken: Token;
   private peekToken: Token;
   private readonly _errors: string[] = [];
-  private infixParseFns: InfixParseFns;
-  private prefixParseFns: PrefixParseFns;
+  private readonly infixParseFns: InfixParseFns;
+  private readonly prefixParseFns: PrefixParseFns;
 
   constructor(lexer: Lexer) {
     this.lexer = lexer;
@@ -165,9 +165,9 @@ export class Parser {
     return block;
   }
 
-  private parseBoolean(): Boolean | null {
+  private parseBoolean(): BooleanLiteral | null {
     this.assertCurrentToken();
-    return new Boolean(this.currentToken, this.currentToken.type === TokenType.TRUE);
+    return new BooleanLiteral(this.currentToken, this.currentToken.type === TokenType.TRUE);
   }
 
   private parseCall(expression: Expression): Call | null {
@@ -186,12 +186,18 @@ export class Parser {
     }
 
     this.advanceTokens();
-    args.push(this.parseExpression(Precedence.LOWEST));
+    const firstArg = this.parseExpression(Precedence.LOWEST);
+    if (firstArg !== null) {
+      args.push(firstArg);
+    }
 
     while (this.peekToken.type === TokenType.COMMA) {
       this.advanceTokens();
       this.advanceTokens();
-      args.push(this.parseExpression(Precedence.LOWEST));
+      const nextArg = this.parseExpression(Precedence.LOWEST);
+      if (nextArg !== null) {
+        args.push(nextArg);
+      }
     }
 
     if (!this.expectPeek(TokenType.RPAREN)) {
@@ -215,7 +221,11 @@ export class Parser {
     if (this.peekToken.type === TokenType.WHILE) {
       this.advanceTokens();
       this.advanceTokens();
-      doExpression.condition = this.parseExpression(Precedence.LOWEST);
+      const condition = this.parseExpression(Precedence.LOWEST);
+      if (condition === null) {
+        return null;
+      }
+      doExpression.condition = condition;
     } else {
       this.expectedTokenError(TokenType.WHILE);
       return null;
@@ -258,7 +268,10 @@ export class Parser {
 
     this.advanceTokens();
     this.assertCurrentToken();
-    list.push(this.parseExpression(Precedence.LOWEST));
+    const firstExpr = this.parseExpression(Precedence.LOWEST);
+    if (firstExpr !== null) {
+      list.push(firstExpr);
+    }
     while (this.peekToken.type === TokenType.COMMA) {
       this.advanceTokens();
       this.advanceTokens();
@@ -266,7 +279,10 @@ export class Parser {
       if (reservedKeywords.includes(this.currentToken.literal)) {
         this._errors.push(`no se puede usar ${this.currentToken.literal} como identificador`);
       }
-      list.push(this.parseExpression(Precedence.LOWEST));
+      const expr = this.parseExpression(Precedence.LOWEST);
+      if (expr !== null) {
+        list.push(expr);
+      }
     }
     if (!this.expectPeek(TokenType.RBRACKET)) {
       return [];
@@ -283,45 +299,69 @@ export class Parser {
       return null;
     }
 
-    // parsear la variable de iteración
-    if (this.peekToken.type === TokenType.LET) {
-      this.advanceTokens();
-      forExpression.initializer = this.parseLetStatement();
-    }
-
-    if (!this.expectToken(TokenType.SEMICOLON)) {
+    // parsear la inicialización
+    if (!this.parseForInitializer(forExpression)) {
       return null;
     }
-
-    this.advanceTokens();
 
     // parsear la condición
-    if (this.peekToken.type !== TokenType.SEMICOLON) {
-      forExpression.condition = this.parseExpression(Precedence.LOWEST);
-    }
-
-    if (!this.expectPeek(TokenType.SEMICOLON)) {
+    if (!this.parseForCondition(forExpression)) {
       return null;
     }
-
-    this.advanceTokens();
 
     // parsear el incremento
-    if (this.peekToken.type !== TokenType.RPAREN) {
-      forExpression.increment = this.parseExpression(Precedence.LOWEST);
-    }
-
-    if (!this.expectPeek(TokenType.RPAREN)) {
+    if (!this.parseForIncrement(forExpression)) {
       return null;
     }
 
-    // parsear el bloque de código
+    // parsear el cuerpo
+    return this.parseForBody(forExpression);
+  }
+
+  private parseForInitializer(forExpression: For): boolean {
+    if (this.peekToken.type === TokenType.LET) {
+      this.advanceTokens();
+      const init = this.parseLetStatement();
+      forExpression.initializer = init || undefined;
+    }
+
+    return this.expectToken(TokenType.SEMICOLON);
+  }
+
+  private parseForCondition(forExpression: For): boolean {
+    this.advanceTokens();
+
+    if (this.peekToken.type !== TokenType.SEMICOLON) {
+      const condition = this.parseExpression(Precedence.LOWEST);
+      if (condition !== null) {
+        forExpression.condition = condition;
+      }
+    }
+
+    return this.expectPeek(TokenType.SEMICOLON);
+  }
+
+  private parseForIncrement(forExpression: For): boolean {
+    this.advanceTokens();
+
+    if (this.peekToken.type !== TokenType.RPAREN) {
+      const incrementExpr = this.parseExpression(Precedence.LOWEST);
+      if (incrementExpr !== null) {
+        forExpression.increment = incrementExpr;
+      } else {
+        forExpression.increment = undefined;
+      }
+    }
+
+    return this.expectPeek(TokenType.RPAREN);
+  }
+
+  private parseForBody(forExpression: For): For | null {
     if (!this.expectPeek(TokenType.LBRACE)) {
       return null;
     }
 
     this.advanceTokens();
-
     forExpression.body = this.parseBlock();
 
     return forExpression;
@@ -386,7 +426,7 @@ export class Parser {
     this.assertCurrentToken();
     const expressionStatement = new ExpressionStatement(
       this.currentToken,
-      this.parseExpression(Precedence.LOWEST),
+      this.parseExpression(Precedence.LOWEST) || undefined,
     );
 
     this.assertPeekToken();
@@ -428,7 +468,7 @@ export class Parser {
     }
 
     this.advanceTokens();
-    ifExpression.condition = this.parseExpression(Precedence.LOWEST);
+    ifExpression.condition = this.parseExpression(Precedence.LOWEST) || undefined;
 
     if (!this.expectPeek(TokenType.RPAREN)) {
       return null;
@@ -460,7 +500,7 @@ export class Parser {
 
       const block = this.parseBlock();
       ifExpression.alternative = new If(this.currentToken);
-      ifExpression.alternative.condition = elseIfExpression;
+      ifExpression.alternative.condition = elseIfExpression || undefined;
       ifExpression.alternative.consequence = block;
     }
 
@@ -486,7 +526,7 @@ export class Parser {
     }
 
     this.advanceTokens();
-    indexExpression.index = this.parseExpression(Precedence.LOWEST);
+    indexExpression.index = this.parseExpression(Precedence.LOWEST) || undefined;
 
     if (!this.expectPeek(TokenType.RBRACKET)) {
       this._errors.push('se esperaba un corchete de cierre');
@@ -501,24 +541,26 @@ export class Parser {
 
     const precedence = this.currentPrecedence();
     this.advanceTokens();
-    infix.right = this.parseExpression(precedence);
+    infix.right = this.parseExpression(precedence) || undefined;
 
     return infix;
   }
 
   private parseNumber(): Expression | null {
     this.assertCurrentToken();
-    const number = new Number(this.currentToken);
+    const numberLiteral = new Number(this.currentToken);
 
-    try {
-      number.value = this.currentToken.literal.includes('.')
-        ? parseFloat(this.currentToken.literal)
-        : parseInt(this.currentToken.literal);
-    } catch (error) {
-      this._errors.push(`no se pudo parsear ${this.currentToken.literal} como entero`);
+    const value = this.currentToken.literal.includes('.')
+      ? parseFloat(this.currentToken.literal)
+      : parseInt(this.currentToken.literal);
+    
+    if (isNaN(value)) {
+      this._errors.push(`no se pudo parsear ${this.currentToken.literal} como número`);
       return null;
     }
-    return number;
+    
+    numberLiteral.value = value;
+    return numberLiteral;
   }
 
   private parseStatement(): Statement | null {
@@ -530,7 +572,26 @@ export class Parser {
       case TokenType.RETURN:
         return this.parseReturnStatement();
       default:
+        // Verificar si parece una declaración de variable mal formada
+        // Buscar patrones como "constante x = " o palabras clave incorrectas seguidas de asignación
+        if (this.currentToken.type === TokenType.IDENT) {
+          const possibleKeywords = ['constante', 'const', 'let', 'var'];
+          if (possibleKeywords.includes(this.currentToken.literal) && this.peekToken.type === TokenType.IDENT) {
+            this._errors.push(`'${this.currentToken.literal}' no es una palabra clave válida para declarar variables. ¿Quisiste decir 'variable'?`);
+            // Consumir tokens hasta el semicolon para evitar errores en cascada
+            this.skipToNextStatement();
+            return null;
+          }
+        }
         return this.parseExpressionStatement();
+    }
+  }
+
+  private skipToNextStatement(): void {
+    while (this.currentToken.type !== TokenType.SEMICOLON && 
+           this.currentToken.type !== TokenType.EOF && 
+           this.currentToken.type !== TokenType.RBRACE) {
+      this.advanceTokens();
     }
   }
 
@@ -555,7 +616,7 @@ export class Parser {
 
     this.advanceTokens();
 
-    letStatement.value = this.parseExpression(Precedence.LOWEST);
+    letStatement.value = this.parseExpression(Precedence.LOWEST) || undefined;
 
     this.assertPeekToken();
 
@@ -572,7 +633,7 @@ export class Parser {
 
     this.advanceTokens();
 
-    prefix.right = this.parseExpression(Precedence.PREFIX);
+    prefix.right = this.parseExpression(Precedence.PREFIX) || undefined;
 
     return prefix;
   }
@@ -583,7 +644,7 @@ export class Parser {
 
     this.advanceTokens();
 
-    returnStatement.returnValue = this.parseExpression(Precedence.LOWEST);
+    returnStatement.returnValue = this.parseExpression(Precedence.LOWEST) || undefined;
 
     this.assertPeekToken();
 
@@ -607,7 +668,7 @@ export class Parser {
     }
 
     this.advanceTokens();
-    whileExpression.condition = this.parseExpression(Precedence.LOWEST);
+    whileExpression.condition = this.parseExpression(Precedence.LOWEST) || undefined;
 
     if (!this.expectPeek(TokenType.RPAREN)) {
       return null;

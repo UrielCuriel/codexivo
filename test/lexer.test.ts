@@ -1,4 +1,4 @@
-import { assertType, expect, expectTypeOf, it, describe } from 'bun:test';
+import { expect, it, describe } from 'bun:test';
 import { Lexer } from '../src/core/lexer';
 
 import { Token, TokenType } from '../src/core/token';

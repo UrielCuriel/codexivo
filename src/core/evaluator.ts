@@ -5,7 +5,7 @@ import {
   Boolean,
   Null,
   Return,
-  Error as ErrorObj,
+  Error as ObjectError,
   Environment,
   Function,
   String,
@@ -19,66 +19,140 @@ const TRUE = new Boolean(true);
 const FALSE = new Boolean(false);
 const NULL = new Null();
 
-export const evaluate = (node: ast.ASTNode, env: Environment, line?: number, column?: number): Object => {
+export const evaluate = (
+  node: ast.ASTNode,
+  env: Environment,
+  line?: number,
+  column?: number
+): Object => {
   if (node instanceof ast.Program) {
-    assertValue(node.statements);
-    return evaluateProgram(node, env);
-  } else if (node instanceof ast.ExpressionStatement) {
-    assertValue(node.expression);
-    return evaluate(node.expression, env, node.line, node.column);
-  } else if (node instanceof ast.Number) {
-    assertValue(node.value);
-    assertNumber(node.value);
-    return new NumberObj(node.value);
-  } else if (node instanceof ast.Boolean) {
-    assertValue(node.value);
-    return toBooleanObject(node.value);
-  } else if (node instanceof ast.Prefix) {
-    assertValue(node.right);
-    const right = evaluate(node.right, env, node.line, node.column);
-    assertValue(right);
-    return evaluatePrefixExpression(node.operator, right, node.line ?? line, node.column ?? column);
-  } else if (node instanceof ast.Infix) {
-    assertValue(node.left);
-    assertValue(node.right);
-    const left = evaluate(node.left, env, node.line, node.column);
-    const right = evaluate(node.right, env, node.line, node.column);
-    assertValue(left);
-    assertValue(right);
-    return evaluateInfixExpression(node.operator, left, right, node.line ?? line, node.column ?? column);
-  } else if (node instanceof ast.Block) {
-    return evaluateBlockStatement(node, env, node.line, node.column);
-  } else if (node instanceof ast.If) {
-    return evaluateIfExpression(node, env);
-  } else if (node instanceof ast.ReturnStatement) {
-    assertValue(node.returnValue);
-    const value = evaluate(node.returnValue, env, node.line, node.column);
-    assertValue(value);
-    return new Return(value);
-  } else if (node instanceof ast.LetStatement) {
-    assertValue(node.value);
-    const value = evaluate(node.value, env, node.line, node.column);
-    assertValue(node.name);
-    env.set(node.name.value, value);
-  } else if (node instanceof ast.Identifier) {
-    return evaluateIdentifier(node, env, node.line, node.column);
-  } else if (node instanceof ast.Function) {
-    assertValue(node.parameters);
-    assertValue(node.body);
-    return new Function(node.parameters, node.body, env);
-  } else if (node instanceof ast.Call) {
-    const functionObj = evaluate(node.function_, env, node.line, node.column);
-    const args = evaluateExpression(node.arguments_, env, node.line, node.column);
-    assertValue(args);
-    assertValue(functionObj);
-    return applyFunction(functionObj, args, node.line, node.column);
-  } else if (node instanceof ast.StringLiteral) {
-    assertValue(node.value);
-    return new String(node.value);
-  } else {
-    return NULL;
+    return evaluateProgramNode(node, env);
   }
+  if (node instanceof ast.ExpressionStatement) {
+    return evaluateExpressionStatementNode(node, env);
+  }
+  if (node instanceof ast.Number) {
+    return evaluateNumberNode(node);
+  }
+  if (node instanceof ast.BooleanLiteral) {
+    return evaluateBooleanLiteralNode(node);
+  }
+  if (node instanceof ast.Prefix) {
+    return evaluatePrefixNode(node, env, line, column);
+  }
+  if (node instanceof ast.Infix) {
+    return evaluateInfixNode(node, env, line, column);
+  }
+  if (node instanceof ast.Block) {
+    return evaluateBlockStatement(node, env, node.line ?? 0, node.column ?? 0);
+  }
+  if (node instanceof ast.If) {
+    return evaluateIfExpression(node, env);
+  }
+  if (node instanceof ast.ReturnStatement) {
+    return evaluateReturnStatementNode(node, env);
+  }
+  if (node instanceof ast.LetStatement) {
+    return evaluateLetStatementNode(node, env);
+  }
+  if (node instanceof ast.Identifier) {
+    return evaluateIdentifier(node, env, node.line ?? 0, node.column ?? 0);
+  }
+  if (node instanceof ast.Function) {
+    return evaluateFunctionNode(node, env);
+  }
+  if (node instanceof ast.Call) {
+    return evaluateCallNode(node, env);
+  }
+  if (node instanceof ast.StringLiteral) {
+    return evaluateStringLiteralNode(node);
+  }
+  return NULL;
 };
+
+function evaluateProgramNode(node: ast.Program, env: Environment): Object {
+  assertValue(node.statements);
+  return evaluateProgram(node, env);
+}
+
+function evaluateExpressionStatementNode(node: ast.ExpressionStatement, env: Environment): Object {
+  assertValue(node.expression);
+  if (!node.expression) throw new Error('Expression is required');
+  return evaluate(node.expression, env, node.line, node.column);
+}
+
+function evaluateNumberNode(node: ast.Number): Object {
+  assertValue(node.value);
+  assertNumber(node.value);
+  if (node.value === undefined) throw new Error('Number value is required');
+  return new NumberObj(node.value);
+}
+
+function evaluateBooleanLiteralNode(node: ast.BooleanLiteral): Object {
+  assertValue(node.value);
+  if (node.value === undefined) throw new Error('Boolean value is required');
+  return toBooleanObject(node.value);
+}
+
+function evaluatePrefixNode(node: ast.Prefix, env: Environment, line?: number, column?: number): Object {
+  assertValue(node.right);
+  assertValue(node.operator);
+  if (!node.right || !node.operator) throw new Error('Prefix right and operator are required');
+  const right = evaluate(node.right, env, node.line, node.column);
+  assertValue(right);
+  return evaluatePrefixExpression(node.operator, right, node.line ?? line, node.column ?? column);
+}
+
+function evaluateInfixNode(node: ast.Infix, env: Environment, line?: number, column?: number): Object {
+  assertValue(node.left);
+  assertValue(node.right);
+  assertValue(node.operator);
+  if (!node.left || !node.right || !node.operator) throw new Error('Infix left, right and operator are required');
+  const left = evaluate(node.left, env, node.line, node.column);
+  const right = evaluate(node.right, env, node.line, node.column);
+  assertValue(left);
+  assertValue(right);
+  return evaluateInfixExpression(node.operator, left, right, node.line ?? line, node.column ?? column);
+}
+
+function evaluateReturnStatementNode(node: ast.ReturnStatement, env: Environment): Object {
+  assertValue(node.returnValue);
+  if (!node.returnValue) throw new Error('Return value is required');
+  const value = evaluate(node.returnValue, env, node.line, node.column);
+  assertValue(value);
+  return new Return(value);
+}
+
+function evaluateLetStatementNode(node: ast.LetStatement, env: Environment): Object {
+  assertValue(node.value);
+  assertValue(node.name);
+  if (!node.value || !node.name) throw new Error('Let statement value and name are required');
+  const value = evaluate(node.value, env, node.line, node.column);
+  env.set(node.name.value, value);
+  return NULL;
+}
+
+function evaluateFunctionNode(node: ast.Function, env: Environment): Object {
+  assertValue(node.parameters);
+  assertValue(node.body);
+  if (!node.parameters || !node.body) throw new Error('Function parameters and body are required');
+  return new Function(node.parameters, node.body, env);
+}
+
+function evaluateCallNode(node: ast.Call, env: Environment): Object {
+  const functionObj = evaluate(node.function_, env, node.line, node.column);
+  assertValue(node.arguments_);
+  if (!node.arguments_) throw new Error('Call arguments are required');
+  const args = evaluateExpression(node.arguments_, env, node.line ?? 0, node.column ?? 0);
+  assertValue(args);
+  assertValue(functionObj);
+  return applyFunction(functionObj, args, node.line ?? 0, node.column ?? 0);
+}
+
+function evaluateStringLiteralNode(node: ast.StringLiteral): Object {
+  assertValue(node.value);
+  return new String(node.value);
+}
 
 const applyFunction = (fn: Object, args: Object[], line: number, column: number): Object => {
   if (fn instanceof Function) {
@@ -88,7 +162,7 @@ const applyFunction = (fn: Object, args: Object[], line: number, column: number)
     return unwrapReturnValue(evaluated);
   } else if (fn instanceof Builtin) {
     const result = fn.fn(...args);
-    if (result instanceof ErrorObj) {
+    if (result instanceof ObjectError) {
       return newError('GENERIC_ERROR', { message: result.message, line, column });
     }
     return result;
@@ -98,17 +172,13 @@ const applyFunction = (fn: Object, args: Object[], line: number, column: number)
 };
 const assertValue = (value: unknown): void => {
   if (value === null || value === undefined) {
-    const err = new Error('value is null or undefined');
-    console.error(err.stack);
-    throw err;
+    throw new Error('value is null or undefined');
   }
 };
 
 const assertNumber = (value: unknown): void => {
   if (Number.isNaN(value)) {
-    const err = new Error('value is NaN');
-    console.error(err.stack);
-    throw err;
+    throw new Error('value is NaN');
   }
 };
 
@@ -166,29 +236,26 @@ const evaluateBooleanInfixExpression = (
   line: number,
   column: number,
 ): Object => {
-  switch (nodeOperator) {
-    case '==':
-      return toBooleanObject(left.value === right.value);
-    case '!=':
-      return toBooleanObject(left.value !== right.value);
-    default:
-      return newError('UNKNOWN_INFIX_OPERATOR', {
-        operator: nodeOperator,
-        left: left.type(),
-        right: right.type(),
-        line,
-        column,
-      });
-  }
+  if (nodeOperator === '==') return toBooleanObject(left.value === right.value);
+  if (nodeOperator === '!=') return toBooleanObject(left.value !== right.value);
+  return newError('UNKNOWN_INFIX_OPERATOR', {
+    operator: nodeOperator,
+    left: left.type(),
+    right: right.type(),
+    line,
+    column,
+  });
 };
 
 const evaluateIfExpression = (node: ast.If, env: Environment): Object => {
   assertValue(node.condition);
+  if (!node.condition) throw new Error('If condition is required');
   const condition = evaluate(node.condition, env, node.line, node.column);
   assertValue(condition);
 
   if (isTruthy(condition)) {
     assertValue(node.consequence);
+    if (!node.consequence) throw new Error('If consequence is required');
     return evaluate(node.consequence, env, node.line, node.column);
   } else if (node.alternative) {
     assertValue(node.alternative);
@@ -324,13 +391,13 @@ const evaluateMinusPrefixOperatorExpression = (right: Object, line: number, colu
 };
 
 const evaluateProgram = (program: ast.Program, env: Environment, line?: number, column?: number): Object => {
-  let result: Object;
+  let result: Object = NULL;
 
   for (const statement of program.statements) {
     result = evaluate(statement, env, line, column);
     if (result instanceof Return) {
       return result.value;
-    } else if (result instanceof Error) {
+    } else if (result instanceof ObjectError) {
       return result;
     }
   }
@@ -339,12 +406,12 @@ const evaluateProgram = (program: ast.Program, env: Environment, line?: number, 
 };
 
 const evaluateBlockStatement = (block: ast.Block, env: Environment, line: number, column: number): Object => {
-  let result: Object;
+  let result: Object = NULL;
 
   for (const statement of block.statements) {
     result = evaluate(statement, env, line, column);
 
-    if (result instanceof Return || result instanceof Error) {
+    if (result instanceof Return || result instanceof ObjectError) {
       return result;
     }
   }
@@ -364,7 +431,21 @@ const evaluatePrefixExpression = (operator: string, right: Object, line: number,
 };
 
 const toBooleanObject = (value: boolean): Boolean => {
-  return value ? TRUE : FALSE;
+  if (isTrue(value)) {
+    return TRUE;
+  }
+  if (isFalse(value)) {
+    return FALSE;
+  }
+  return FALSE;
+};
+
+const isTrue = (value: boolean): boolean => {
+  return value === true;
+};
+
+const isFalse = (value: boolean): boolean => {
+  return value === false;
 };
 
 const extendFunctionEnv = (fn: Function, args: Object[]): Environment => {

@@ -1,5 +1,5 @@
 import { newError } from './errors';
-import { Builtin, BuiltinFunction, Error, Number, Object, String } from './object';
+import { Builtin, BuiltinFunction, Number, Object, String } from './object';
 
 const longitud: BuiltinFunction = (...args: Object[]): Object => {
   if (args.length !== 1) {

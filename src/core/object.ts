@@ -63,6 +63,8 @@ export class Return implements Object {
 }
 
 export class Error implements Object {
+  stack: any;
+
   constructor(public message: string) {}
 
   type(): ObjectType {
@@ -131,9 +133,7 @@ export class String implements Object {
   }
 }
 
-export interface BuiltinFunction {
-  (...args: Object[]): Object;
-}
+export type BuiltinFunction = (...args: Object[]) => Object;
 
 export class Builtin implements Object {
   constructor(public fn: BuiltinFunction) {}

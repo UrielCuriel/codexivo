@@ -3,7 +3,7 @@ import { it, describe, expect } from 'bun:test';
 import { Parser } from '../src/core/parser';
 import { Lexer } from '../src/core/lexer';
 import {
-  Boolean,
+  BooleanLiteral,
   Call,
   Identifier,
   If,
@@ -82,7 +82,7 @@ function testInfix(expression: any, left: any, operator: string, right: any) {
 
 function testBoolean(expression: any, value: boolean) {
   expect(expression).not.toBeNull();
-  expect(expression).toBeInstanceOf(Boolean);
+  expect(expression).toBeInstanceOf(BooleanLiteral);
   expect(expression.value).toBe(value);
   expect(expression.tokenLiteral()).toBe(value ? 'verdadero' : 'falso');
 }
@@ -213,7 +213,7 @@ describe('parse', () => {
       expect(statement.expression).not.toBeNull();
       expect(statement.expression).not.toBeUndefined();
 
-      const expression: Prefix = statement.expression;
+      const expression: Prefix = statement.expression!;
       expect(expression).toBeInstanceOf(Prefix);
       expect(expression.operator).toBe(expectedOperators[index]);
       testLiteralExpression(expression.right, expectedValues[index]);
@@ -265,7 +265,7 @@ describe('parse', () => {
       expect(statement.expression).not.toBeNull();
       expect(statement.expression).not.toBeUndefined();
 
-      const expression: Infix = statement.expression;
+      const expression: Infix = statement.expression!;
       expect(expression).toBeInstanceOf(Infix);
 
       const expected = expectedOperatorsAndValues[index];
@@ -323,7 +323,7 @@ describe('parse', () => {
 
       testProgramStatement(parse, program, test[2] as number);
 
-      expect(program.toString()).toBe(test[1]);
+      expect(program.toString()).toBe(test[1] as string);
     });
   });
   it('should parse a program with if expression', () => {
@@ -387,14 +387,21 @@ describe('parse', () => {
     // Test alternative
     expect(ifExpression.alternative).not.toBeNull();
     expect(ifExpression.alternative).not.toBeUndefined();
-    expect(ifExpression.alternative?.statements.length).toBe(1);
+    // Ensure alternative is a Block before accessing statements
+    if (ifExpression.alternative && 'statements' in ifExpression.alternative) {
+      expect(ifExpression.alternative.statements.length).toBe(1);
 
-    const alternativeStatement: ExpressionStatement = ifExpression.alternative?.statements[0] as ExpressionStatement;
+      const alternativeStatement: ExpressionStatement = ifExpression.alternative.statements[0] as ExpressionStatement;
 
-    expect(alternativeStatement.expression).not.toBeNull();
-    expect(alternativeStatement.expression).not.toBeUndefined();
+      expect(alternativeStatement.expression).not.toBeNull();
+      expect(alternativeStatement.expression).not.toBeUndefined();
 
-    testIdentifier(alternativeStatement.expression, 'z');
+      testIdentifier(alternativeStatement.expression, 'z');
+    } else {
+      // Fail the test if alternative is missing or does not have statements
+      expect(ifExpression.alternative).not.toBeNull();
+      expect(ifExpression.alternative && 'statements' in ifExpression.alternative).toBe(true);
+    }
   });
   it('should parse a program with for expression', () => {
     const source = `para(variable i = 0; i < 10; i += 1) { regresa x }`;
@@ -499,8 +506,6 @@ describe('parse', () => {
     const parse = new Parser(lexer);
     const program = parse.parseProgram();
 
-    //console.log(program.statements.length);
-
     testProgramStatement(parse, program);
 
     // Test function literal
@@ -554,7 +559,7 @@ describe('parse', () => {
       expect(functionLiteral.parameters?.length).toBe((test[1] as string).length);
 
       (test[1] as string[]).forEach((param, index) => {
-        testLiteralExpression(functionLiteral.parameters[index], param);
+        testLiteralExpression(functionLiteral.parameters?.[index], param);
       });
     });
   });
@@ -594,7 +599,7 @@ describe('parse', () => {
     ];
 
     testsSources.forEach(test => {
-      const lexer = new Lexer(test[0] as string);
+      const lexer = new Lexer(test[0]);
       const parse = new Parser(lexer);
       const program = parse.parseProgram();
 
@@ -622,7 +627,8 @@ describe('parse', () => {
     const expressionStatement = program.statements[0] as ExpressionStatement;
     const arrayLiteral = expressionStatement.expression as ArrayLiteral;
     expect(arrayLiteral).toBeInstanceOf(ArrayLiteral);
-    expect(arrayLiteral.elements.length).toBe(3);
+    expect(arrayLiteral.elements).toBeDefined();
+    expect(arrayLiteral.elements!.length).toBe(3);
   });
 
   it('should parse a program with index expression', () => {
