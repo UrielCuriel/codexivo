@@ -1,10 +1,10 @@
-import { it, describe, expect } from 'vitest';
+import { it, describe, expect } from 'bun:test';
 
-import { Program } from '../ast';
-import { evaluate } from '../evaluator';
-import { Lexer } from '../lexer';
-import { Parser } from '../parser';
-import { Number, Boolean, Null, Object, Error, Environment, Function, String } from '../object';
+import { Program } from '../src/core/ast';
+import { evaluate } from '../src/core/evaluator';
+import { Lexer } from '../src/core/lexer';
+import { Parser } from '../src/core/parser';
+import { Number, Boolean, Null, Object, Error, Environment, Function, String } from '../src/core/object';
 
 const testEval = (input: string): Object => {
   const lexer = new Lexer(input);

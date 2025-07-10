@@ -1,11 +1,11 @@
-import { Lexer } from './lexer';
-import { Token, TokenType } from './token';
-import { Program } from './ast';
+import { Lexer } from '../core/lexer';
+import { Token, TokenType } from '../core/token';
+import { Program } from '../core/ast';
 import * as readline from 'readline';
-import { Parser } from './parser';
-import { inspect } from './inspector';
-import { evaluate } from './evaluator';
-import { Environment } from './object';
+import { Parser } from '../core/parser';
+import { inspect } from '../core/inspector';
+import { evaluate } from '../core/evaluator';
+import { Environment } from '../core/object';
 
 const EOF_TOKEN = new Token(TokenType.EOF, '');
 

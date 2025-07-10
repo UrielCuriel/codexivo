@@ -1,34 +1,28 @@
 {
-  "name": "lpp-interprete",
+  "name": "codexivo",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "module": "dist/index.js",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "module": "dist/main.js",
   "files": [
     "dist"
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "import": "./dist/main.js",
+      "require": "./dist/main.js"
     }
   },
   "scripts": {
-    "test": "vitest --ui",
-    "repl": "node .",
-    "build": "tsc"
+    "test": "bun test",
+    "repl": "bun run src/cli/main.ts",
+    "build": "bun build src/cli/main.ts --outdir dist"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "typescript": "^5.0.4",
-    "vite": "^4.3.5",
-    "vitest": "^0.31.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.1.1",
-    "@vitest/ui": "^0.31.0"
+    "typescript": "^5.0.4"
   }
 }

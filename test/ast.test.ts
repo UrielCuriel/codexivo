@@ -1,7 +1,7 @@
-import { it, describe, expect } from 'vitest';
+import { it, describe, expect } from 'bun:test';
 
-import { ExpressionStatement, Identifier, LetStatement, Program, ReturnStatement } from '../ast';
-import { Token, TokenType } from '../token';
+import { ExpressionStatement, Identifier, LetStatement, Program, ReturnStatement } from '../src/core/ast';
+import { Token, TokenType } from '../src/core/token';
 
 describe('ast', () => {
   it('should create a program with let statements', () => {
