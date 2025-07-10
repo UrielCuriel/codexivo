@@ -58,6 +58,7 @@ const precedences: { [K in TokenType]?: Precedence } = {
   [TokenType.DO]: Precedence.CALL,
   [TokenType.WHILE]: Precedence.CALL,
   [TokenType.FOR]: Precedence.CALL,
+  [TokenType.LBRACKET]: Precedence.CALL,
   [TokenType.LPAREN]: Precedence.CALL,
 };
 
@@ -232,7 +233,6 @@ export class Parser {
     this.assertPeekToken();
     while (this.peekToken.type !== TokenType.SEMICOLON && precedence < this.peekPrecedence()) {
       const infixParseFn = this.infixParseFns[this.peekToken.type];
-      console.log(`${this.peekToken.type} => ${infixParseFn}`);
       if (infixParseFn === undefined) {
         return leftExpression;
       }
@@ -384,8 +384,10 @@ export class Parser {
 
   private parseExpressionStatement(): ExpressionStatement | null {
     this.assertCurrentToken();
-    const expressionStatement = new ExpressionStatement(this.currentToken, this.parseExpression(Precedence.LOWEST));
-    console.log(expressionStatement);
+    const expressionStatement = new ExpressionStatement(
+      this.currentToken,
+      this.parseExpression(Precedence.LOWEST),
+    );
 
     this.assertPeekToken();
 

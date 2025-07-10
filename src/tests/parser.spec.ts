@@ -20,6 +20,7 @@ import {
   For,
   StringLiteral,
   ArrayLiteral,
+  Index,
 } from '../ast';
 
 function printProgram(program: Program) {
@@ -622,5 +623,21 @@ describe('parse', () => {
     const arrayLiteral = expressionStatement.expression as ArrayLiteral;
     expect(arrayLiteral).toBeInstanceOf(ArrayLiteral);
     expect(arrayLiteral.elements.length).toBe(3);
+  });
+
+  it('should parse a program with index expression', () => {
+    const source = `ident[1 + 1];`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+
+    testProgramStatement(parse, program, 1);
+
+    const expressionStatement = program.statements[0] as ExpressionStatement;
+    const indexExpression = expressionStatement.expression as Index;
+
+    expect(indexExpression).toBeInstanceOf(Index);
+    testIdentifier(indexExpression.left, 'ident');
+    testInfix(indexExpression.index, 1, '+', 1);
   });
 });
