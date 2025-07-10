@@ -237,9 +237,9 @@ const evaluateInfixExpression = (
       column,
     });
   } else {
-    return newError('UNKNOWN_OPERATOR', {
-      operator: nodeOperator,
+    return newError('UNKNOWN_INFIX_OPERATOR', {
       left: left.type(),
+      operator: nodeOperator,
       right: right.type(),
       line,
       column,
@@ -277,9 +277,9 @@ const evaluateNumberInfixExpression = (
       return toBooleanObject(left.value >= right.value);
     default:
       return newError('UNKNOWN_INFIX_OPERATOR', {
-        type1: left.type(),
+        left: left.type(),
         operator: nodeOperator,
-        type2: right.type(),
+        right: right.type(),
         line,
         column,
       });
