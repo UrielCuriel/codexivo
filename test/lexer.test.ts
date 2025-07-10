@@ -1,7 +1,7 @@
-import { assertType, expect, expectTypeOf, it, describe } from 'vitest';
-import { Lexer } from '../lexer';
+import { assertType, expect, expectTypeOf, it, describe } from 'bun:test';
+import { Lexer } from '../src/core/lexer';
 
-import { Token, TokenType } from '../token';
+import { Token, TokenType } from '../src/core/token';
 
 describe('lexer', () => {
   it('lexer illegal Tokens', () => {

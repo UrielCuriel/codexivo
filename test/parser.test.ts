@@ -1,7 +1,7 @@
-import { it, describe, expect } from 'vitest';
+import { it, describe, expect } from 'bun:test';
 
-import { Parser } from '../parser';
-import { Lexer } from '../lexer';
+import { Parser } from '../src/core/parser';
+import { Lexer } from '../src/core/lexer';
 import {
   Boolean,
   Call,
@@ -21,7 +21,7 @@ import {
   StringLiteral,
   ArrayLiteral,
   Index,
-} from '../ast';
+} from '../src/core/ast';
 
 function printProgram(program: Program) {
   console.log(JSON.stringify(program, null, 2));
