@@ -19,17 +19,21 @@ const TRUE = new Boolean(true);
 const FALSE = new Boolean(false);
 const NULL = new Null();
 
-export const evaluate = (
+export type StepCallback = (node: ast.ASTNode, env: Environment) => void;
+
+const evaluateInternal = (
   node: ast.ASTNode,
   env: Environment,
   line?: number,
-  column?: number
+  column?: number,
+  onStep?: StepCallback,
 ): Object => {
+  onStep?.(node, env);
   if (node instanceof ast.Program) {
-    return evaluateProgramNode(node, env);
+    return evaluateProgramNode(node, env, onStep);
   }
   if (node instanceof ast.ExpressionStatement) {
-    return evaluateExpressionStatementNode(node, env);
+    return evaluateExpressionStatementNode(node, env, onStep);
   }
   if (node instanceof ast.Number) {
     return evaluateNumberNode(node);
@@ -38,22 +42,22 @@ export const evaluate = (
     return evaluateBooleanLiteralNode(node);
   }
   if (node instanceof ast.Prefix) {
-    return evaluatePrefixNode(node, env, line, column);
+    return evaluatePrefixNode(node, env, line, column, onStep);
   }
   if (node instanceof ast.Infix) {
-    return evaluateInfixNode(node, env, line, column);
+    return evaluateInfixNode(node, env, line, column, onStep);
   }
   if (node instanceof ast.Block) {
-    return evaluateBlockStatement(node, env, node.line ?? 0, node.column ?? 0);
+    return evaluateBlockStatement(node, env, node.line ?? 0, node.column ?? 0, onStep);
   }
   if (node instanceof ast.If) {
-    return evaluateIfExpression(node, env);
+    return evaluateIfExpression(node, env, onStep);
   }
   if (node instanceof ast.ReturnStatement) {
-    return evaluateReturnStatementNode(node, env);
+    return evaluateReturnStatementNode(node, env, onStep);
   }
   if (node instanceof ast.LetStatement) {
-    return evaluateLetStatementNode(node, env);
+    return evaluateLetStatementNode(node, env, onStep);
   }
   if (node instanceof ast.Identifier) {
     return evaluateIdentifier(node, env, node.line ?? 0, node.column ?? 0);
@@ -62,7 +66,7 @@ export const evaluate = (
     return evaluateFunctionNode(node, env);
   }
   if (node instanceof ast.Call) {
-    return evaluateCallNode(node, env);
+    return evaluateCallNode(node, env, onStep);
   }
   if (node instanceof ast.StringLiteral) {
     return evaluateStringLiteralNode(node);
@@ -70,15 +74,38 @@ export const evaluate = (
   return NULL;
 };
 
-function evaluateProgramNode(node: ast.Program, env: Environment): Object {
+export const evaluate = (
+  node: ast.ASTNode,
+  env: Environment,
+  line?: number,
+  column?: number,
+): Object => evaluateInternal(node, env, line, column);
+
+export const evaluateWithTrace = (
+  node: ast.ASTNode,
+  env: Environment,
+  onStep: StepCallback,
+  line?: number,
+  column?: number,
+): Object => evaluateInternal(node, env, line, column, onStep);
+
+function evaluateProgramNode(
+  node: ast.Program,
+  env: Environment,
+  onStep?: StepCallback,
+): Object {
   assertValue(node.statements);
-  return evaluateProgram(node, env);
+  return evaluateProgram(node, env, onStep);
 }
 
-function evaluateExpressionStatementNode(node: ast.ExpressionStatement, env: Environment): Object {
+function evaluateExpressionStatementNode(
+  node: ast.ExpressionStatement,
+  env: Environment,
+  onStep?: StepCallback,
+): Object {
   assertValue(node.expression);
   if (!node.expression) throw new Error('Expression is required');
-  return evaluate(node.expression, env, node.line, node.column);
+  return evaluateInternal(node.expression, env, node.line, node.column, onStep);
 }
 
 function evaluateNumberNode(node: ast.Number): Object {
@@ -94,40 +121,60 @@ function evaluateBooleanLiteralNode(node: ast.BooleanLiteral): Object {
   return toBooleanObject(node.value);
 }
 
-function evaluatePrefixNode(node: ast.Prefix, env: Environment, line?: number, column?: number): Object {
+function evaluatePrefixNode(
+  node: ast.Prefix,
+  env: Environment,
+  line?: number,
+  column?: number,
+  onStep?: StepCallback,
+): Object {
   assertValue(node.right);
   assertValue(node.operator);
   if (!node.right || !node.operator) throw new Error('Prefix right and operator are required');
-  const right = evaluate(node.right, env, node.line, node.column);
+  const right = evaluateInternal(node.right, env, node.line, node.column, onStep);
   assertValue(right);
   return evaluatePrefixExpression(node.operator, right, node.line ?? line, node.column ?? column);
 }
 
-function evaluateInfixNode(node: ast.Infix, env: Environment, line?: number, column?: number): Object {
+function evaluateInfixNode(
+  node: ast.Infix,
+  env: Environment,
+  line?: number,
+  column?: number,
+  onStep?: StepCallback,
+): Object {
   assertValue(node.left);
   assertValue(node.right);
   assertValue(node.operator);
   if (!node.left || !node.right || !node.operator) throw new Error('Infix left, right and operator are required');
-  const left = evaluate(node.left, env, node.line, node.column);
-  const right = evaluate(node.right, env, node.line, node.column);
+  const left = evaluateInternal(node.left, env, node.line, node.column, onStep);
+  const right = evaluateInternal(node.right, env, node.line, node.column, onStep);
   assertValue(left);
   assertValue(right);
   return evaluateInfixExpression(node.operator, left, right, node.line ?? line, node.column ?? column);
 }
 
-function evaluateReturnStatementNode(node: ast.ReturnStatement, env: Environment): Object {
+function evaluateReturnStatementNode(
+  node: ast.ReturnStatement,
+  env: Environment,
+  onStep?: StepCallback,
+): Object {
   assertValue(node.returnValue);
   if (!node.returnValue) throw new Error('Return value is required');
-  const value = evaluate(node.returnValue, env, node.line, node.column);
+  const value = evaluateInternal(node.returnValue, env, node.line, node.column, onStep);
   assertValue(value);
   return new Return(value);
 }
 
-function evaluateLetStatementNode(node: ast.LetStatement, env: Environment): Object {
+function evaluateLetStatementNode(
+  node: ast.LetStatement,
+  env: Environment,
+  onStep?: StepCallback,
+): Object {
   assertValue(node.value);
   assertValue(node.name);
   if (!node.value || !node.name) throw new Error('Let statement value and name are required');
-  const value = evaluate(node.value, env, node.line, node.column);
+  const value = evaluateInternal(node.value, env, node.line, node.column, onStep);
   env.set(node.name.value, value);
   return NULL;
 }
@@ -139,14 +186,18 @@ function evaluateFunctionNode(node: ast.Function, env: Environment): Object {
   return new Function(node.parameters, node.body, env);
 }
 
-function evaluateCallNode(node: ast.Call, env: Environment): Object {
-  const functionObj = evaluate(node.function_, env, node.line, node.column);
+function evaluateCallNode(
+  node: ast.Call,
+  env: Environment,
+  onStep?: StepCallback,
+): Object {
+  const functionObj = evaluateInternal(node.function_, env, node.line, node.column, onStep);
   assertValue(node.arguments_);
   if (!node.arguments_) throw new Error('Call arguments are required');
-  const args = evaluateExpression(node.arguments_, env, node.line ?? 0, node.column ?? 0);
+  const args = evaluateExpression(node.arguments_, env, node.line ?? 0, node.column ?? 0, onStep);
   assertValue(args);
   assertValue(functionObj);
-  return applyFunction(functionObj, args, node.line ?? 0, node.column ?? 0);
+  return applyFunction(functionObj, args, node.line ?? 0, node.column ?? 0, onStep);
 }
 
 function evaluateStringLiteralNode(node: ast.StringLiteral): Object {
@@ -154,10 +205,16 @@ function evaluateStringLiteralNode(node: ast.StringLiteral): Object {
   return new String(node.value);
 }
 
-const applyFunction = (fn: Object, args: Object[], line: number, column: number): Object => {
+const applyFunction = (
+  fn: Object,
+  args: Object[],
+  line: number,
+  column: number,
+  onStep?: StepCallback,
+): Object => {
   if (fn instanceof Function) {
     const extendedEnv = extendFunctionEnv(fn, args);
-    const evaluated = evaluate(fn.body, extendedEnv);
+    const evaluated = evaluateInternal(fn.body, extendedEnv, line, column, onStep);
     assertValue(evaluated);
     return unwrapReturnValue(evaluated);
   } else if (fn instanceof Builtin) {
@@ -200,10 +257,11 @@ const evaluateExpression = (
   env: Environment,
   line: number,
   column: number,
+  onStep?: StepCallback,
 ): Object[] => {
   const result: Object[] = [];
   for (const expression of expressions) {
-    const evaluated = evaluate(expression, env, line, column);
+    const evaluated = evaluateInternal(expression, env, line, column, onStep);
     assertValue(evaluated);
     result.push(evaluated);
   }
@@ -247,19 +305,23 @@ const evaluateBooleanInfixExpression = (
   });
 };
 
-const evaluateIfExpression = (node: ast.If, env: Environment): Object => {
+const evaluateIfExpression = (
+  node: ast.If,
+  env: Environment,
+  onStep?: StepCallback,
+): Object => {
   assertValue(node.condition);
   if (!node.condition) throw new Error('If condition is required');
-  const condition = evaluate(node.condition, env, node.line, node.column);
+  const condition = evaluateInternal(node.condition, env, node.line, node.column, onStep);
   assertValue(condition);
 
   if (isTruthy(condition)) {
     assertValue(node.consequence);
     if (!node.consequence) throw new Error('If consequence is required');
-    return evaluate(node.consequence, env, node.line, node.column);
+    return evaluateInternal(node.consequence, env, node.line, node.column, onStep);
   } else if (node.alternative) {
     assertValue(node.alternative);
-    return evaluate(node.alternative, env, node.line, node.column);
+    return evaluateInternal(node.alternative, env, node.line, node.column, onStep);
   } else {
     return NULL;
   }
@@ -390,11 +452,17 @@ const evaluateMinusPrefixOperatorExpression = (right: Object, line: number, colu
   return new NumberObj(-value);
 };
 
-const evaluateProgram = (program: ast.Program, env: Environment, line?: number, column?: number): Object => {
+const evaluateProgram = (
+  program: ast.Program,
+  env: Environment,
+  onStep?: StepCallback,
+  line?: number,
+  column?: number,
+): Object => {
   let result: Object = NULL;
 
   for (const statement of program.statements) {
-    result = evaluate(statement, env, line, column);
+    result = evaluateInternal(statement, env, line, column, onStep);
     if (result instanceof Return) {
       return result.value;
     } else if (result instanceof ObjectError) {
@@ -405,11 +473,17 @@ const evaluateProgram = (program: ast.Program, env: Environment, line?: number, 
   return result;
 };
 
-const evaluateBlockStatement = (block: ast.Block, env: Environment, line: number, column: number): Object => {
+const evaluateBlockStatement = (
+  block: ast.Block,
+  env: Environment,
+  line: number,
+  column: number,
+  onStep?: StepCallback,
+): Object => {
   let result: Object = NULL;
 
   for (const statement of block.statements) {
-    result = evaluate(statement, env, line, column);
+    result = evaluateInternal(statement, env, line, column, onStep);
 
     if (result instanceof Return || result instanceof ObjectError) {
       return result;

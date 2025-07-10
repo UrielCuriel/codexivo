@@ -1,5 +1,25 @@
 import { lookupIdentifier, Token, TokenType } from './token';
 
+const TOKEN_PATTERNS: Record<string, [TokenType, [string, TokenType]?]> = {
+  '=': [TokenType.ASSIGN, ['=', TokenType.EQ]],
+  '+': [TokenType.PLUS, ['=', TokenType.PLUS_EQ]],
+  '-': [TokenType.MINUS],
+  '*': [TokenType.ASTERISK],
+  '/': [TokenType.SLASH],
+  '<': [TokenType.LT, ['=', TokenType.LT_EQ]],
+  '>': [TokenType.GT, ['=', TokenType.GT_EQ]],
+  '!': [TokenType.BANG, ['=', TokenType.NEQ]],
+  ',': [TokenType.COMMA],
+  ';': [TokenType.SEMICOLON],
+  '(': [TokenType.LPAREN],
+  ')': [TokenType.RPAREN],
+  '{': [TokenType.LBRACE],
+  '}': [TokenType.RBRACE],
+  '[': [TokenType.LBRACKET],
+  ']': [TokenType.RBRACKET],
+  '': [TokenType.EOF],
+};
+
 export class Lexer {
   private source: string;
   private character: string;
@@ -23,35 +43,12 @@ export class Lexer {
     let token: Token;
     this.skipWhitespace();
 
-    const tokenPatterns = {
-      '=': [TokenType.ASSIGN, ['=', TokenType.EQ]],
-      '+': [TokenType.PLUS, ['=', TokenType.PLUS_EQ]],
-      '-': [TokenType.MINUS],
-      '*': [TokenType.ASTERISK],
-      '/': [TokenType.SLASH],
-      '<': [TokenType.LT, ['=', TokenType.LT_EQ]],
-      '>': [TokenType.GT, ['=', TokenType.GT_EQ]],
-      '!': [TokenType.BANG, ['=', TokenType.NEQ]],
-      ',': [TokenType.COMMA],
-      ';': [TokenType.SEMICOLON],
-      '(': [TokenType.LPAREN],
-      ')': [TokenType.RPAREN],
-      '{': [TokenType.LBRACE],
-      '}': [TokenType.RBRACE],
-      '[': [TokenType.LBRACKET],
-      ']': [TokenType.RBRACKET],
-      '': [TokenType.EOF],
-    };
-
-    if (tokenPatterns[this.character]) {
-      if (tokenPatterns[this.character].length === 2) {
-        if (this.peekCharacter() === tokenPatterns[this.character][1][0]) {
-          token = this.makeTwoCharacterToken(tokenPatterns[this.character][1][1]);
-        } else {
-          token = new Token(tokenPatterns[this.character][0], this.character, this.line, this.column);
-        }
+    if (TOKEN_PATTERNS[this.character]) {
+      const pattern = TOKEN_PATTERNS[this.character];
+      if (pattern.length === 2 && this.peekCharacter() === pattern[1]![0]) {
+        token = this.makeTwoCharacterToken(pattern[1]![1]);
       } else {
-        token = new Token(tokenPatterns[this.character][0], this.character, this.line, this.column);
+        token = new Token(pattern[0], this.character, this.line, this.column);
       }
     } else if (this.isLetter(this.character)) {
       const [literal, initialColumn] = this.readIdentifier();

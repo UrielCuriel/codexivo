@@ -68,24 +68,24 @@ export const reservedKeywords = [
   'y',
 ];
 
-export const lookupIdentifier = (literal: string): TokenType => {
-  const keywords: { [key: string]: TokenType } = {
-    hacer: TokenType.DO,
-    hasta_que: TokenType.WHILE,
-    pero_si: TokenType.ELSEIF,
-    procedimiento: TokenType.FUNCTION,
-    regresa: TokenType.RETURN,
-    si: TokenType.IF,
-    si_no: TokenType.ELSE,
-    falso: TokenType.FALSE,
-    variable: TokenType.LET,
-    verdadero: TokenType.TRUE,
-    mientras: TokenType.WHILE,
-    no: TokenType.NOT,
-    o: TokenType.OR,
-    para: TokenType.FOR,
-    y: TokenType.AND,
-  };
+const keywordsMap: Record<string, TokenType> = {
+  hacer: TokenType.DO,
+  hasta_que: TokenType.WHILE,
+  pero_si: TokenType.ELSEIF,
+  procedimiento: TokenType.FUNCTION,
+  regresa: TokenType.RETURN,
+  si: TokenType.IF,
+  si_no: TokenType.ELSE,
+  falso: TokenType.FALSE,
+  variable: TokenType.LET,
+  verdadero: TokenType.TRUE,
+  mientras: TokenType.WHILE,
+  no: TokenType.NOT,
+  o: TokenType.OR,
+  para: TokenType.FOR,
+  y: TokenType.AND,
+};
 
-  return keywords[literal] || TokenType.IDENT;
+export const lookupIdentifier = (literal: string): TokenType => {
+  return keywordsMap[literal] || TokenType.IDENT;
 };

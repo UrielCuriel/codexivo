@@ -1,3 +1,4 @@
 name = "codexivo"
 main = "src/cli/main.ts"
 test = "test"
+bench = "bench"
