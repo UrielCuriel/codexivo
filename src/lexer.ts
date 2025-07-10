@@ -158,7 +158,7 @@ export class Lexer {
   }
 
   private isEOF(): boolean {
-    if (this.readPosition >= this.source.length) return true;
+    return this.readPosition >= this.source.length;
   }
 
   private peekCharacter(): string {
