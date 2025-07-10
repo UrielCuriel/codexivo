@@ -172,17 +172,13 @@ const applyFunction = (fn: Object, args: Object[], line: number, column: number)
 };
 const assertValue = (value: unknown): void => {
   if (value === null || value === undefined) {
-    const err = new Error('value is null or undefined');
-    console.error(err.stack);
-    throw err;
+    throw new Error('value is null or undefined');
   }
 };
 
 const assertNumber = (value: unknown): void => {
   if (Number.isNaN(value)) {
-    const err = new Error('value is NaN');
-    console.error(err.stack);
-    throw err;
+    throw new Error('value is NaN');
   }
 };
 
@@ -240,20 +236,15 @@ const evaluateBooleanInfixExpression = (
   line: number,
   column: number,
 ): Object => {
-  switch (nodeOperator) {
-    case '==':
-      return toBooleanObject(left.value === right.value);
-    case '!=':
-      return toBooleanObject(left.value !== right.value);
-    default:
-      return newError('UNKNOWN_INFIX_OPERATOR', {
-        operator: nodeOperator,
-        left: left.type(),
-        right: right.type(),
-        line,
-        column,
-      });
-  }
+  if (nodeOperator === '==') return toBooleanObject(left.value === right.value);
+  if (nodeOperator === '!=') return toBooleanObject(left.value !== right.value);
+  return newError('UNKNOWN_INFIX_OPERATOR', {
+    operator: nodeOperator,
+    left: left.type(),
+    right: right.type(),
+    line,
+    column,
+  });
 };
 
 const evaluateIfExpression = (node: ast.If, env: Environment): Object => {
