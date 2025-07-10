@@ -322,11 +322,7 @@ export class Parser {
     if (this.peekToken.type === TokenType.LET) {
       this.advanceTokens();
       const init = this.parseLetStatement();
-      if (init && init instanceof Expression) {
-        forExpression.initializer = init;
-      } else {
-        forExpression.initializer = undefined;
-      }
+      forExpression.initializer = init || undefined;
     }
 
     return this.expectToken(TokenType.SEMICOLON);

@@ -15,6 +15,8 @@ export class Statement implements ASTNode {
     this.token = token;
     this.line = token.line ?? 0;
     this.column = token.column ?? 0;
+    // Optionally, add a distinguishing property for Expression
+    // this.isExpression = true;
   }
   tokenLiteral(): string {
     return this.token.literal;
@@ -199,7 +201,7 @@ export class DoWhile extends Expression {
 export class For extends Expression {
   constructor(
     token: Token,
-    public initializer?: Expression,
+    public initializer?: Statement | Expression,
     public condition?: Expression,
     public increment?: Expression,
     public body?: Block,

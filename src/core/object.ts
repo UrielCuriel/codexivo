@@ -28,7 +28,7 @@ export class Number implements Object {
   }
 }
 
-export class BooleanObj implements Object {
+export class Boolean implements Object {
   constructor(public value: boolean) {}
 
   type(): ObjectType {
@@ -63,6 +63,8 @@ export class Return implements Object {
 }
 
 export class Error implements Object {
+  stack: any;
+
   constructor(public message: string) {}
 
   type(): ObjectType {
@@ -119,7 +121,7 @@ export class Function implements Object {
   }
 }
 
-export class StringObj implements Object {
+export class String implements Object {
   constructor(public value: string) {}
 
   type(): ObjectType {

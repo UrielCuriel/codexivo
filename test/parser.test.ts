@@ -145,6 +145,7 @@ describe('parse', () => {
     const source = `variable x 5;`;
     const lexer = new Lexer(source);
     const parse = new Parser(lexer);
+    const program = parse.parseProgram();
 
     //expect program with 1 errors
     expect(parse.errors.length).toBe(1);
@@ -598,8 +599,9 @@ describe('parse', () => {
     ];
 
     testsSources.forEach(test => {
-      const lexer = new Lexer(test[0] as string);
+      const lexer = new Lexer(test[0]);
       const parse = new Parser(lexer);
+      const program = parse.parseProgram();
 
       expect(parse.errors.length).toBeGreaterThan(0);
 

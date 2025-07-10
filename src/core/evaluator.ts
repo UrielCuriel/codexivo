@@ -2,21 +2,21 @@ import * as ast from './ast';
 import {
   Number as NumberObj,
   Object,
-  BooleanObj,
+  Boolean,
   Null,
   Return,
-  Error as ErrorObj,
+  Error as ObjectError,
   Environment,
   Function,
-  StringObj,
+  String,
   Builtin,
 } from './object';
 import { reservedKeywords } from './token';
 import { builtins } from './builtins';
 import { newError } from './errors';
 
-const TRUE = new BooleanObj(true);
-const FALSE = new BooleanObj(false);
+const TRUE = new Boolean(true);
+const FALSE = new Boolean(false);
 const NULL = new Null();
 
 export const evaluate = (
@@ -151,7 +151,7 @@ function evaluateCallNode(node: ast.Call, env: Environment): Object {
 
 function evaluateStringLiteralNode(node: ast.StringLiteral): Object {
   assertValue(node.value);
-  return new StringObj(node.value);
+  return new String(node.value);
 }
 
 const applyFunction = (fn: Object, args: Object[], line: number, column: number): Object => {
@@ -162,7 +162,7 @@ const applyFunction = (fn: Object, args: Object[], line: number, column: number)
     return unwrapReturnValue(evaluated);
   } else if (fn instanceof Builtin) {
     const result = fn.fn(...args);
-    if (result instanceof ErrorObj) {
+    if (result instanceof ObjectError) {
       return newError('GENERIC_ERROR', { message: result.message, line, column });
     }
     return result;
@@ -235,8 +235,8 @@ const isReservedWord = (word: string): boolean => {
 
 const evaluateBooleanInfixExpression = (
   nodeOperator: string,
-  left: BooleanObj,
-  right: BooleanObj,
+  left: Boolean,
+  right: Boolean,
   line: number,
   column: number,
 ): Object => {
@@ -296,13 +296,13 @@ const evaluateInfixExpression = (
 ): Object => {
   if (left instanceof NumberObj && right instanceof NumberObj) {
     return evaluateNumberInfixExpression(nodeOperator, left, right, line, column);
-  } else if (left instanceof StringObj && right instanceof StringObj) {
+  } else if (left instanceof String && right instanceof String) {
     return evaluateStringInfixExpression(nodeOperator, left, right, line, column);
   } else if (nodeOperator === '==') {
     return toBooleanObject(left === right);
   } else if (nodeOperator === '!=') {
     return toBooleanObject(left !== right);
-  } else if (left instanceof BooleanObj && right instanceof BooleanObj) {
+  } else if (left instanceof Boolean && right instanceof Boolean) {
     return evaluateBooleanInfixExpression(nodeOperator, left, right, line, column);
   } else if (left.type() !== right.type()) {
     return newError('TYPE_MISMATCH', {
@@ -364,8 +364,8 @@ const evaluateNumberInfixExpression = (
 
 const evaluateStringInfixExpression = (
   nodeOperator: string,
-  left: StringObj,
-  right: StringObj,
+  left: String,
+  right: String,
   line: number,
   column: number,
 ): Object => {
@@ -374,7 +374,7 @@ const evaluateStringInfixExpression = (
 
   switch (nodeOperator) {
     case '+':
-      return new StringObj(leftValue + rightValue);
+      return new String(leftValue + rightValue);
     case '==':
       return toBooleanObject(leftValue === rightValue);
     case '!=':
@@ -406,7 +406,7 @@ const evaluateProgram = (program: ast.Program, env: Environment, line?: number, 
     result = evaluate(statement, env, line, column);
     if (result instanceof Return) {
       return result.value;
-    } else if (result instanceof Error) {
+    } else if (result instanceof ObjectError) {
       return result;
     }
   }
@@ -420,7 +420,7 @@ const evaluateBlockStatement = (block: ast.Block, env: Environment, line: number
   for (const statement of block.statements) {
     result = evaluate(statement, env, line, column);
 
-    if (result instanceof Return || result instanceof Error) {
+    if (result instanceof Return || result instanceof ObjectError) {
       return result;
     }
   }
@@ -439,7 +439,7 @@ const evaluatePrefixExpression = (operator: string, right: Object, line: number,
   }
 };
 
-const toBooleanObject = (value: boolean): BooleanObj => {
+const toBooleanObject = (value: boolean): Boolean => {
   if (isTrue(value)) {
     return TRUE;
   }

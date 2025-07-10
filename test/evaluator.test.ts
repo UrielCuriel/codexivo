@@ -46,7 +46,7 @@ const testErrorObject = (obj: Object, expected: string) => {
   expect(obj).toBeInstanceOf(Error);
   expect((obj as Error).message).toBe(expected);
 };
-const isTruthy = (obj: Object) => {};
+const isTruthy = (obj: Object) => { };
 
 describe('evaluator', () => {
   it('should evaluate integer expression', () => {
@@ -188,8 +188,8 @@ describe('evaluator', () => {
       ['"Hello" - "World"', 'operador desconocido: STRING - STRING en la linea 1 columna 9'],
     ];
     tests.forEach(([input, expected]) => {
-      const evaluated = testEval(input as string);
-      testErrorObject(evaluated, expected as string);
+      const evaluated = testEval(input);
+      testErrorObject(evaluated, expected);
     });
   });
   it('should assignment evaluation', () => {
@@ -233,8 +233,8 @@ describe('evaluator', () => {
     ];
 
     tests.forEach(([input, expected]) => {
-      const evaluated = testEval(input as string);
-      testStringObject(evaluated, expected as string);
+      const evaluated = testEval(input);
+      testStringObject(evaluated, expected);
     });
   });
   it('should evaluate string concatenation', () => {
@@ -253,8 +253,8 @@ describe('evaluator', () => {
     ];
 
     tests.forEach(([input, expected]) => {
-      const evaluated = testEval(input as string);
-      testStringObject(evaluated, expected as string);
+      const evaluated = testEval(input);
+      testStringObject(evaluated, expected);
     });
   });
   it('should evaluate string comparison', () => {
