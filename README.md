@@ -50,7 +50,7 @@ resta(n, m);
 para (variable i = 0; i < 10; i = i + 1) {
     multiplicación(n, m);
 }
-// Bucle "hacer-mientras" con condición y cuerpo de bucle
+// Bucle "hacer-hasta_que" con condición y cuerpo de bucle
 hacer {
   division(n, m);
 } hasta_que (n > 0);
@@ -99,7 +99,7 @@ n == m o n > m;
 no n == m;
 ```
 
-- Estructuras de control: si, si-sino, mientras, hacer-mientras, para
+- Estructuras de control: si, si-sino, mientras, hacer-hasta_que, para
 ```
 variable n = 10;
 variable m = 20;
