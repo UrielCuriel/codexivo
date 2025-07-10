@@ -28,7 +28,7 @@ export class Number implements Object {
   }
 }
 
-export class Boolean implements Object {
+export class BooleanObj implements Object {
   constructor(public value: boolean) {}
 
   type(): ObjectType {
@@ -119,7 +119,7 @@ export class Function implements Object {
   }
 }
 
-export class String implements Object {
+export class StringObj implements Object {
   constructor(public value: string) {}
 
   type(): ObjectType {
@@ -131,9 +131,7 @@ export class String implements Object {
   }
 }
 
-export interface BuiltinFunction {
-  (...args: Object[]): Object;
-}
+export type BuiltinFunction = (...args: Object[]) => Object;
 
 export class Builtin implements Object {
   constructor(public fn: BuiltinFunction) {}

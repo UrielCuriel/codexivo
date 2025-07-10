@@ -39,6 +39,7 @@ export enum TokenType {
   STRING = 'STRING',
   TRUE = 'TRUE',
   WHILE = 'WHILE',
+  INT = "INT",
 }
 
 export class Token {

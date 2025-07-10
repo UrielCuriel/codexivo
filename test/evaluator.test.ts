@@ -1,6 +1,5 @@
 import { it, describe, expect } from 'bun:test';
 
-import { Program } from '../src/core/ast';
 import { evaluate } from '../src/core/evaluator';
 import { Lexer } from '../src/core/lexer';
 import { Parser } from '../src/core/parser';

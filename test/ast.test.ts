@@ -18,7 +18,6 @@ describe('ast', () => {
     expect(programString).toBe('variable mi_variable = otra_variable;');
   });
   it('should create a program with return statements', () => {
-    // return 5;
     const program = new Program([
       new ReturnStatement(new Token(TokenType.RETURN, 'regresa'), new Identifier(new Token(TokenType.IDENT, '5'), '5')),
     ]);

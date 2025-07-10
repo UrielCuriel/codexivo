@@ -13,8 +13,8 @@ export class Statement implements ASTNode {
   column: number;
   constructor(token: Token) {
     this.token = token;
-    this.line = token.line;
-    this.column = token.column;
+    this.line = token.line ?? 0;
+    this.column = token.column ?? 0;
   }
   tokenLiteral(): string {
     return this.token.literal;
@@ -31,8 +31,8 @@ export class Expression implements ASTNode {
 
   constructor(token: Token) {
     this.token = token;
-    this.line = token.line;
-    this.column = token.column;
+    this.line = token.line ?? 0;
+    this.column = token.column ?? 0;
   }
 
   tokenLiteral(): string {
@@ -91,7 +91,7 @@ export class LetStatement extends Statement {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} ${this.name.toString()} = ${this.value?.toString() ?? ''};`;
+    return `${this.tokenLiteral()} ${this.name?.toString() ?? ''} = ${this.value?.toString() ?? ''};`;
   }
 }
 
@@ -142,7 +142,7 @@ export class Infix extends Expression {
   }
 }
 
-export class Boolean extends Expression {
+export class BooleanLiteral extends Expression {
   constructor(token: Token, public value?: boolean) {
     super(token);
   }
@@ -222,7 +222,7 @@ export class Function extends Expression {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} (${this.parameters.map(p => p.toString()).join(', ')}) ${this.body?.toString()}`;
+    return `${this.tokenLiteral()} (${this.parameters?.map(p => p.toString()).join(', ')}) ${this.body?.toString()}`;
   }
 }
 
@@ -232,7 +232,7 @@ export class Call extends Expression {
   }
 
   toString(): string {
-    return `${this.function_.toString()}(${this.arguments_.map(a => a.toString()).join(', ')})`;
+    return `${this.function_.toString()}(${this.arguments_?.map(a => a.toString()).join(', ')})`;
   }
 }
 
@@ -252,7 +252,7 @@ export class ArrayLiteral extends Expression {
   }
 
   toString(): string {
-    return `[${this.elements.map(e => e.toString()).join(', ')}]`;
+    return `[${this.elements?.map(e => e.toString()).join(', ') ?? ''}]`;
   }
 }
 
@@ -262,6 +262,6 @@ export class Index extends Expression {
   }
 
   toString(): string {
-    return `${this.left.toString()}[${this.index.toString()}]`;
+    return `${this.left.toString()}[${this.index?.toString()}]`;
   }
 }
