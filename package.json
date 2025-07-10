@@ -27,5 +27,8 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest"
+  },
+  "dependencies": {
+    "mitata": "^1.0.34"
   }
 }
