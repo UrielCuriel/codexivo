@@ -9,6 +9,7 @@ Bienvenido al compendio oficial del lenguaje **Codexivo**. Este directorio recop
 
 - [Especificación del lenguaje](./lenguaje.md): describe la sintaxis, palabras reservadas, tipos de dato y reglas semánticas que definen a Codexivo como si fuera un lenguaje formal.
 - [Arquitectura del intérprete](./arquitectura.md): recorre el código fuente módulo por módulo para explicar cómo se procesa un programa desde el texto hasta su evaluación.
+- [Guía práctica: entender el intérprete desde el código](./guia-aprender-desde-el-codigo.md): actividades guiadas para relacionar cada módulo con ejemplos reales del lenguaje.
 - [Uso del REPL y flujo de trabajo](./repl.md): muestra cómo ejecutar el intérprete, guardar sesiones y aprovechar las herramientas de trazado en tiempo real.
 - [Recetario de programas](./recetario.md): colección de ejemplos completos que ilustran patrones comunes de solución.
 

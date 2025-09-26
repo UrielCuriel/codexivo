@@ -94,6 +94,9 @@ como en tipo de argumentos. 【F:src/builtins.ts†L1-L16】
 ## 9. Trazado en tiempo real (`src/runtime/tracer.ts`)
 
 `RuntimeTracer` captura cada paso del evaluador: el nodo visitado, el estado del entorno, la pila de llamadas y eventos de E/S.
+<!--
+**RuntimeTracer**: La herramienta permite recorrer la ejecución en modo paso a paso, avanzando una instrucción cada vez para observar cómo cambian las variables tras cada operación. También admite puntos de interrupción personalizados, en los que la traza se detiene cuando se cumple una condición específica (por ejemplo, `if (contador > 10)`). Para usar ambas funciones en conjunto, activa el modo paso a paso y define un punto de interrupción; la ejecución continuará instrucción por instrucción hasta alcanzar la condición, momento en el que podrás inspeccionar el estado del programa antes de reanudar.
+-->
 Se puede activar en modo paso a paso o con puntos de interrupción personalizados. Esta herramienta es clave para aprender cómo se
 modifican las variables y entender el flujo de ejecución. 【F:src/runtime/tracer.ts†L1-L173】
 

@@ -94,7 +94,11 @@ esNombreValido("Ana");
 
 Ejemplo de uso del builtin `longitud` junto con operadores de comparación y booleanos.
 
-> ℹ️ Los bucles (`mientras`, `hacer`/`hasta_que`, `para`) todavía no tienen semántica ejecutable en la versión actual del
-> intérprete. Mientras tanto, puedes simular repeticiones con recursión controlada como se muestra en el ejemplo 5.
+## ⚠️ Limitaciones actuales
+
+> **Importante:** Los bucles (`mientras`, `hacer`/`hasta_que`, `para`) todavía no tienen semántica ejecutable en la versión actual del intérprete. Por ahora, puedes simular repeticiones con recursión controlada como se muestra en el ejemplo 5.
+
+Esta limitación es temporal y será resuelta en futuras versiones del lenguaje.
+
 
 Experimenta combinando estos patrones y consulta la [especificación del lenguaje](./lenguaje.md) para profundizar en cada tema.
