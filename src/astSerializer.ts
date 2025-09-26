@@ -98,7 +98,6 @@ const collectMetadata = (node: ast.ASTNode): Record<string, unknown> => {
   }
   if (node instanceof ast.Function) {
     metadata.parameters = node.parameters?.map(parameter => parameter.value) ?? [];
-    metadata.isAnonymous = node.isAnonymous ?? false;
     metadata.name = node.name?.value ?? null;
   }
   if (node instanceof ast.Call) {
