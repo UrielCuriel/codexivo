@@ -201,9 +201,6 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
 
   private registerBreakpoint(breakpoint: Breakpoint): void {
     this.breakpointMap.set(this.getBreakpointKey(breakpoint.line, breakpoint.column), breakpoint);
-    if (breakpoint.column === undefined) {
-      this.breakpointMap.set(this.getBreakpointKey(breakpoint.line, undefined), breakpoint);
-    }
   }
 
   private listBreakpoints(): Breakpoint[] {
