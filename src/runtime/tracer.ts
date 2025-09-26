@@ -257,15 +257,14 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
 
   private snapshotEnvironment(env: Environment): EnvironmentSnapshot {
     const scopes: ScopeSnapshot[] = [];
-    const chain: Environment[] = [];
-    let current: Environment | undefined = env;
 
-    while (current) {
-      chain.push(current);
-      current = current.outer;
-    }
+    const collectScopes = (scopeEnv?: Environment): void => {
+      if (!scopeEnv) {
+        return;
+      }
 
-    chain.reverse().forEach((scopeEnv, index) => {
+      collectScopes(scopeEnv.outer);
+
       const variables: Record<string, RuntimeValueSnapshot> = {};
       for (const [name, value] of scopeEnv.store.entries()) {
         variables[name] = this.serializeObject(value) ?? {
@@ -274,8 +273,11 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
           repr: 'indefinido',
         };
       }
-      scopes.push({ level: index, variables });
-    });
+
+      scopes.push({ level: scopes.length, variables });
+    };
+
+    collectScopes(env);
 
     return { scopes };
   }
@@ -333,7 +335,69 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
     if (!a || !b) {
       return false;
     }
-    return a.type === b.type && JSON.stringify(a.value) === JSON.stringify(b.value);
+    if (a.type !== b.type) {
+      return false;
+    }
+
+    return this.deepEqualValues(a.value, b.value);
+  }
+
+  private deepEqualValues(a: unknown, b: unknown): boolean {
+    if (Object.is(a, b)) {
+      return true;
+    }
+
+    if (typeof a !== typeof b) {
+      return false;
+    }
+
+    if (a === null || b === null) {
+      return false;
+    }
+
+    if (Array.isArray(a) || Array.isArray(b)) {
+      if (!Array.isArray(a) || !Array.isArray(b)) {
+        return false;
+      }
+
+      if (a.length !== b.length) {
+        return false;
+      }
+
+      for (let index = 0; index < a.length; index++) {
+        if (!this.deepEqualValues(a[index], b[index])) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    if (typeof a === 'object' && typeof b === 'object') {
+      const objectA = a as Record<string, unknown>;
+      const objectB = b as Record<string, unknown>;
+
+      const keysA = Object.keys(objectA);
+      const keysB = Object.keys(objectB);
+
+      if (keysA.length !== keysB.length) {
+        return false;
+      }
+
+      for (const key of keysA) {
+        if (!(key in objectB)) {
+          return false;
+        }
+
+        if (!this.deepEqualValues(objectA[key], objectB[key])) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    return Object.is(a, b);
   }
 
   private serializeObject(obj?: RuntimeObject): RuntimeValueSnapshot | undefined {
