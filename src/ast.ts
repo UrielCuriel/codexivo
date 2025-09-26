@@ -96,6 +96,17 @@ export class LetStatement extends Statement {
   }
 }
 
+export class AssignmentStatement extends Statement {
+  constructor(token: Token, public name?: Identifier, public operator?: string, public value?: Expression) {
+    super(token);
+  }
+  toString(): string {
+    const identifier = this.name ? this.name.toString() : '';
+    const value = this.value ? this.value.toString() : '';
+    return `${identifier} ${this.operator} ${value};`;
+  }
+}
+
 export class ReturnStatement extends Statement {
   constructor(token: Token, public returnValue?: Expression) {
     super(token);

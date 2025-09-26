@@ -6,6 +6,7 @@ import {
   Identifier,
   Number,
   LetStatement,
+  AssignmentStatement,
   Program,
   ReturnStatement,
   Statement,
@@ -320,7 +321,6 @@ export class Parser {
       return null;
     }
 
-    this.advanceTokens();
     forExpression.body = this.parseBlock();
 
     return forExpression;
@@ -528,6 +528,16 @@ export class Parser {
         return this.parseLetStatement();
       case TokenType.RETURN:
         return this.parseReturnStatement();
+      case TokenType.IDENT:
+        // Check if this is an assignment statement (identifier followed by assignment operator)
+        if (this.peekToken.type === TokenType.ASSIGN || 
+            this.peekToken.type === TokenType.PLUS_EQ ||
+            this.peekToken.type === TokenType.MINUS_EQ ||
+            this.peekToken.type === TokenType.MULT_EQ ||
+            this.peekToken.type === TokenType.DIV_EQ) {
+          return this.parseAssignmentStatement();
+        }
+        return this.parseExpressionStatement();
       default:
         return this.parseExpressionStatement();
     }
@@ -563,6 +573,26 @@ export class Parser {
     }
 
     return letStatement;
+  }
+
+  private parseAssignmentStatement(): Statement | null {
+    this.assertCurrentToken();
+    const identifier = new Identifier(this.currentToken, this.currentToken.literal);
+    const operatorToken = this.peekToken;
+    
+    this.advanceTokens(); // Move to the operator
+    this.advanceTokens(); // Move past the operator to the value
+    
+    const assignmentStatement = new AssignmentStatement(operatorToken, identifier, operatorToken.literal);
+    assignmentStatement.value = this.parseExpression(Precedence.LOWEST);
+
+    this.assertPeekToken();
+
+    if (this.peekToken.type === TokenType.SEMICOLON) {
+      this.advanceTokens();
+    }
+
+    return assignmentStatement;
   }
 
   private parsePrefix(): Prefix | null {
@@ -656,6 +686,9 @@ export class Parser {
       [TokenType.PLUS]: this.parseInfix.bind(this),
       [TokenType.PLUS_EQ]: this.parseInfix.bind(this),
       [TokenType.MINUS]: this.parseInfix.bind(this),
+      [TokenType.MINUS_EQ]: this.parseInfix.bind(this),
+      [TokenType.MULT_EQ]: this.parseInfix.bind(this),
+      [TokenType.DIV_EQ]: this.parseInfix.bind(this),
       [TokenType.SLASH]: this.parseInfix.bind(this),
       [TokenType.ASTERISK]: this.parseInfix.bind(this),
       [TokenType.EQ]: this.parseInfix.bind(this),
