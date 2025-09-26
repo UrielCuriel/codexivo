@@ -320,6 +320,7 @@ export class Parser {
       return null;
     }
 
+    this.advanceTokens();
     forExpression.body = this.parseBlock();
 
     return forExpression;
