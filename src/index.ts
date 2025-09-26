@@ -1,19 +1,9 @@
-import { start_repl } from './repl';
-
-function main() {
-  console.log('Bienvenido al REPL de: ');
-  console.log(`
-              
-░█████╗░░█████╗░██████╗░███████╗██╗░░██╗██╗██╗░░░██╗░█████╗░
-██╔══██╗██╔══██╗██╔══██╗██╔════╝╚██╗██╔╝██║██║░░░██║██╔══██╗
-██║░░╚═╝██║░░██║██║░░██║█████╗░░░╚███╔╝░██║╚██╗░██╔╝██║░░██║
-██║░░██╗██║░░██║██║░░██║██╔══╝░░░██╔██╗░██║░╚████╔╝░██║░░██║
-╚█████╔╝╚█████╔╝██████╔╝███████╗██╔╝╚██╗██║░░╚██╔╝░░╚█████╔╝
-░╚════╝░░╚════╝░╚═════╝░╚══════╝╚═╝░░╚═╝╚═╝░░░╚═╝░░░░╚════╝░
-`);
-  start_repl();
-}
-
-if (typeof require !== 'undefined' && require.main === module) {
-  main();
-}
+export * from './token';
+export { Lexer } from './lexer';
+export { Parser } from './parser';
+export { evaluate } from './evaluator';
+export { newError } from './errors';
+export { builtins } from './builtins';
+export { inspect } from './inspector';
+export * as ast from './ast';
+export * as runtime from './object';

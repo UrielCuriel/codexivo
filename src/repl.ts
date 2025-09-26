@@ -1,7 +1,8 @@
 import { Lexer } from './lexer';
 import { Token, TokenType } from './token';
 import { Program } from './ast';
-import * as readline from 'readline';
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 import { Parser } from './parser';
 import { inspect } from './inspector';
 import { evaluate } from './evaluator';
@@ -10,16 +11,12 @@ import { Environment } from './object';
 const EOF_TOKEN = new Token(TokenType.EOF, '');
 
 const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
+  input,
+  output,
 });
 
 function prompt(question: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    rl.question(question, answer => {
-      resolve(answer);
-    });
-  });
+  return rl.question(question);
 }
 
 /**
