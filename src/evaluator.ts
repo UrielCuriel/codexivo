@@ -42,6 +42,18 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     state.tracer?.record({ node, env, result, operation });
   };
 
+  const evaluateCompoundAssignment = (operator: string, node: ast.Infix, left: RuntimeObject, right: RuntimeObject, env: Environment, line: number, column: number): RuntimeObject => {
+    if (!(node.left instanceof ast.Identifier)) {
+      return newError('INVALID_ASSIGNMENT_TARGET', { operator: node.operator, target: node.left?.tokenLiteral() ?? 'expresión', line, column });
+    }
+    const opResult = evaluateInfixExpression(operator, left, right, line, column);
+    if (isError(opResult)) {
+      return opResult;
+    }
+    env.set(node.left.value, opResult);
+    return opResult;
+  };
+
   const evaluateNode = (
     node: ast.ASTNode,
     env: Environment,
@@ -132,13 +144,13 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       }
       let result: RuntimeObject;
       if (node.operator === '+=') {
-        result = evaluatePlusEquals(node, left, right, env, node.line ?? line, node.column ?? column);
+        result = evaluateCompoundAssignment('+', node, left, right, env, node.line ?? line, node.column ?? column);
       } else if (node.operator === '-=') {
-        result = evaluateMinusEquals(node, left, right, env, node.line ?? line, node.column ?? column);
+        result = evaluateCompoundAssignment('-', node, left, right, env, node.line ?? line, node.column ?? column);
       } else if (node.operator === '*=') {
-        result = evaluateMultEquals(node, left, right, env, node.line ?? line, node.column ?? column);
+        result = evaluateCompoundAssignment('*', node, left, right, env, node.line ?? line, node.column ?? column);
       } else if (node.operator === '/=') {
-        result = evaluateDivEquals(node, left, right, env, node.line ?? line, node.column ?? column);
+        result = evaluateCompoundAssignment('/', node, left, right, env, node.line ?? line, node.column ?? column);
       } else {
         result = evaluateInfixExpression(node.operator, left, right, node.line ?? line, node.column ?? column);
       }
@@ -509,151 +521,6 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       }
     }
     return result;
-  };
-
-  const evaluatePlusEquals = (
-    node: ast.Infix,
-    left: RuntimeObject,
-    right: RuntimeObject,
-    env: Environment,
-    line: number,
-    column: number,
-  ): RuntimeObject => {
-    if (!(node.left instanceof ast.Identifier)) {
-      return newError('INVALID_ASSIGNMENT_TARGET', {
-        operator: node.operator,
-        target: node.left?.tokenLiteral() ?? 'expresión',
-        line,
-        column,
-      });
-    }
-
-    const identifier = node.left.value;
-
-    if (left instanceof NumberObj && right instanceof NumberObj) {
-      const value = new NumberObj(left.value + right.value);
-      env.set(identifier, value);
-      return value;
-    }
-
-    if (left instanceof StringObj && right instanceof StringObj) {
-      const value = new StringObj(left.value + right.value);
-      env.set(identifier, value);
-      return value;
-    }
-
-    return newError('TYPE_MISMATCH', {
-      operator: node.operator,
-      left: left.type(),
-      right: right.type(),
-      line,
-      column,
-    });
-  };
-
-  const evaluateMinusEquals = (
-    node: ast.Infix,
-    left: RuntimeObject,
-    right: RuntimeObject,
-    env: Environment,
-    line: number,
-    column: number,
-  ): RuntimeObject => {
-    if (!(node.left instanceof ast.Identifier)) {
-      return newError('INVALID_ASSIGNMENT_TARGET', {
-        operator: node.operator,
-        target: node.left?.tokenLiteral() ?? 'expresión',
-        line,
-        column,
-      });
-    }
-
-    const identifier = node.left.value;
-
-    if (left instanceof NumberObj && right instanceof NumberObj) {
-      const value = new NumberObj(left.value - right.value);
-      env.set(identifier, value);
-      return value;
-    }
-
-    return newError('TYPE_MISMATCH', {
-      operator: node.operator,
-      left: left.type(),
-      right: right.type(),
-      line,
-      column,
-    });
-  };
-
-  const evaluateMultEquals = (
-    node: ast.Infix,
-    left: RuntimeObject,
-    right: RuntimeObject,
-    env: Environment,
-    line: number,
-    column: number,
-  ): RuntimeObject => {
-    if (!(node.left instanceof ast.Identifier)) {
-      return newError('INVALID_ASSIGNMENT_TARGET', {
-        operator: node.operator,
-        target: node.left?.tokenLiteral() ?? 'expresión',
-        line,
-        column,
-      });
-    }
-
-    const identifier = node.left.value;
-
-    if (left instanceof NumberObj && right instanceof NumberObj) {
-      const value = new NumberObj(left.value * right.value);
-      env.set(identifier, value);
-      return value;
-    }
-
-    return newError('TYPE_MISMATCH', {
-      operator: node.operator,
-      left: left.type(),
-      right: right.type(),
-      line,
-      column,
-    });
-  };
-
-  const evaluateDivEquals = (
-    node: ast.Infix,
-    left: RuntimeObject,
-    right: RuntimeObject,
-    env: Environment,
-    line: number,
-    column: number,
-  ): RuntimeObject => {
-    if (!(node.left instanceof ast.Identifier)) {
-      return newError('INVALID_ASSIGNMENT_TARGET', {
-        operator: node.operator,
-        target: node.left?.tokenLiteral() ?? 'expresión',
-        line,
-        column,
-      });
-    }
-
-    const identifier = node.left.value;
-
-    if (left instanceof NumberObj && right instanceof NumberObj) {
-      if (right.value === 0) {
-        return newError('DIVISION_BY_ZERO', { line, column });
-      }
-      const value = new NumberObj(left.value / right.value);
-      env.set(identifier, value);
-      return value;
-    }
-
-    return newError('TYPE_MISMATCH', {
-      operator: node.operator,
-      left: left.type(),
-      right: right.type(),
-      line,
-      column,
-    });
   };
 
   const applyFunction = (
