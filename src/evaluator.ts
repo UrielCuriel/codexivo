@@ -165,7 +165,12 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
 
     if (node instanceof ast.Call) {
       const fn = evaluateNode(node.function_, env, node.line, node.column);
-      const args = evaluateExpressions(node.arguments_ ?? [], env, node.line ?? line, node.column ?? column);
+      const args = evaluateExpressions(
+        node.arguments_ ?? [],
+        env,
+        node.line ?? line ?? 0,
+        node.column ?? column ?? 0
+      );
       const result = applyFunction(fn, args, node);
       record(node, env, result, 'expression:call');
       return result;
