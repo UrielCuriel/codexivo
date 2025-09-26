@@ -16,8 +16,11 @@
   },
   "scripts": {
     "test": "bun test",
-    "repl": "bun run src/index.ts",
-    "build": "bun run tsc"
+    "repl": "bun run src/cli.ts",
+    "clean": "rm -rf dist",
+    "bundle": "bun build ./src/index.ts --target browser --outdir dist --external ./src/repl",
+    "types": "bunx tsc --emitDeclarationOnly --outDir dist",
+    "build": "bun run clean && bun run bundle && bun run types"
   },
   "keywords": [],
   "author": "",
