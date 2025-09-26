@@ -4,7 +4,7 @@ import { Program } from '../ast';
 import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
-import { Number, Boolean, Null, Object, Error, Environment, Function, String } from '../object';
+import { Array as ArrayValue, Number, Boolean, Null, Object, Error, Environment, Function, String } from '../object';
 
 const testEval = (input: string): Object => {
   const lexer = new Lexer(input);
@@ -46,6 +46,15 @@ const testStringObject = (obj: Object, expected: string) => {
 const testErrorObject = (obj: Object, expected: string) => {
   expect(obj).toBeInstanceOf(Error);
   expect((obj as Error).message).toBe(expected);
+};
+const testArrayObject = (obj: Object, expected: number[]) => {
+  expect(obj).toBeInstanceOf(ArrayValue);
+  const elements = (obj as ArrayValue).elements;
+  expect(elements.length).toBe(expected.length);
+  expected.forEach((value, index) => {
+    expect(elements[index]).toBeInstanceOf(Number);
+    expect((elements[index] as Number).value).toBe(value);
+  });
 };
 const isTruthy = (obj: Object) => {};
 
@@ -101,6 +110,10 @@ describe('evaluator', () => {
       ['(1 < 2) == falso;', false],
       ['(1 > 2) == verdadero;', false],
       ['(1 > 2) == falso;', true],
+      ['verdadero y falso;', false],
+      ['verdadero o falso;', true],
+      ['no verdadero;', false],
+      ['no falso;', true],
     ];
 
     tests.forEach(([input, expected]) => {
@@ -187,6 +200,27 @@ describe('evaluator', () => {
       ],
       ['foobar', 'identificador no encontrado: foobar en la linea 1 columna 1'],
       ['"Hello" - "World"', 'operador desconocido: STRING - STRING en la linea 1 columna 9'],
+      [
+        `
+        variable numeros = [1, 2];
+        numeros[5];
+        `,
+        'índice fuera de rango (5) en la linea 3 columna 16',
+      ],
+      [
+        `
+        variable numero = 3;
+        numero[0];
+        `,
+        'el operador de índice no está soportado para el tipo NUMBER en la linea 3 columna 15',
+      ],
+      [
+        `
+        variable numeros = [1, 2, 3];
+        numeros[1.5];
+        `,
+        'los índices deben ser números enteros en la linea 3 columna 16',
+      ],
     ];
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
@@ -199,12 +233,65 @@ describe('evaluator', () => {
       ['variable a = 5 * 5; a;', 25],
       ['variable a = 5; variable b = a; b;', 5],
       ['variable a = 5; variable b = a; variable c = a + b + 5; c;', 15],
+      ['variable a = 1; a += 2; a;', 3],
     ];
 
     tests.forEach(([input, expected]) => {
       const evaluated = testEval(input as string);
       testNumberObject(evaluated, expected as number);
     });
+  });
+  it('should evaluate loop expressions', () => {
+    const tests = [
+      [
+        `
+          variable i = 0;
+          mientras (i < 3) {
+            i += 1;
+          }
+          i;
+        `,
+        3,
+      ],
+      [
+        `
+          variable i = 0;
+          hacer {
+            i += 1;
+          } hasta_que (i >= 2);
+          i;
+        `,
+        2,
+      ],
+      [
+        `
+          variable total = 0;
+          para(variable i = 0; i < 3; i += 1) {
+            total += i;
+          }
+          total;
+        `,
+        3,
+      ],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testNumberObject(evaluated, expected as number);
+    });
+  });
+  it('should evaluate array literals and indexing', () => {
+    const arrayValue = testEval('variable numeros = [1, 2, 3]; numeros;');
+    testArrayObject(arrayValue, [1, 2, 3]);
+
+    const inlineIndex = testEval('[1, 2, 3][0];');
+    testNumberObject(inlineIndex, 1);
+
+    const computedIndex = testEval('variable datos = [1, 2 * 3, 3 + 4]; datos[1];');
+    testNumberObject(computedIndex, 6);
+
+    const stringIndex = testEval('"hola"[1];');
+    testStringObject(stringIndex, 'o');
   });
   it('should evaluate function', () => {
     const input = 'procedimiento(x) { x + 2; };';
@@ -251,6 +338,7 @@ describe('evaluator', () => {
         `,
         'Hola Uriel!',
       ],
+      ['variable saludo = "Hola"; saludo += " mundo"; saludo;', 'Hola mundo'],
     ];
 
     tests.forEach(([input, expected]) => {
@@ -280,9 +368,10 @@ describe('evaluator', () => {
       ['longitud("")', 0],
       ['longitud("cuatro")', 6],
       ['longitud("hola mundo")', 10],
+      ['longitud([1, 2, 3])', 3],
       [
         'longitud(1)',
-        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING en la linea 1 columna 9`,
+        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING o ARREGLO en la linea 1 columna 9`,
       ],
       [
         'longitud("uno", "dos")',

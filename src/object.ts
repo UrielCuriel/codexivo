@@ -4,6 +4,7 @@ export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
   BUILTIN = 'BUILTIN',
   ERROR = 'ERROR',
+  ARRAY = 'ARRAY',
   FUNCTION = 'FUNCTION',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
@@ -134,6 +135,18 @@ export class String implements Object {
 
   inspect(): string {
     return this.value;
+  }
+}
+
+export class Array implements Object {
+  constructor(public elements: Object[]) {}
+
+  type(): ObjectType {
+    return ObjectType.ARRAY;
+  }
+
+  inspect(): string {
+    return `[${this.elements.map(element => element.inspect()).join(', ')}]`;
   }
 }
 

@@ -1,5 +1,6 @@
 import * as ast from '../ast';
 import {
+  Array as ArrayObj,
   Boolean as BooleanObj,
   Builtin,
   Environment,
@@ -421,6 +422,18 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
       return { type: obj.type(), value: null, repr: obj.inspect() };
     }
 
+    if (obj instanceof ArrayObj) {
+      return {
+        type: obj.type(),
+        value: obj.elements.map(element => this.serializeObject(element) ?? {
+          type: element.type(),
+          value: element.inspect(),
+          repr: element.inspect(),
+        }),
+        repr: obj.inspect(),
+      };
+    }
+
     if (obj instanceof ErrorObj) {
       return { type: obj.type(), value: obj.message, repr: obj.inspect() };
     }
@@ -495,6 +508,25 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
 
     if (node instanceof ast.StringLiteral) {
       metadata.value = node.value;
+    }
+
+    if (node instanceof ast.ArrayLiteral) {
+      metadata.length = node.elements?.length ?? 0;
+    }
+
+    if (node instanceof ast.While || node instanceof ast.DoWhile || node instanceof ast.For) {
+      metadata.kind = 'Loop';
+    }
+
+    if (node instanceof ast.For) {
+      metadata.hasInitializer = Boolean(node.initializer);
+      metadata.hasCondition = Boolean(node.condition);
+      metadata.hasIncrement = Boolean(node.increment);
+    }
+
+    if (node instanceof ast.DoWhile) {
+      metadata.kind = 'Loop';
+      metadata.until = true;
     }
 
     return metadata;

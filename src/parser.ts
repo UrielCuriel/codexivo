@@ -321,7 +321,6 @@ export class Parser {
     }
 
     this.advanceTokens();
-
     forExpression.body = this.parseBlock();
 
     return forExpression;
@@ -647,6 +646,7 @@ export class Parser {
       [TokenType.TRUE]: this.parseBoolean.bind(this),
       [TokenType.STRING]: this.parseStringLiteral.bind(this),
       [TokenType.WHILE]: this.parseWhile.bind(this),
+      [TokenType.NOT]: this.parsePrefix.bind(this),
     };
   }
 
