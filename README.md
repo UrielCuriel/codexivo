@@ -16,9 +16,16 @@ Estoy entusiasmado por compartir el progreso de este proyecto y las futuras mejo
 
 ## ¿Cómo funciona?
 
-Actualmente se puede acceder a Codexivo a través del REPL incluido en este repositorio. Para ejecutarlo, simplemente ejecute el comando `npm run repl` o `node .` en la carpeta raíz del proyecto. Esto iniciará el REPL y le permitirá ingresar código Codexivo para que se ejecute inmediatamente. Para salir del REPL, simplemente escriba `salir()` y presione enter.
+Actualmente se puede acceder a Codexivo a través del REPL incluido en este repositorio. Tras clonar el proyecto instala las dependencias con `bun install` y, posteriormente, ejecuta el comando `bun run repl` en la carpeta raíz. Esto iniciará el REPL y te permitirá ingresar código Codexivo para que se ejecute inmediatamente. También puedes ejecutar `bun run src/index.ts` si prefieres invocar directamente la entrada principal. Para salir del REPL, simplemente escribe `salir()` y presiona enter.
 
 Se está trabajando en una versión web de Codexivo que se ejecutará directamente en el navegador. Esta versión incluirá una interfaz de usuario más amigable y una visualización de diagrama de flujo integrada.
+
+### Scripts disponibles con Bun
+
+- `bun install` para instalar las dependencias.
+- `bun test` para ejecutar la suite de pruebas con el runner nativo de Bun.
+- `bun run build` para compilar el intérprete a JavaScript.
+- `bun run repl` para iniciar el intérprete en modo interactivo.
 
 ## ¿Qué incluye el lenguaje?
 

@@ -14,4 +14,6 @@ function main() {
   start_repl();
 }
 
-main();
+if (typeof require !== 'undefined' && require.main === module) {
+  main();
+}
