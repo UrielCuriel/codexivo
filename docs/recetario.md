@@ -94,11 +94,80 @@ esNombreValido("Ana");
 
 Ejemplo de uso del builtin `longitud` junto con operadores de comparación y booleanos.
 
-## ⚠️ Limitaciones actuales
+## 7. Suma con bucle for
 
-> **Importante:** Los bucles (`mientras`, `hacer`/`hasta_que`, `para`) todavía no tienen semántica ejecutable en la versión actual del intérprete. Por ahora, puedes simular repeticiones con recursión controlada como se muestra en el ejemplo 5.
+```codexivo
+variable sumarHasta = procedimiento(n) {
+  variable suma = 0;
+  para (variable i = 1; i <= n; i += 1) {
+    suma += i;
+  }
+  regresa suma;
+};
 
-Esta limitación es temporal y será resuelta en futuras versiones del lenguaje.
+sumarHasta(10); // Suma de 1 a 10 = 55
+```
+
+Demuestra el uso de bucles `para` con operadores de asignación compuesta.
+
+## 8. Búsqueda en arreglo
+
+```codexivo
+variable buscar = procedimiento(arreglo, elemento) {
+  para (variable i = 0; i < longitud(arreglo); i += 1) {
+    si (arreglo[i] == elemento) {
+      regresa i;
+    }
+  }
+  regresa -1;
+};
+
+variable numeros = [10, 20, 30, 40];
+buscar(numeros, 30); // Regresa 2
+```
+
+Combina bucles, acceso a arreglos, condicionales y funciones built-in.
+
+## 9. Trabajo con funciones matemáticas
+
+```codexivo
+variable estadisticas = procedimiento(datos) {
+  variable suma = 0;
+  variable mayor = primero(datos);
+  variable menor = primero(datos);
+  
+  para (variable i = 0; i < longitud(datos); i += 1) {
+    suma += datos[i];
+    si (datos[i] > mayor) {
+      mayor = datos[i];
+    }
+    si (datos[i] < menor) {
+      menor = datos[i];
+    }
+  }
+  variable promedio = suma / longitud(datos);
+  
+  regresa [redondear(promedio), mayor, menor];
+};
+
+estadisticas([5, 2, 8, 1, 9]); // [5, 9, 1]
+```
+
+Muestra el uso de las funciones matemáticas built-in y manipulación de arreglos.
+
+## ⚠️ Estado actual
+
+✅ **Completo:** Todas las características principales del lenguaje están implementadas y funcionando:
+- Variables y operadores aritméticos
+- Procedimientos (funciones) con parámetros y valores de retorno
+- Sentencias condicionales (`si`/`pero_si`/`si_no`)
+- Bucles completamente funcionales (`mientras`, `hacer-hasta_que`, `para`)
+- Operadores de asignación compuesta (`+=`, `-=`, `*=`, `/=`)
+- Arreglos con indexación y manipulación
+- Cadenas y operaciones de texto
+- Biblioteca de funciones built-in
+
+El lenguaje está listo para usar en programas de aprendizaje y práctica de algoritmos.
 
 
 Experimenta combinando estos patrones y consulta la [especificación del lenguaje](./lenguaje.md) para profundizar en cada tema.
