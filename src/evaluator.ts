@@ -43,12 +43,12 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
   };
 
   const evaluateCompoundAssignment = (operator: string, node: ast.Infix, left: RuntimeObject, right: RuntimeObject, env: Environment, line: number, column: number): RuntimeObject => {
+    if (!(node.left instanceof ast.Identifier)) {
+      return newError('INVALID_ASSIGNMENT_TARGET', { operator: node.operator, target: node.left?.tokenLiteral() ?? 'expresión', line, column });
+    }
     const opResult = evaluateInfixExpression(operator, left, right, line, column);
     if (isError(opResult)) {
       return opResult;
-    }
-    if (!(node.left instanceof ast.Identifier)) {
-      return newError('INVALID_ASSIGNMENT_TARGET', { operator: node.operator, target: node.left?.tokenLiteral() ?? 'expresión', line, column });
     }
     env.set(node.left.value, opResult);
     return opResult;
