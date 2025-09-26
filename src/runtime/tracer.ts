@@ -521,7 +521,7 @@ export class RuntimeTracer implements Iterable<TraceEvent> {
     if (node instanceof ast.For) {
       metadata.hasInitializer = Boolean(node.initializer);
       metadata.hasCondition = Boolean(node.condition);
-      metadata.hasIncremento = Boolean(node.increment);
+      metadata.hasIncrement = Boolean(node.increment);
     }
 
     if (node instanceof ast.DoWhile) {
