@@ -22,6 +22,9 @@ const _WRONG_TYPE_OF_ARGUMENT = template`tipo de argumento incorrecto para '${'n
 const _INDEX_OPERATOR_NOT_SUPPORTED = template`el operador de índice no está soportado para el tipo ${'type'} en la linea ${'line'} columna ${'column'}`;
 const _INDEX_OUT_OF_BOUNDS = template`índice fuera de rango (${'index'}) en la linea ${'line'} columna ${'column'}`;
 const _INVALID_ASSIGNMENT_TARGET = template`no se puede asignar usando ${'operator'} sobre ${'target'} en la linea ${'line'} columna ${'column'}`;
+const _DIVISION_BY_ZERO = template`división por cero en la linea ${'line'} columna ${'column'}`;
+const _EMPTY_ARRAY = template`no se puede aplicar '${'name'}' sobre un arreglo vacío`;
+const _UNDEFINED_IDENTIFIER = template`la variable '${'name'}' no está definida en la linea ${'line'} columna ${'column'}`;
 const _GENERIC_ERROR = template`${'message'} en la linea ${'line'} columna ${'column'}`;
 
 const ERROR_MESSAGES = {
@@ -37,6 +40,9 @@ const ERROR_MESSAGES = {
   INDEX_OPERATOR_NOT_SUPPORTED: _INDEX_OPERATOR_NOT_SUPPORTED,
   INDEX_OUT_OF_BOUNDS: _INDEX_OUT_OF_BOUNDS,
   INVALID_ASSIGNMENT_TARGET: _INVALID_ASSIGNMENT_TARGET,
+  DIVISION_BY_ZERO: _DIVISION_BY_ZERO,
+  EMPTY_ARRAY: _EMPTY_ARRAY,
+  UNDEFINED_IDENTIFIER: _UNDEFINED_IDENTIFIER,
 };
 
 export const newError = (errorType: string, values: { [key: string]: any }): ErrorObj => {

@@ -200,7 +200,7 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       
       const currentValue = env.get(node.name.value);
       if (!currentValue) {
-        const error = newError('UNDEFINED_IDENTIFIER', node.line, node.column, node.name.value);
+        const error = newError('UNDEFINED_IDENTIFIER', { name: node.name.value, line: node.line, column: node.column });
         record(node, env, error, 'statement:assignment');
         return error;
       }
@@ -230,7 +230,7 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
           newValue = evaluateInfixExpression('/', currentValue, rightValue, node.line ?? 0, node.column ?? 0);
           break;
         default:
-          const error = newError('UNKNOWN_OPERATOR', node.line, node.column, node.operator, 'ASSIGNMENT');
+          const error = newError('UNKNOWN_OPERATOR', { operator: node.operator, left: 'ASSIGNMENT', right: '', line: node.line, column: node.column });
           record(node, env, error, 'statement:assignment');
           return error;
       }

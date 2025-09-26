@@ -115,19 +115,57 @@ si (edad >= 18) {
 
 ### Bucles
 
-El analizador reconoce las formas `mientras`, `hacer { ... } hasta_que (...)` y `para (...)`. Sin embargo, la versión actual del
-evaluador solo ejecuta expresiones condicionales y funciones; los bucles están en fase de diseño. Aprovecha esta sintaxis para
-explorar el AST, pero espera futuras versiones para una semántica completa. 【F:src/parser.ts†L204-L343】【F:src/evaluator.ts†L33-L320】
+El lenguaje soporta tres tipos de bucles completamente funcionales:
+
+**Bucle `mientras`**: Se ejecuta mientras la condición sea verdadera.
+```codexivo
+variable contador = 0;
+mientras (contador < 5) {
+  contador += 1;
+}
+```
+
+**Bucle `hacer-hasta_que`**: Se ejecuta al menos una vez, luego repite hasta que la condición se vuelva verdadera.
+```codexivo
+variable x = 1;
+hacer {
+  x *= 2;
+} hasta_que (x > 10);
+```
+
+**Bucle `para`**: Ideal para iteraciones con inicialización, condición e incremento.
+```codexivo
+variable suma = 0;
+para (variable i = 1; i <= 10; i += 1) {
+  suma += i;
+}
+```
+
+Todos los bucles soportan operadores de asignación compuesta (`+=`, `-=`, `*=`, `/=`) para facilitar las operaciones comunes de conteo y acumulación.
 
 ## Bibliotecas estándar
 
-Por ahora existe un conjunto reducido de funciones built-in. Cada llamada se valida en cuanto al número y tipo de argumentos.
+El lenguaje incluye un conjunto de funciones built-in útiles para aprender programación. Cada llamada se valida en cuanto al número y tipo de argumentos.
+
+### Funciones matemáticas
 
 | Nombre     | Descripción                                   | Firma                  |
 |------------|-----------------------------------------------|------------------------|
-| `longitud` | Devuelve la cantidad de caracteres de una cadena. | `longitud(cadena)` |
+| `absoluto` | Devuelve el valor absoluto de un número | `absoluto(numero)` |
+| `maximo` | Devuelve el valor máximo entre uno o más números | `maximo(n1, n2, ...)` |
+| `minimo` | Devuelve el valor mínimo entre uno o más números | `minimo(n1, n2, ...)` |
+| `redondear` | Redondea un número al entero más cercano | `redondear(numero)` |
 
-Internamente los built-ins viven en `src/builtins.ts` y se exponen automáticamente al resolver identificadores. 【F:src/builtins.ts†L1-L16】【F:src/evaluator.ts†L248-L320】
+### Funciones de cadenas y arreglos
+
+| Nombre     | Descripción                                   | Firma                  |
+|------------|-----------------------------------------------|------------------------|
+| `longitud` | Devuelve la cantidad de caracteres de una cadena o elementos de un arreglo | `longitud(cadena_o_arreglo)` |
+| `agregar` | Devuelve un nuevo arreglo con un elemento agregado al final | `agregar(arreglo, elemento)` |
+| `primero` | Devuelve el primer elemento de un arreglo | `primero(arreglo)` |
+| `ultimo` | Devuelve el último elemento de un arreglo | `ultimo(arreglo)` |
+
+Internamente los built-ins viven en `src/builtins.ts` y se exponen automáticamente al resolver identificadores.
 
 ## Manejo de errores
 
