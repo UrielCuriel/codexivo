@@ -1,9 +1,15 @@
 export * from './token';
 export { Lexer } from './lexer';
 export { Parser } from './parser';
-export { evaluate } from './evaluator';
+export { evaluate, createEvaluator } from './evaluator';
 export { newError } from './errors';
 export { builtins } from './builtins';
 export { inspect } from './inspector';
 export * as ast from './ast';
 export * as runtime from './object';
+export { serializeProgram, serializeNode } from './astSerializer';
+export type { SerializedASTNode, SerializedASTChild } from './astSerializer';
+export { CodexivoEngine } from './engine';
+export { RuntimeTracer } from './runtime/tracer';
+export type { RuntimeTrace, TraceEvent, Breakpoint } from './runtime/tracer';
+export type { EvaluationOptions } from './evaluator';
