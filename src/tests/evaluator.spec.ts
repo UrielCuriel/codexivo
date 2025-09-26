@@ -1,4 +1,4 @@
-import { it, describe, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 
 import { Program } from '../ast';
 import { evaluate } from '../evaluator';

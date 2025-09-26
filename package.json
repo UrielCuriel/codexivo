@@ -15,20 +15,16 @@
     }
   },
   "scripts": {
-    "test": "vitest --ui",
-    "repl": "node .",
-    "build": "tsc"
+    "test": "bun test",
+    "repl": "bun run src/index.ts",
+    "build": "bun run tsc"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "typescript": "^5.0.4",
-    "vite": "^4.3.5",
-    "vitest": "^0.31.0"
-  },
   "devDependencies": {
     "@types/node": "^20.1.1",
-    "@vitest/ui": "^0.31.0"
-  }
+    "typescript": "^5.0.4"
+  },
+  "packageManager": "bun@1.2.14"
 }

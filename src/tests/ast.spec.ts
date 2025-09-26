@@ -1,4 +1,4 @@
-import { it, describe, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 
 import { ExpressionStatement, Identifier, LetStatement, Program, ReturnStatement } from '../ast';
 import { Token, TokenType } from '../token';

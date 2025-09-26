@@ -1,4 +1,4 @@
-import { it, describe, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 
 import { Parser } from '../parser';
 import { Lexer } from '../lexer';

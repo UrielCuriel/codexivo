@@ -1,4 +1,4 @@
-import { assertType, expect, expectTypeOf, it, describe } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { Lexer } from '../lexer';
 
 import { Token, TokenType } from '../token';
