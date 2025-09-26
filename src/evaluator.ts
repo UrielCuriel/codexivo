@@ -477,7 +477,8 @@ const toBooleanObject = (value: boolean): BooleanObj => {
 const extendFunctionEnv = (fn: RuntimeFunction, args: RuntimeObject[]): Environment => {
   const extended = new Environment(fn.env);
   for (let index = 0; index < fn.parameters.length; index++) {
-    extended.set(fn.parameters[index].value, args[index]);
+    const argValue = (index < args.length && args[index] !== undefined) ? args[index] : NULL;
+    extended.set(fn.parameters[index].value, argValue);
   }
   return extended;
 };
