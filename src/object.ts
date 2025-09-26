@@ -106,14 +106,20 @@ export class Environment {
 }
 
 export class Function implements Object {
-  constructor(public parameters: Identifier[], public body: Block, public env: Environment) {}
+  constructor(
+    public parameters: Identifier[],
+    public body: Block,
+    public env: Environment,
+    public name?: string,
+  ) {}
 
   type(): ObjectType {
     return ObjectType.FUNCTION;
   }
 
   inspect(): string {
-    return `procedimiento(${this.parameters.map(p => p.toString()).join(', ')}) {\n${this.body.statements
+    const header = this.name ? `${this.name} = ` : '';
+    return `${header}procedimiento(${this.parameters.map(p => p.toString()).join(', ')}) {\n${this.body.statements
       .map(s => s.toString())
       .join('\n')}\n}`;
   }
