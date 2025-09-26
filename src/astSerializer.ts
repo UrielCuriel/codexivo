@@ -204,10 +204,10 @@ const compact = (relations: ChildRelation[]): ChildRelation[] => {
 
 const resolvePosition = (node: ast.ASTNode): { line: number; column: number } => {
   if (node instanceof ast.Program && node.statements.length > 0) {
-    return { line: node.statements[0].line, column: node.statements[0].column };
+    return { line: node.statements[0].line ?? 0, column: node.statements[0].column ?? 0 };
   }
   if (node instanceof ast.Block && node.statements.length > 0) {
-    return { line: node.statements[0].line, column: node.statements[0].column };
+    return { line: node.statements[0].line ?? 0, column: node.statements[0].column ?? 0 };
   }
   return {
     line: node.line ?? 0,
