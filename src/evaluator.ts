@@ -1,5 +1,6 @@
 import * as ast from './ast';
 import {
+  Array as ArrayObj,
   Boolean as BooleanObj,
   Builtin,
   Environment,
@@ -101,6 +102,12 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       return result;
     }
 
+    if (node instanceof ast.ArrayLiteral) {
+      const result = evaluateArrayLiteral(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'literal:array');
+      return result;
+    }
+
     if (node instanceof ast.Prefix) {
       assertValue(node.operator);
       assertValue(node.right);
@@ -114,8 +121,21 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       assertValue(node.left);
       assertValue(node.right);
       const left = evaluateNode(node.left, env, node.line, node.column);
+      if (isError(left)) {
+        record(node, env, left, 'expression:infix');
+        return left;
+      }
       const right = evaluateNode(node.right, env, node.line, node.column);
-      const result = evaluateInfixExpression(node.operator, left, right, node.line ?? line, node.column ?? column);
+      if (isError(right)) {
+        record(node, env, right, 'expression:infix');
+        return right;
+      }
+      let result: RuntimeObject;
+      if (node.operator === '+=') {
+        result = evaluatePlusEquals(node, left, right, env, node.line ?? line, node.column ?? column);
+      } else {
+        result = evaluateInfixExpression(node.operator, left, right, node.line ?? line, node.column ?? column);
+      }
       record(node, env, result, 'expression:infix');
       return result;
     }
@@ -129,6 +149,24 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     if (node instanceof ast.If) {
       const result = evaluateIfExpression(node, env);
       record(node, env, result, 'expression:if');
+      return result;
+    }
+
+    if (node instanceof ast.While) {
+      const result = evaluateWhileExpression(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'loop:while');
+      return result;
+    }
+
+    if (node instanceof ast.DoWhile) {
+      const result = evaluateDoWhileExpression(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'loop:dowhile');
+      return result;
+    }
+
+    if (node instanceof ast.For) {
+      const result = evaluateForExpression(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'loop:for');
       return result;
     }
 
@@ -165,14 +203,29 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
 
     if (node instanceof ast.Call) {
       const fn = evaluateNode(node.function_, env, node.line, node.column);
+      if (isError(fn)) {
+        record(node, env, fn, 'expression:call');
+        return fn;
+      }
       const args = evaluateExpressions(
         node.arguments_ ?? [],
         env,
         node.line ?? line ?? 0,
         node.column ?? column ?? 0
       );
+      const errorArg = args.find(isError);
+      if (errorArg) {
+        record(node, env, errorArg, 'expression:call');
+        return errorArg;
+      }
       const result = applyFunction(fn, args, node);
       record(node, env, result, 'expression:call');
+      return result;
+    }
+
+    if (node instanceof ast.Index) {
+      const result = evaluateIndexExpression(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'expression:index');
       return result;
     }
 
@@ -208,6 +261,181 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     return NULL;
   };
 
+  const evaluateWhileExpression = (node: ast.While, env: Environment, line: number, column: number): RuntimeObject => {
+    assertValue(node.condition);
+    assertValue(node.body);
+    let result: RuntimeObject = NULL;
+
+    while (true) {
+      const condition = evaluateNode(node.condition, env, node.condition?.line ?? line, node.condition?.column ?? column);
+      if (isError(condition)) {
+        return condition;
+      }
+
+      if (!isTruthy(condition)) {
+        break;
+      }
+
+      const bodyResult = evaluateNode(node.body, env, node.body?.line ?? line, node.body?.column ?? column);
+      if (bodyResult instanceof Return || isError(bodyResult)) {
+        return bodyResult;
+      }
+
+      result = bodyResult;
+    }
+
+    return result;
+  };
+
+  const evaluateDoWhileExpression = (node: ast.DoWhile, env: Environment, line: number, column: number): RuntimeObject => {
+    assertValue(node.body);
+    assertValue(node.condition);
+    let result: RuntimeObject = NULL;
+
+    while (true) {
+      const bodyResult = evaluateNode(node.body, env, node.body?.line ?? line, node.body?.column ?? column);
+      if (bodyResult instanceof Return || isError(bodyResult)) {
+        return bodyResult;
+      }
+      result = bodyResult;
+
+      const condition = evaluateNode(node.condition, env, node.condition?.line ?? line, node.condition?.column ?? column);
+      if (isError(condition)) {
+        return condition;
+      }
+
+      if (isTruthy(condition)) {
+        break;
+      }
+    }
+
+    return result;
+  };
+
+  const evaluateForExpression = (node: ast.For, env: Environment, line: number, column: number): RuntimeObject => {
+    let result: RuntimeObject = NULL;
+
+    if (node.initializer) {
+      const initializerResult = evaluateNode(
+        node.initializer,
+        env,
+        node.initializer.line ?? line,
+        node.initializer.column ?? column,
+      );
+      if (initializerResult instanceof Return || isError(initializerResult)) {
+        return initializerResult;
+      }
+    }
+
+    while (true) {
+      if (node.condition) {
+        const condition = evaluateNode(node.condition, env, node.condition.line ?? line, node.condition.column ?? column);
+        if (isError(condition)) {
+          return condition;
+        }
+        if (!isTruthy(condition)) {
+          break;
+        }
+      }
+
+      if (node.body) {
+        const bodyResult = evaluateNode(node.body, env, node.body.line ?? line, node.body.column ?? column);
+        if (bodyResult instanceof Return || isError(bodyResult)) {
+          return bodyResult;
+        }
+        result = bodyResult;
+      }
+
+      if (node.increment) {
+        const incrementResult = evaluateNode(
+          node.increment,
+          env,
+          node.increment.line ?? line,
+          node.increment.column ?? column,
+        );
+        if (incrementResult instanceof Return || isError(incrementResult)) {
+          return incrementResult;
+        }
+      }
+    }
+
+    return result;
+  };
+
+  const evaluateArrayLiteral = (
+    node: ast.ArrayLiteral,
+    env: Environment,
+    line: number,
+    column: number,
+  ): RuntimeObject => {
+    const elements: RuntimeObject[] = [];
+    for (const element of node.elements ?? []) {
+      const evaluated = evaluateNode(element, env, element.line ?? line, element.column ?? column);
+      if (isError(evaluated)) {
+        return evaluated;
+      }
+      elements.push(evaluated);
+    }
+    return new ArrayObj(elements);
+  };
+
+  const evaluateIndexExpression = (
+    node: ast.Index,
+    env: Environment,
+    line: number,
+    column: number,
+  ): RuntimeObject => {
+    const left = evaluateNode(node.left, env, node.left.line ?? line, node.left.column ?? column);
+    if (isError(left)) {
+      return left;
+    }
+
+    if (!node.index) {
+      return newError('GENERIC_ERROR', { message: 'faltó el índice para acceder al arreglo', line, column });
+    }
+
+    const index = evaluateNode(node.index, env, node.index.line ?? line, node.index.column ?? column);
+    if (isError(index)) {
+      return index;
+    }
+
+    if (!(index instanceof NumberObj)) {
+      return newError('TYPE_MISMATCH', {
+        operator: '[]',
+        left: left.type(),
+        right: index.type(),
+        line,
+        column,
+      });
+    }
+
+    const position = index.value;
+
+    if (!Number.isInteger(position)) {
+      return newError('GENERIC_ERROR', {
+        message: 'los índices deben ser números enteros',
+        line,
+        column,
+      });
+    }
+
+    if (left instanceof ArrayObj) {
+      if (position < 0 || position >= left.elements.length) {
+        return newError('INDEX_OUT_OF_BOUNDS', { index: position, line, column });
+      }
+      return left.elements[position];
+    }
+
+    if (left instanceof StringObj) {
+      if (position < 0 || position >= left.value.length) {
+        return newError('INDEX_OUT_OF_BOUNDS', { index: position, line, column });
+      }
+      return new StringObj(left.value.charAt(position));
+    }
+
+    return newError('INDEX_OPERATOR_NOT_SUPPORTED', { type: left.type(), line, column });
+  };
+
   const evaluateExpressions = (
     expressions: ast.Expression[],
     env: Environment,
@@ -218,8 +446,51 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     for (const expression of expressions) {
       const evaluated = evaluateNode(expression, env, line, column);
       result.push(evaluated);
+      if (isError(evaluated)) {
+        break;
+      }
     }
     return result;
+  };
+
+  const evaluatePlusEquals = (
+    node: ast.Infix,
+    left: RuntimeObject,
+    right: RuntimeObject,
+    env: Environment,
+    line: number,
+    column: number,
+  ): RuntimeObject => {
+    if (!(node.left instanceof ast.Identifier)) {
+      return newError('INVALID_ASSIGNMENT_TARGET', {
+        operator: node.operator,
+        target: node.left?.tokenLiteral() ?? 'expresión',
+        line,
+        column,
+      });
+    }
+
+    const identifier = node.left.value;
+
+    if (left instanceof NumberObj && right instanceof NumberObj) {
+      const value = new NumberObj(left.value + right.value);
+      env.set(identifier, value);
+      return value;
+    }
+
+    if (left instanceof StringObj && right instanceof StringObj) {
+      const value = new StringObj(left.value + right.value);
+      env.set(identifier, value);
+      return value;
+    }
+
+    return newError('TYPE_MISMATCH', {
+      operator: node.operator,
+      left: left.type(),
+      right: right.type(),
+      line,
+      column,
+    });
   };
 
   const applyFunction = (
@@ -336,6 +607,8 @@ const evaluatePrefixExpression = (
 ): RuntimeObject => {
   switch (operator) {
     case '!':
+      return evaluateBangOperatorExpression(right);
+    case 'no':
       return evaluateBangOperatorExpression(right);
     case '-':
       return evaluateMinusPrefixOperatorExpression(right, line, column);
@@ -459,6 +732,10 @@ const evaluateBooleanInfixExpression = (
       return toBooleanObject(left.value === right.value);
     case '!=':
       return toBooleanObject(left.value !== right.value);
+    case 'y':
+      return toBooleanObject(left.value && right.value);
+    case 'o':
+      return toBooleanObject(left.value || right.value);
     default:
       return newError('UNKNOWN_INFIX_OPERATOR', {
         operator,
@@ -501,6 +778,10 @@ const isTruthy = (obj: RuntimeObject): boolean => {
     default:
       return true;
   }
+};
+
+const isError = (obj: RuntimeObject): obj is ErrorObj => {
+  return obj instanceof ErrorObj;
 };
 
 const isReservedWord = (word: string): boolean => {

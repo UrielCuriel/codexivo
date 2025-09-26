@@ -429,11 +429,12 @@ describe('parse', () => {
     expect(forExpression.body).not.toBeUndefined();
     expect(forExpression.body?.statements.length).toBe(1);
 
-    const bodyStatement: ExpressionStatement = forExpression.body?.statements[0] as ExpressionStatement;
+    const bodyStatement: ReturnStatement = forExpression.body?.statements[0] as ReturnStatement;
 
-    expect(bodyStatement.expression).not.toBeNull();
-    expect(bodyStatement.expression).not.toBeUndefined();
-    testIdentifier(bodyStatement.expression, 'x');
+    expect(bodyStatement).toBeInstanceOf(ReturnStatement);
+    expect(bodyStatement.returnValue).not.toBeNull();
+    expect(bodyStatement.returnValue).not.toBeUndefined();
+    testIdentifier(bodyStatement.returnValue, 'x');
   });
   it('should parse a program with while expression', () => {
     const source = `mientras (m < n) { x }`;

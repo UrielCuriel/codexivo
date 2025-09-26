@@ -62,12 +62,13 @@ hacer {
   division(n, m);
 } hasta_que (n > 0);
 ```
-- Tipos de datos simples: números, cadenas, booleanos 
+- Tipos de datos simples: números, cadenas, booleanos y arreglos
 ```
 variable n = 10;
 variable m = 20;
 variable q = "hola mundo";
 variable r = verdadero;
+variable lista = [1, 2, 3];
 ```
 - Operadores aritméticos: suma, resta, multiplicación, división, módulo, incremento y decremento
 ```
@@ -81,6 +82,7 @@ n / m;
 n % m;
 n++;
 n--;
+n += 2;
 ```
 
 - Operadores de comparación: igualdad, desigualdad, mayor que, menor que, mayor o igual que, menor o igual que
@@ -133,15 +135,28 @@ para (variable i = 0; i < 10; i = i + 1) {
   // ...
 }
 ```
+- Arreglos e índices
+```
+variable numeros = [1, 2, 3];
+numeros[0]; // 1
+"hola"[1]; // "o"
+```
+- Funciones integradas para aprendizaje: `longitud` calcula el tamaño de cadenas y arreglos
+```
+longitud("hola"); // 4
+longitud([1, 2, 3]); // 3
+```
 
 
 ## ¿Qué sigue?
 
 A continuación se muestra una lista de las características que se implementarán en el futuro:
 
-- [ ] Tipos de datos: arreglos, diccionarios
-- [ ] Operadores: concatenación de cadenas, operadores de asignación
-- [ ] Funciones Built-in: imprimir, leer, longitud, tipo, etc.
+- [x] Tipos de datos: arreglos
+- [ ] Tipos de datos: diccionarios
+- [x] Operadores: asignación incremental (`+=`)
+- [ ] Operadores: concatenación de cadenas avanzada y otros operadores compuestos
+- [ ] Funciones Built-in: imprimir, leer, tipo, etc.
 - [ ] Documentación
 - [ ] Sitio web
 

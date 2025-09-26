@@ -66,8 +66,7 @@ export class Program implements ASTNode {
   }
 
   toString(indentation = ''): string {
-    let result = this.statements.map(statement => statement.toString()).join('');
-    return result;
+    return this.statements.map(statement => statement.toString()).join('');
   }
 
   inspect(): string {
@@ -91,7 +90,9 @@ export class LetStatement extends Statement {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} ${this.name.toString()} = ${this.value?.toString() ?? ''};`;
+    const identifier = this.name ? this.name.toString() : '';
+    const value = this.value ? this.value.toString() : '';
+    return `${this.tokenLiteral()} ${identifier} = ${value};`;
   }
 }
 
@@ -101,7 +102,8 @@ export class ReturnStatement extends Statement {
   }
 
   toString(): string {
-    return `${this.tokenLiteral()} ${this.returnValue?.toString() ?? ''};`;
+    const value = this.returnValue ? this.returnValue.toString() : '';
+    return `${this.tokenLiteral()} ${value};`;
   }
 }
 
@@ -111,7 +113,7 @@ export class ExpressionStatement extends Statement {
   }
 
   toString(): string {
-    return `${this.expression?.toString() ?? ''}`;
+    return this.expression ? this.expression.toString() : '';
   }
 }
 
@@ -222,7 +224,9 @@ export class Function extends Expression {
     super(token);
   }
   toString(): string {
-    return `${this.tokenLiteral()} (${this.parameters.map(p => p.toString()).join(', ')}) ${this.body?.toString()}`;
+    const parameters = (this.parameters ?? []).map(parameter => parameter.toString()).join(', ');
+    const body = this.body ? this.body.toString() : '';
+    return `${this.tokenLiteral()} (${parameters}) ${body}`;
   }
 }
 
@@ -232,7 +236,8 @@ export class Call extends Expression {
   }
 
   toString(): string {
-    return `${this.function_.toString()}(${this.arguments_.map(a => a.toString()).join(', ')})`;
+    const args = (this.arguments_ ?? []).map(argument => argument.toString()).join(', ');
+    return `${this.function_.toString()}(${args})`;
   }
 }
 
@@ -252,7 +257,8 @@ export class ArrayLiteral extends Expression {
   }
 
   toString(): string {
-    return `[${this.elements.map(e => e.toString()).join(', ')}]`;
+    const elements = (this.elements ?? []).map(element => element.toString()).join(', ');
+    return `[${elements}]`;
   }
 }
 
@@ -262,6 +268,7 @@ export class Index extends Expression {
   }
 
   toString(): string {
-    return `${this.left.toString()}[${this.index.toString()}]`;
+    const index = this.index ? this.index.toString() : '';
+    return `${this.left.toString()}[${index}]`;
   }
 }
