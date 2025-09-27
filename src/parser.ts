@@ -24,6 +24,7 @@ import {
   HashLiteral,
   Index,
   MemberAccess,
+  DomainStatement,
 } from './ast';
 import { reservedKeywords, Token, TokenType } from './token';
 
@@ -600,6 +601,8 @@ export class Parser {
         return this.parseLetStatement();
       case TokenType.RETURN:
         return this.parseReturnStatement();
+      case TokenType.DOMAIN:
+        return this.parseDomainStatement();
       case TokenType.IDENT:
         // Check if this is an assignment statement (identifier followed by assignment operator)
         if (this.peekToken.type === TokenType.ASSIGN || 
@@ -693,6 +696,25 @@ export class Parser {
     }
 
     return returnStatement;
+  }
+
+  private parseDomainStatement(): Statement | null {
+    this.assertCurrentToken();
+    const domainStatement = new DomainStatement(this.currentToken);
+
+    if (!this.expectPeek(TokenType.IDENT)) {
+      return null;
+    }
+
+    domainStatement.name = new Identifier(this.currentToken, this.currentToken.literal);
+
+    if (!this.expectPeek(TokenType.LBRACE)) {
+      return null;
+    }
+
+    domainStatement.body = this.parseBlock();
+
+    return domainStatement;
   }
 
   private parseStringLiteral(): Expression | null {

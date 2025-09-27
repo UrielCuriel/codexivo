@@ -213,6 +213,64 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       return value;
     }
 
+    if (node instanceof ast.DomainStatement) {
+      assertValue(node.name);
+      assertValue(node.body);
+      
+      // Create a new environment for the domain
+      const domainEnv = new Environment(env);
+      
+      // Evaluate all statements in the domain body in the domain environment
+      for (const statement of node.body.statements) {
+        const result = evaluateNode(statement, domainEnv, statement.line, statement.column);
+        if (isError(result)) {
+          record(node, env, result, 'statement:domain');
+          return result;
+        }
+      }
+      
+      // Create a domain object with all the defined functions and variables from the domain environment
+      const domainBuiltins = new Map<string, Builtin>();
+      for (const [name, obj] of domainEnv.store.entries()) {
+        // Only add functions to the domain's builtin map
+        if (obj instanceof RuntimeFunction) {
+          domainBuiltins.set(name, new Builtin((...args: RuntimeObject[]) => {
+            // Create a new environment for function execution
+            const functionEnv = new Environment(obj.env);
+            
+            // Bind arguments to parameters
+            if (args.length !== obj.parameters.length) {
+              return newError('WRONG_NUMBER_OF_ARGUMENTS', { 
+                expected: obj.parameters.length, 
+                received: args.length, 
+                name: name 
+              });
+            }
+            
+            for (let i = 0; i < obj.parameters.length; i++) {
+              functionEnv.set(obj.parameters[i].value, args[i]);
+            }
+            
+            // Execute the function body
+            const result = evaluateNode(obj.body, functionEnv, obj.body.line, obj.body.column);
+            
+            // Unwrap Return objects
+            if (result instanceof Return) {
+              return result.value;
+            }
+            
+            return result;
+          }));
+        }
+      }
+      
+      // Create and store the domain
+      const domain = new Domain(node.name.value, domainBuiltins);
+      env.set(node.name.value, domain);
+      record(node, env, domain, 'statement:domain');
+      return domain;
+    }
+
     if (node instanceof ast.AssignmentStatement) {
       assertValue(node.value);
       assertValue(node.name);

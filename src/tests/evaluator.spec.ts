@@ -472,4 +472,54 @@ describe('evaluator', () => {
     expect((valuesArray.elements[0] as Number).value).toBe(1);
     expect((valuesArray.elements[1] as Number).value).toBe(2);
   });
+
+  it('should evaluate user-defined domains', () => {
+    const tests = [
+      [
+        `
+        dominio calculadora {
+          variable suma = procedimiento(a, b) {
+            variable total = a + b;
+            regresa total;
+          };
+        }
+        calculadora.suma(1, 3);
+        `,
+        4,
+      ],
+      [
+        `
+        dominio mates_custom {
+          variable doble = procedimiento(x) {
+            regresa x * 2;
+          };
+          variable cuadrado = procedimiento(x) {
+            regresa x * x;
+          };
+        }
+        mates_custom.doble(5);
+        `,
+        10,
+      ],
+      [
+        `
+        dominio mates_custom {
+          variable doble = procedimiento(x) {
+            regresa x * 2;
+          };
+          variable cuadrado = procedimiento(x) {
+            regresa x * x;
+          };
+        }
+        mates_custom.cuadrado(4);
+        `,
+        16,
+      ],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      testNumberObject(evaluated, expected as number);
+    });
+  });
 });

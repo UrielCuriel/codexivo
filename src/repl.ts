@@ -24,6 +24,7 @@ function prompt(question: string): Promise<string> {
  */
 export async function start_repl() {
   const scanned: string[] = [];
+  const env = new Environment(); // Create persistent environment
   while (true) {
     const input = (await prompt('>> ')) ?? '';
     if (input === 'salir();') {
@@ -35,12 +36,11 @@ export async function start_repl() {
     const lexer = new Lexer(scanned.join('\n'));
     const parser = new Parser(lexer);
     const program = parser.parseProgram();
-    const env = new Environment();
     if (parser.errors.length > 0) {
       printParserErrors(parser.errors);
       continue;
     }
-    const evaluated = evaluate(program, env);
+    const evaluated = evaluate(program, env); // Use persistent environment
     if (evaluated) {
       console.log(evaluated.inspect());
     }
