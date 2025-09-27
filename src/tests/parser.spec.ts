@@ -21,6 +21,7 @@ import {
   StringLiteral,
   ArrayLiteral,
   Index,
+  DomainStatement,
 } from '../ast';
 
 function printProgram(program: Program) {
@@ -640,5 +641,36 @@ describe('parse', () => {
     expect(indexExpression).toBeInstanceOf(Index);
     testIdentifier(indexExpression.left, 'ident');
     testInfix(indexExpression.index, 1, '+', 1);
+  });
+
+  it('should parse a program with domain statement', () => {
+    const source = `
+      dominio calculadora {
+        variable suma = procedimiento(a, b) {
+          variable total = a + b;
+          regresa total;
+        };
+      }
+    `;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+
+    if (parse.errors.length > 0) {
+      parse.errors.forEach(error => {
+        console.log(error);
+      });
+    }
+    expect(parse.errors).toEqual([]);
+    expect(program.statements.length).toBe(1);
+
+    const domainStatement = program.statements[0] as DomainStatement;
+    expect(domainStatement).toBeInstanceOf(DomainStatement);
+    expect(domainStatement.name?.value).toBe('calculadora');
+    expect(domainStatement.body?.statements.length).toBe(1);
+
+    const letStatement = domainStatement.body?.statements[0] as LetStatement;
+    expect(letStatement).toBeInstanceOf(LetStatement);
+    expect(letStatement.name?.value).toBe('suma');
   });
 });

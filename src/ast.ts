@@ -304,3 +304,15 @@ export class MemberAccess extends Expression {
     return `${this.left.toString()}.${this.member.toString()}`;
   }
 }
+
+export class DomainStatement extends Statement {
+  constructor(token: Token, public name?: Identifier, public body?: Block) {
+    super(token);
+  }
+
+  toString(): string {
+    const name = this.name ? this.name.toString() : '';
+    const body = this.body ? this.body.toString() : '';
+    return `${this.tokenLiteral()} ${name} ${body}`;
+  }
+}
