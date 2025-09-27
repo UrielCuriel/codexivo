@@ -33,6 +33,7 @@ export class Lexer {
       '>': [TokenType.GT, ['=', TokenType.GT_EQ]],
       '!': [TokenType.BANG, ['=', TokenType.NEQ]],
       ',': [TokenType.COMMA],
+      ':': [TokenType.COLON],
       ';': [TokenType.SEMICOLON],
       '(': [TokenType.LPAREN],
       ')': [TokenType.RPAREN],

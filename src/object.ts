@@ -5,6 +5,7 @@ export enum ObjectType {
   BUILTIN = 'BUILTIN',
   ERROR = 'ERROR',
   ARRAY = 'ARRAY',
+  DICTIONARY = 'DICTIONARY',
   FUNCTION = 'FUNCTION',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
@@ -147,6 +148,22 @@ export class Array implements Object {
 
   inspect(): string {
     return `[${this.elements.map(element => element.inspect()).join(', ')}]`;
+  }
+}
+
+export class Dictionary implements Object {
+  constructor(public pairs: Map<string, Object>) {}
+
+  type(): ObjectType {
+    return ObjectType.DICTIONARY;
+  }
+
+  inspect(): string {
+    const pairStrings: string[] = [];
+    for (const [key, value] of this.pairs.entries()) {
+      pairStrings.push(`${key}: ${value.inspect()}`);
+    }
+    return `{${pairStrings.join(', ')}}`;
   }
 }
 

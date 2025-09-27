@@ -3,6 +3,7 @@ import {
   Array as ArrayObj,
   Boolean as BooleanObj,
   Builtin,
+  Dictionary as DictionaryObj,
   Environment,
   Error as ErrorObj,
   Function as RuntimeFunction,
@@ -117,6 +118,12 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     if (node instanceof ast.ArrayLiteral) {
       const result = evaluateArrayLiteral(node, env, node.line ?? line, node.column ?? column);
       record(node, env, result, 'literal:array');
+      return result;
+    }
+
+    if (node instanceof ast.HashLiteral) {
+      const result = evaluateHashLiteral(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'literal:hash');
       return result;
     }
 
@@ -449,6 +456,41 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     return new ArrayObj(elements);
   };
 
+  const evaluateHashLiteral = (
+    node: ast.HashLiteral,
+    env: Environment,
+    line: number,
+    column: number,
+  ): RuntimeObject => {
+    const pairs = new Map<string, RuntimeObject>();
+    
+    for (const pair of node.pairs ?? []) {
+      const key = evaluateNode(pair.key, env, pair.key.line ?? line, pair.key.column ?? column);
+      if (isError(key)) {
+        return key;
+      }
+
+      // Keys must be strings or numbers (converted to strings)
+      let keyString: string;
+      if (key instanceof StringObj) {
+        keyString = key.value;
+      } else if (key instanceof NumberObj) {
+        keyString = key.value.toString();
+      } else {
+        return newError('HASH_KEY_ERROR', { type: key.type(), line, column });
+      }
+
+      const value = evaluateNode(pair.value, env, pair.value.line ?? line, pair.value.column ?? column);
+      if (isError(value)) {
+        return value;
+      }
+
+      pairs.set(keyString, value);
+    }
+    
+    return new DictionaryObj(pairs);
+  };
+
   const evaluateIndexExpression = (
     node: ast.Index,
     env: Environment,
@@ -461,7 +503,7 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     }
 
     if (!node.index) {
-      return newError('GENERIC_ERROR', { message: 'faltó el índice para acceder al arreglo', line, column });
+      return newError('GENERIC_ERROR', { message: 'faltó el índice para acceder al elemento', line, column });
     }
 
     const index = evaluateNode(node.index, env, node.index.line ?? line, node.index.column ?? column);
@@ -469,6 +511,25 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       return index;
     }
 
+    // Handle dictionaries first
+    if (left instanceof DictionaryObj) {
+      let keyString: string;
+      if (index instanceof StringObj) {
+        keyString = index.value;
+      } else if (index instanceof NumberObj) {
+        keyString = index.value.toString();
+      } else {
+        return newError('HASH_KEY_ERROR', { type: index.type(), line, column });
+      }
+      
+      const value = left.pairs.get(keyString);
+      if (value === undefined) {
+        return NULL; // Dictionary key not found returns null
+      }
+      return value;
+    }
+
+    // For arrays and strings, we need numeric indices
     if (!(index instanceof NumberObj)) {
       return newError('TYPE_MISMATCH', {
         operator: '[]',

@@ -25,6 +25,7 @@ const _INVALID_ASSIGNMENT_TARGET = template`no se puede asignar usando ${'operat
 const _DIVISION_BY_ZERO = template`división por cero en la linea ${'line'} columna ${'column'}`;
 const _EMPTY_ARRAY = template`no se puede aplicar '${'name'}' sobre un arreglo vacío`;
 const _UNDEFINED_IDENTIFIER = template`la variable '${'name'}' no está definida en la linea ${'line'} columna ${'column'}`;
+const _HASH_KEY_ERROR = template`las llaves de diccionario deben ser cadenas o números, se recibió ${'type'} en la linea ${'line'} columna ${'column'}`;
 const _GENERIC_ERROR = template`${'message'} en la linea ${'line'} columna ${'column'}`;
 
 const ERROR_MESSAGES = {
@@ -43,6 +44,7 @@ const ERROR_MESSAGES = {
   DIVISION_BY_ZERO: _DIVISION_BY_ZERO,
   EMPTY_ARRAY: _EMPTY_ARRAY,
   UNDEFINED_IDENTIFIER: _UNDEFINED_IDENTIFIER,
+  HASH_KEY_ERROR: _HASH_KEY_ERROR,
 };
 
 export const newError = (errorType: string, values: { [key: string]: any }): ErrorObj => {

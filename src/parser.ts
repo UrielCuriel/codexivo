@@ -21,6 +21,7 @@ import {
   For,
   StringLiteral,
   ArrayLiteral,
+  HashLiteral,
   Index,
 } from './ast';
 import { reservedKeywords, Token, TokenType } from './token';
@@ -148,6 +149,65 @@ export class Parser {
     const elements = this.parseExpressionList();
     const array = new ArrayLiteral(this.currentToken, elements);
     return array;
+  }
+
+  private parseHashLiteral(): Expression | null {
+    this.assertCurrentToken();
+    const pairs: { key: Expression; value: Expression }[] = [];
+
+    if (this.peekToken.type === TokenType.RBRACE) {
+      this.advanceTokens();
+      return new HashLiteral(this.currentToken, pairs);
+    }
+
+    this.advanceTokens();
+    
+    // Parse first key-value pair
+    const key = this.parseExpression(Precedence.LOWEST);
+    if (!key) {
+      return null;
+    }
+
+    if (!this.expectPeek(TokenType.COLON)) {
+      return null;
+    }
+
+    this.advanceTokens();
+    const value = this.parseExpression(Precedence.LOWEST);
+    if (!value) {
+      return null;
+    }
+
+    pairs.push({ key, value });
+
+    // Parse additional pairs
+    while (this.peekToken.type === TokenType.COMMA) {
+      this.advanceTokens();
+      this.advanceTokens();
+      
+      const nextKey = this.parseExpression(Precedence.LOWEST);
+      if (!nextKey) {
+        return null;
+      }
+
+      if (!this.expectPeek(TokenType.COLON)) {
+        return null;
+      }
+
+      this.advanceTokens();
+      const nextValue = this.parseExpression(Precedence.LOWEST);
+      if (!nextValue) {
+        return null;
+      }
+
+      pairs.push({ key: nextKey, value: nextValue });
+    }
+
+    if (!this.expectPeek(TokenType.RBRACE)) {
+      return null;
+    }
+
+    return new HashLiteral(this.currentToken, pairs);
   }
 
   private parseBlock(): Block {
@@ -672,6 +732,7 @@ export class Parser {
       [TokenType.IF]: this.parseIf.bind(this),
       [TokenType.LPAREN]: this.parseGroupedExpression.bind(this),
       [TokenType.LBRACKET]: this.parseArray.bind(this),
+      [TokenType.LBRACE]: this.parseHashLiteral.bind(this),
       [TokenType.MINUS]: this.parsePrefix.bind(this),
       [TokenType.TRUE]: this.parseBoolean.bind(this),
       [TokenType.STRING]: this.parseStringLiteral.bind(this),

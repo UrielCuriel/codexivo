@@ -3,6 +3,7 @@ export enum TokenType {
   ASSIGN = 'ASSIGN',
   ASTERISK = 'ASTERISK',
   BANG = 'BANG',
+  COLON = 'COLON',
   COMMA = 'COMMA',
   DO = 'DO',
   ELSE = 'ELSE',

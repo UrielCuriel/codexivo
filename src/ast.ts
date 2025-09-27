@@ -273,6 +273,17 @@ export class ArrayLiteral extends Expression {
   }
 }
 
+export class HashLiteral extends Expression {
+  constructor(token: Token, public pairs?: { key: Expression; value: Expression }[]) {
+    super(token);
+  }
+
+  toString(): string {
+    const pairs = (this.pairs ?? []).map(pair => `${pair.key.toString()}: ${pair.value.toString()}`).join(', ');
+    return `{${pairs}}`;
+  }
+}
+
 export class Index extends Expression {
   constructor(token: Token, public left: Expression, public index?: Expression) {
     super(token);
