@@ -25,6 +25,8 @@ const _INVALID_ASSIGNMENT_TARGET = template`no se puede asignar usando ${'operat
 const _DIVISION_BY_ZERO = template`división por cero en la linea ${'line'} columna ${'column'}`;
 const _EMPTY_ARRAY = template`no se puede aplicar '${'name'}' sobre un arreglo vacío`;
 const _UNDEFINED_IDENTIFIER = template`la variable '${'name'}' no está definida en la linea ${'line'} columna ${'column'}`;
+const _INVALID_MEMBER_ACCESS = template`no se puede acceder al miembro '${'member'}' en un objeto de tipo ${'type'} en la linea ${'line'} columna ${'column'}`;
+const _UNKNOWN_DOMAIN_MEMBER = template`el dominio '${'domain'}' no tiene el miembro '${'member'}' en la linea ${'line'} columna ${'column'}`;
 const _GENERIC_ERROR = template`${'message'} en la linea ${'line'} columna ${'column'}`;
 
 const ERROR_MESSAGES = {
@@ -43,6 +45,8 @@ const ERROR_MESSAGES = {
   DIVISION_BY_ZERO: _DIVISION_BY_ZERO,
   EMPTY_ARRAY: _EMPTY_ARRAY,
   UNDEFINED_IDENTIFIER: _UNDEFINED_IDENTIFIER,
+  INVALID_MEMBER_ACCESS: _INVALID_MEMBER_ACCESS,
+  UNKNOWN_DOMAIN_MEMBER: _UNKNOWN_DOMAIN_MEMBER,
 };
 
 export const newError = (errorType: string, values: { [key: string]: any }): ErrorObj => {

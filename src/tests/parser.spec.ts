@@ -21,6 +21,8 @@ import {
   StringLiteral,
   ArrayLiteral,
   Index,
+  Domain,
+  MemberAccess,
 } from '../ast';
 
 function printProgram(program: Program) {
@@ -640,5 +642,43 @@ describe('parse', () => {
     expect(indexExpression).toBeInstanceOf(Index);
     testIdentifier(indexExpression.left, 'ident');
     testInfix(indexExpression.index, 1, '+', 1);
+  });
+  
+  it('should parse a program with domain statement', () => {
+    const source = `dominio calculadora {
+      variable suma = procedimiento(a,b) { regresa a + b; };
+    }`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+
+    if (parse.errors.length > 0) {
+      parse.errors.forEach(error => {
+        console.log(error);
+      });
+    }
+    expect(parse.errors).toEqual([]);
+    expect(program.statements.length).toBe(1);
+
+    const domainStatement = program.statements[0] as Domain;
+    expect(domainStatement).toBeInstanceOf(Domain);
+    expect(domainStatement.name?.value).toBe('calculadora');
+    expect(domainStatement.body?.statements.length).toBe(1);
+  });
+
+  it('should parse a program with member access expression', () => {
+    const source = `calculadora.suma`;
+    const lexer = new Lexer(source);
+    const parse = new Parser(lexer);
+    const program = parse.parseProgram();
+
+    testProgramStatement(parse, program, 1);
+
+    const expressionStatement = program.statements[0] as ExpressionStatement;
+    const memberAccess = expressionStatement.expression as MemberAccess;
+
+    expect(memberAccess).toBeInstanceOf(MemberAccess);
+    testIdentifier(memberAccess.object, 'calculadora');
+    testIdentifier(memberAccess.property, 'suma');
   });
 });

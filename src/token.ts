@@ -5,6 +5,8 @@ export enum TokenType {
   BANG = 'BANG',
   COMMA = 'COMMA',
   DO = 'DO',
+  DOT = 'DOT',
+  DOMAIN = 'DOMAIN',
   ELSE = 'ELSE',
   ELSEIF = 'ELSEIF',
   EOF = 'EOF',
@@ -53,6 +55,7 @@ export class Token {
 }
 
 export const reservedKeywords = [
+  'dominio',
   'hacer',
   'hasta_que',
   'pero_si',
@@ -72,6 +75,7 @@ export const reservedKeywords = [
 
 export const lookupIdentifier = (literal: string): TokenType => {
   const keywords: { [key: string]: TokenType } = {
+    dominio: TokenType.DOMAIN,
     hacer: TokenType.DO,
     hasta_que: TokenType.WHILE,
     pero_si: TokenType.ELSEIF,

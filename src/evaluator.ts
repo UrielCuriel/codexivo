@@ -3,6 +3,7 @@ import {
   Array as ArrayObj,
   Boolean as BooleanObj,
   Builtin,
+  Domain as DomainObj,
   Environment,
   Error as ErrorObj,
   Function as RuntimeFunction,
@@ -255,6 +256,59 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       env.set(node.name.value, newValue);
       record(node, env, newValue, 'statement:assignment');
       return newValue;
+    }
+
+    if (node instanceof ast.Domain) {
+      assertValue(node.name);
+      assertValue(node.body);
+      
+      // Create a new environment for the domain
+      const domainEnv = new Environment(env);
+      
+      // Evaluate the domain body in the domain environment
+      evaluateBlockStatement(node.body, domainEnv, node.line, node.column);
+      
+      // Create domain object
+      const domainObj = new DomainObj(node.name.value, domainEnv);
+      
+      // Store domain in current environment
+      env.set(node.name.value, domainObj);
+      record(node, env, domainObj, 'statement:domain');
+      return domainObj;
+    }
+
+    if (node instanceof ast.MemberAccess) {
+      const object = evaluateNode(node.object, env, node.line, node.column);
+      if (isError(object)) {
+        record(node, env, object, 'expression:member');
+        return object;
+      }
+      
+      if (!(object instanceof DomainObj)) {
+        const error = newError('INVALID_MEMBER_ACCESS', { 
+          type: object.type(), 
+          member: node.property.value,
+          line: node.line, 
+          column: node.column 
+        });
+        record(node, env, error, 'expression:member');
+        return error;
+      }
+      
+      const member = object.get(node.property.value);
+      if (!member) {
+        const error = newError('UNKNOWN_DOMAIN_MEMBER', { 
+          domain: object.name,
+          member: node.property.value,
+          line: node.line, 
+          column: node.column 
+        });
+        record(node, env, error, 'expression:member');
+        return error;
+      }
+      
+      record(node, env, member, 'expression:member');
+      return member;
     }
 
     if (node instanceof ast.Identifier) {

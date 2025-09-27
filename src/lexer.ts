@@ -43,7 +43,17 @@ export class Lexer {
       '': [TokenType.EOF],
     };
 
-    if (tokenPatterns[this.character]) {
+    // Special handling for dot character
+    if (this.character === '.') {
+      // Check if this is a decimal number (digit after the dot)
+      if (this.isInteger(this.peekCharacter())) {
+        const [literal, initialColumn] = this.readNumber();
+        token = new Token(TokenType.NUM, literal, this.line, initialColumn);
+      } else {
+        // This is member access
+        token = new Token(TokenType.DOT, this.character, this.line, this.column);
+      }
+    } else if (tokenPatterns[this.character]) {
       if (tokenPatterns[this.character].length === 2) {
         if (this.peekCharacter() === tokenPatterns[this.character][1][0]) {
           token = this.makeTwoCharacterToken(tokenPatterns[this.character][1][1]);

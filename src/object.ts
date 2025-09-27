@@ -3,6 +3,7 @@ import { Block, Identifier } from './ast';
 export enum ObjectType {
   BOOLEAN = 'BOOLEAN',
   BUILTIN = 'BUILTIN',
+  DOMAIN = 'DOMAIN',
   ERROR = 'ERROR',
   ARRAY = 'ARRAY',
   FUNCTION = 'FUNCTION',
@@ -147,6 +148,22 @@ export class Array implements Object {
 
   inspect(): string {
     return `[${this.elements.map(element => element.inspect()).join(', ')}]`;
+  }
+}
+
+export class Domain implements Object {
+  constructor(public name: string, public env: Environment) {}
+
+  type(): ObjectType {
+    return ObjectType.DOMAIN;
+  }
+
+  inspect(): string {
+    return `dominio ${this.name}`;
+  }
+
+  get(name: string): Object | undefined {
+    return this.env.get(name);
   }
 }
 

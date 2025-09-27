@@ -283,3 +283,25 @@ export class Index extends Expression {
     return `${this.left.toString()}[${index}]`;
   }
 }
+
+export class Domain extends Statement {
+  constructor(token: Token, public name?: Identifier, public body?: Block) {
+    super(token);
+  }
+
+  toString(): string {
+    const name = this.name ? this.name.toString() : '';
+    const body = this.body ? this.body.toString() : '';
+    return `dominio ${name} { ${body} }`;
+  }
+}
+
+export class MemberAccess extends Expression {
+  constructor(token: Token, public object: Expression, public property: Identifier) {
+    super(token);
+  }
+
+  toString(): string {
+    return `${this.object.toString()}.${this.property.toString()}`;
+  }
+}

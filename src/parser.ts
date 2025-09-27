@@ -22,6 +22,8 @@ import {
   StringLiteral,
   ArrayLiteral,
   Index,
+  Domain,
+  MemberAccess,
 } from './ast';
 import { reservedKeywords, Token, TokenType } from './token';
 
@@ -61,6 +63,7 @@ const precedences: { [K in TokenType]?: Precedence } = {
   [TokenType.FOR]: Precedence.CALL,
   [TokenType.LBRACKET]: Precedence.CALL,
   [TokenType.LPAREN]: Precedence.CALL,
+  [TokenType.DOT]: Precedence.CALL,
 };
 
 export class Parser {
@@ -528,6 +531,8 @@ export class Parser {
         return this.parseLetStatement();
       case TokenType.RETURN:
         return this.parseReturnStatement();
+      case TokenType.DOMAIN:
+        return this.parseDomainStatement();
       case TokenType.IDENT:
         // Check if this is an assignment statement (identifier followed by assignment operator)
         if (this.peekToken.type === TokenType.ASSIGN || 
@@ -595,6 +600,25 @@ export class Parser {
     return assignmentStatement;
   }
 
+  private parseDomainStatement(): Statement | null {
+    this.assertCurrentToken();
+    const domainStatement = new Domain(this.currentToken);
+
+    if (!this.expectPeek(TokenType.IDENT)) {
+      return null;
+    }
+
+    domainStatement.name = new Identifier(this.currentToken, this.currentToken.literal);
+
+    if (!this.expectPeek(TokenType.LBRACE)) {
+      return null;
+    }
+
+    domainStatement.body = this.parseBlock();
+
+    return domainStatement;
+  }
+
   private parsePrefix(): Prefix | null {
     this.assertCurrentToken();
     const prefix = new Prefix(this.currentToken, this.currentToken.literal);
@@ -660,6 +684,18 @@ export class Parser {
     return precedence;
   }
 
+  private parseMemberAccess(left: Expression): Expression | null {
+    this.assertCurrentToken();
+    const token = this.currentToken;
+
+    if (!this.expectPeek(TokenType.IDENT)) {
+      return null;
+    }
+
+    const property = new Identifier(this.currentToken, this.currentToken.literal);
+    return new MemberAccess(token, left, property);
+  }
+
   private registerPrefixParseFns(): PrefixParseFns {
     return {
       [TokenType.BANG]: this.parsePrefix.bind(this),
@@ -700,6 +736,7 @@ export class Parser {
       [TokenType.GT_EQ]: this.parseInfix.bind(this),
       [TokenType.LPAREN]: this.parseCall.bind(this),
       [TokenType.LBRACKET]: this.parseIndexExpression.bind(this),
+      [TokenType.DOT]: this.parseMemberAccess.bind(this),
     };
   }
 }

@@ -240,4 +240,39 @@ describe('lexer', () => {
     ];
     expect(tokens).toEqual(expectedTokens);
   });
+  
+  it('lexer domain and member access', () => {
+    const source = `dominio calculadora { } calculadora.suma`;
+    const lexer = new Lexer(source);
+    const tokens: Token[] = [];
+    for (let i = 0; i < 7; i++) {
+      tokens.push(lexer.nextToken());
+    }
+    const expectedTokens: Token[] = [
+      new Token(TokenType.DOMAIN, 'dominio', 1, 1),
+      new Token(TokenType.IDENT, 'calculadora', 1, 9),
+      new Token(TokenType.LBRACE, '{', 1, 21),
+      new Token(TokenType.RBRACE, '}', 1, 23),
+      new Token(TokenType.IDENT, 'calculadora', 1, 25),
+      new Token(TokenType.DOT, '.', 1, 36),
+      new Token(TokenType.IDENT, 'suma', 1, 37),
+    ];
+    expect(tokens).toEqual(expectedTokens);
+  });
+
+  it('lexer decimal numbers vs dot operator', () => {
+    const source = `3.14 obj.method`;
+    const lexer = new Lexer(source);
+    const tokens: Token[] = [];
+    for (let i = 0; i < 4; i++) {
+      tokens.push(lexer.nextToken());
+    }
+    const expectedTokens: Token[] = [
+      new Token(TokenType.NUM, '3.14', 1, 1),
+      new Token(TokenType.IDENT, 'obj', 1, 6),
+      new Token(TokenType.DOT, '.', 1, 9),
+      new Token(TokenType.IDENT, 'method', 1, 10),
+    ];
+    expect(tokens).toEqual(expectedTokens);
+  });
 });
