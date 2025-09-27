@@ -5,6 +5,7 @@ export enum TokenType {
   BANG = 'BANG',
   COLON = 'COLON',
   COMMA = 'COMMA',
+  DOT = 'DOT',
   DO = 'DO',
   ELSE = 'ELSE',
   ELSEIF = 'ELSEIF',

@@ -4,6 +4,7 @@ import {
   Boolean as BooleanObj,
   Builtin,
   Dictionary as DictionaryObj,
+  Domain,
   Environment,
   Error as ErrorObj,
   Function as RuntimeFunction,
@@ -14,7 +15,7 @@ import {
   String as StringObj,
 } from './object';
 import { reservedKeywords } from './token';
-import { builtins } from './builtins';
+import { builtins, domains } from './builtins';
 import { newError } from './errors';
 import { RuntimeTracer, RuntimeTracerOptions } from './runtime/tracer';
 
@@ -306,6 +307,12 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
       return result;
     }
 
+    if (node instanceof ast.MemberAccess) {
+      const result = evaluateMemberAccess(node, env, node.line ?? line, node.column ?? column);
+      record(node, env, result, 'expression:member');
+      return result;
+    }
+
     return NULL;
   };
 
@@ -567,6 +574,28 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     return newError('INDEX_OPERATOR_NOT_SUPPORTED', { type: left.type(), line, column });
   };
 
+  const evaluateMemberAccess = (
+    node: ast.MemberAccess,
+    env: Environment,
+    line: number,
+    column: number,
+  ): RuntimeObject => {
+    const left = evaluateNode(node.left, env, node.left.line ?? line, node.left.column ?? column);
+    if (isError(left)) {
+      return left;
+    }
+
+    if (left instanceof Domain) {
+      const builtin = left.get(node.member.value);
+      if (builtin) {
+        return builtin;
+      }
+      return newError('UNKNOWN_IDENTIFIER', { name: `${left.name}.${node.member.value}`, line, column });
+    }
+
+    return newError('MEMBER_ACCESS_NOT_SUPPORTED', { type: left.type(), member: node.member.value, line, column });
+  };
+
   const evaluateExpressions = (
     expressions: ast.Expression[],
     env: Environment,
@@ -634,8 +663,13 @@ export const createEvaluator = (options: EvaluationOptions = {}): Evaluator => {
     }
     const value = env.get(node.value);
     if (!value) {
+      // Check for builtins
       if (builtins[node.value]) {
         return builtins[node.value];
+      }
+      // Check for domains
+      if (domains[node.value]) {
+        return domains[node.value];
       }
       return newError('UNKNOWN_IDENTIFIER', { name: node.value, line, column });
     }

@@ -371,7 +371,7 @@ describe('evaluator', () => {
       ['longitud([1, 2, 3])', 3],
       [
         'longitud(1)',
-        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING o ARREGLO en la linea 1 columna 9`,
+        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING, ARREGLO o DICCIONARIO en la linea 1 columna 9`,
       ],
       [
         'longitud("uno", "dos")',

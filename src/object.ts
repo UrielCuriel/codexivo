@@ -6,6 +6,7 @@ export enum ObjectType {
   ERROR = 'ERROR',
   ARRAY = 'ARRAY',
   DICTIONARY = 'DICTIONARY',
+  DOMAIN = 'DOMAIN',
   FUNCTION = 'FUNCTION',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
@@ -180,5 +181,21 @@ export class Builtin implements Object {
 
   inspect(): string {
     return 'builtin function';
+  }
+}
+
+export class Domain implements Object {
+  constructor(public name: string, public builtins: Map<string, Builtin>) {}
+
+  type(): ObjectType {
+    return ObjectType.DOMAIN;
+  }
+
+  inspect(): string {
+    return `domain ${this.name}`;
+  }
+
+  get(name: string): Builtin | undefined {
+    return this.builtins.get(name);
   }
 }

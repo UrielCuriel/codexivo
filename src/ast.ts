@@ -294,3 +294,13 @@ export class Index extends Expression {
     return `${this.left.toString()}[${index}]`;
   }
 }
+
+export class MemberAccess extends Expression {
+  constructor(token: Token, public left: Expression, public member: Identifier) {
+    super(token);
+  }
+
+  toString(): string {
+    return `${this.left.toString()}.${this.member.toString()}`;
+  }
+}

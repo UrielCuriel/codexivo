@@ -23,6 +23,7 @@ import {
   ArrayLiteral,
   HashLiteral,
   Index,
+  MemberAccess,
 } from './ast';
 import { reservedKeywords, Token, TokenType } from './token';
 
@@ -62,6 +63,7 @@ const precedences: { [K in TokenType]?: Precedence } = {
   [TokenType.FOR]: Precedence.CALL,
   [TokenType.LBRACKET]: Precedence.CALL,
   [TokenType.LPAREN]: Precedence.CALL,
+  [TokenType.DOT]: Precedence.CALL,
 };
 
 export class Parser {
@@ -554,6 +556,16 @@ export class Parser {
     return indexExpression;
   }
 
+  private parseMemberAccess(left: Expression): MemberAccess | null {
+    this.assertCurrentToken();
+    if (!this.expectPeek(TokenType.IDENT)) {
+      this._errors.push('se esperaba un identificador después del punto');
+      return null;
+    }
+    const member = new Identifier(this.currentToken, this.currentToken.literal);
+    return new MemberAccess(this.currentToken, left, member);
+  }
+
   private parseInfix(left: Expression): Expression | null {
     this.assertCurrentToken();
     const infix = new Infix(this.currentToken, left, this.currentToken.literal);
@@ -761,6 +773,7 @@ export class Parser {
       [TokenType.GT_EQ]: this.parseInfix.bind(this),
       [TokenType.LPAREN]: this.parseCall.bind(this),
       [TokenType.LBRACKET]: this.parseIndexExpression.bind(this),
+      [TokenType.DOT]: this.parseMemberAccess.bind(this),
     };
   }
 }
