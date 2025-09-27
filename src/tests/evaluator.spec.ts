@@ -4,9 +4,9 @@ import { Program } from '../ast';
 import { evaluate } from '../evaluator';
 import { Lexer } from '../lexer';
 import { Parser } from '../parser';
-import { Array as ArrayValue, Number, Boolean, Null, Object, Error, Environment, Function, String } from '../object';
+import { Array as ArrayValue, Number, Boolean, Null, Object as RuntimeObject, Error, Environment, Function, String, Dictionary as DictionaryObj } from '../object';
 
-const testEval = (input: string): Object => {
+const testEval = (input: string): RuntimeObject => {
   const lexer = new Lexer(input);
   const parser = new Parser(lexer);
   const program = parser.parseProgram();
@@ -28,26 +28,26 @@ const testEval = (input: string): Object => {
   return evaluated;
 };
 
-const testNumberObject = (obj: Object, expected: number) => {
+const testNumberObject = (obj: RuntimeObject, expected: number) => {
   expect(obj).toBeInstanceOf(Number);
   expect((obj as Number).value).toBe(expected);
 };
 
-const testBooleanObject = (obj: Object, expected: boolean) => {
+const testBooleanObject = (obj: RuntimeObject, expected: boolean) => {
   expect(obj).toBeInstanceOf(Boolean);
   expect((obj as Boolean).value).toBe(expected);
 };
 
-const testStringObject = (obj: Object, expected: string) => {
+const testStringObject = (obj: RuntimeObject, expected: string) => {
   expect(obj).toBeInstanceOf(String);
   expect((obj as String).value).toBe(expected);
 };
 
-const testErrorObject = (obj: Object, expected: string) => {
+const testErrorObject = (obj: RuntimeObject, expected: string) => {
   expect(obj).toBeInstanceOf(Error);
   expect((obj as Error).message).toBe(expected);
 };
-const testArrayObject = (obj: Object, expected: number[]) => {
+const testArrayObject = (obj: RuntimeObject, expected: number[]) => {
   expect(obj).toBeInstanceOf(ArrayValue);
   const elements = (obj as ArrayValue).elements;
   expect(elements.length).toBe(expected.length);
@@ -371,7 +371,7 @@ describe('evaluator', () => {
       ['longitud([1, 2, 3])', 3],
       [
         'longitud(1)',
-        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING o ARREGLO en la linea 1 columna 9`,
+        `tipo de argumento incorrecto para 'longitud' se recibió NUMBER, se esperaba STRING, ARREGLO o DICCIONARIO en la linea 1 columna 9`,
       ],
       [
         'longitud("uno", "dos")',
@@ -387,5 +387,89 @@ describe('evaluator', () => {
         testErrorObject(evaluated, expected);
       }
     });
+  });
+
+  it('should evaluate dictionary literals and operations', () => {
+    const tests = [
+      ['{}', {}],
+      ['{"a": 1}', {a: 1}],
+      ['{"a": 1, "b": 2}', {a: 1, b: 2}],
+      ['{"name": "Juan", "age": 25}', {name: "Juan", age: 25}],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      expect(evaluated).toBeInstanceOf(DictionaryObj);
+      const dict = evaluated as DictionaryObj;
+      
+      const expectedEntries = Object.entries(expected);
+      expect(dict.pairs.size).toBe(expectedEntries.length);
+      
+      for (const [key, value] of expectedEntries) {
+        const dictValue = dict.pairs.get(key);
+        expect(dictValue).toBeDefined();
+        if (typeof value === 'string') {
+          expect(dictValue).toBeInstanceOf(String);
+          expect((dictValue as String).value).toBe(value);
+        } else if (typeof value === 'number') {
+          expect(dictValue).toBeInstanceOf(Number);
+          expect((dictValue as Number).value).toBe(value);
+        }
+      }
+    });
+
+    // Test dictionary indexing
+    const indexTests = [
+      ['{"a": 1}["a"]', 1],
+      ['{"name": "Juan"}["name"]', "Juan"],
+      ['{"x": 10, "y": 20}["y"]', 20],
+      ['{"1": "one"}[1]', "one"], // numeric key
+    ];
+
+    indexTests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      if (typeof expected === 'number') {
+        testNumberObject(evaluated, expected);
+      } else {
+        testStringObject(evaluated, expected);
+      }
+    });
+  });
+
+  it('should evaluate domain member access', () => {
+    const tests = [
+      ['mates.absoluto(-5)', 5],
+      ['mates.maximo(1, 2, 3)', 3],
+      ['mates.minimo(5, 2, 8)', 2],
+      ['mates.redondear(3.7)', 4],
+      ['arreglos.primero([1, 2, 3])', 1],
+      ['arreglos.ultimo([1, 2, 3])', 3],
+      ['diccionarios.tiene_clave({"a": 1}, "a")', true],
+      ['diccionarios.tiene_clave({"a": 1}, "b")', false],
+    ];
+
+    tests.forEach(([input, expected]) => {
+      const evaluated = testEval(input as string);
+      if (typeof expected === 'number') {
+        testNumberObject(evaluated, expected);
+      } else if (typeof expected === 'boolean') {
+        testBooleanObject(evaluated, expected);
+      }
+    });
+
+    // Test domain array functions
+    const keysTest = testEval('diccionarios.claves({"x": 1, "y": 2})');
+    expect(keysTest).toBeInstanceOf(ArrayValue);
+    const keysArray = keysTest as ArrayValue;
+    expect(keysArray.elements.length).toBe(2);
+    expect((keysArray.elements[0] as String).value).toBe("x");
+    expect((keysArray.elements[1] as String).value).toBe("y");
+
+    const valuesTest = testEval('diccionarios.valores({"x": 1, "y": 2})');
+    expect(valuesTest).toBeInstanceOf(ArrayValue);
+    const valuesArray = valuesTest as ArrayValue;
+    expect(valuesArray.elements.length).toBe(2);
+    expect((valuesArray.elements[0] as Number).value).toBe(1);
+    expect((valuesArray.elements[1] as Number).value).toBe(2);
   });
 });

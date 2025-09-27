@@ -273,6 +273,17 @@ export class ArrayLiteral extends Expression {
   }
 }
 
+export class HashLiteral extends Expression {
+  constructor(token: Token, public pairs?: { key: Expression; value: Expression }[]) {
+    super(token);
+  }
+
+  toString(): string {
+    const pairs = (this.pairs ?? []).map(pair => `${pair.key.toString()}: ${pair.value.toString()}`).join(', ');
+    return `{${pairs}}`;
+  }
+}
+
 export class Index extends Expression {
   constructor(token: Token, public left: Expression, public index?: Expression) {
     super(token);
@@ -281,5 +292,15 @@ export class Index extends Expression {
   toString(): string {
     const index = this.index ? this.index.toString() : '';
     return `${this.left.toString()}[${index}]`;
+  }
+}
+
+export class MemberAccess extends Expression {
+  constructor(token: Token, public left: Expression, public member: Identifier) {
+    super(token);
+  }
+
+  toString(): string {
+    return `${this.left.toString()}.${this.member.toString()}`;
   }
 }

@@ -5,6 +5,8 @@ export enum ObjectType {
   BUILTIN = 'BUILTIN',
   ERROR = 'ERROR',
   ARRAY = 'ARRAY',
+  DICTIONARY = 'DICTIONARY',
+  DOMAIN = 'DOMAIN',
   FUNCTION = 'FUNCTION',
   NUMBER = 'NUMBER',
   NULL = 'NULL',
@@ -150,6 +152,22 @@ export class Array implements Object {
   }
 }
 
+export class Dictionary implements Object {
+  constructor(public pairs: Map<string, Object>) {}
+
+  type(): ObjectType {
+    return ObjectType.DICTIONARY;
+  }
+
+  inspect(): string {
+    const pairStrings: string[] = [];
+    for (const [key, value] of this.pairs.entries()) {
+      pairStrings.push(`${key}: ${value.inspect()}`);
+    }
+    return `{${pairStrings.join(', ')}}`;
+  }
+}
+
 export interface BuiltinFunction {
   (...args: Object[]): Object;
 }
@@ -163,5 +181,21 @@ export class Builtin implements Object {
 
   inspect(): string {
     return 'builtin function';
+  }
+}
+
+export class Domain implements Object {
+  constructor(public name: string, public builtins: Map<string, Builtin>) {}
+
+  type(): ObjectType {
+    return ObjectType.DOMAIN;
+  }
+
+  inspect(): string {
+    return `domain ${this.name}`;
+  }
+
+  get(name: string): Builtin | undefined {
+    return this.builtins.get(name);
   }
 }

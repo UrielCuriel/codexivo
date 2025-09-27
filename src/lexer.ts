@@ -33,6 +33,8 @@ export class Lexer {
       '>': [TokenType.GT, ['=', TokenType.GT_EQ]],
       '!': [TokenType.BANG, ['=', TokenType.NEQ]],
       ',': [TokenType.COMMA],
+      ':': [TokenType.COLON],
+      '.': [TokenType.DOT],
       ';': [TokenType.SEMICOLON],
       '(': [TokenType.LPAREN],
       ')': [TokenType.RPAREN],
@@ -44,7 +46,11 @@ export class Lexer {
     };
 
     if (tokenPatterns[this.character]) {
-      if (tokenPatterns[this.character].length === 2) {
+      // Special case: if we have a dot and the next character is a digit, treat it as a number
+      if (this.character === '.' && /^\d$/.test(this.peekCharacter())) {
+        const [literal, initialColumn] = this.readNumber();
+        token = new Token(TokenType.NUM, literal, this.line, initialColumn);
+      } else if (tokenPatterns[this.character].length === 2) {
         if (this.peekCharacter() === tokenPatterns[this.character][1][0]) {
           token = this.makeTwoCharacterToken(tokenPatterns[this.character][1][1]);
         } else {
