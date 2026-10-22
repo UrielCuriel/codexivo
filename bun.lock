@@ -21,58 +21,34 @@
     "packages/codexivo-darwin-arm64": {
       "name": "codexivo-darwin-arm64",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo",
-      },
     },
     "packages/codexivo-darwin-x64": {
       "name": "codexivo-darwin-x64",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo",
-      },
     },
     "packages/codexivo-linux-arm64": {
       "name": "codexivo-linux-arm64",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo",
-      },
     },
     "packages/codexivo-linux-arm64-musl": {
       "name": "codexivo-linux-arm64-musl",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo",
-      },
     },
     "packages/codexivo-linux-x64": {
       "name": "codexivo-linux-x64",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo",
-      },
     },
     "packages/codexivo-linux-x64-musl": {
       "name": "codexivo-linux-x64-musl",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo",
-      },
     },
     "packages/codexivo-windows-arm64": {
       "name": "codexivo-windows-arm64",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo.exe",
-      },
     },
     "packages/codexivo-windows-x64": {
       "name": "codexivo-windows-x64",
       "version": "0.2.0",
-      "bin": {
-        "codexivo": "./bin/codexivo.exe",
-      },
     },
   },
   "packages": {

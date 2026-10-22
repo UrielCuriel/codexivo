@@ -65,26 +65,24 @@ try {
     },
   });
   const registryURL = `http://127.0.0.1:${registry.port}`;
-  await execute([
-    'npm',
-    'install',
-    '--ignore-scripts',
-    '--no-audit',
-    '--no-fund',
-    '--registry',
-    registryURL,
-    `codexivo@${root.version}`,
-  ]);
+  await execute(['npm', 'install', '--no-audit', '--no-fund', '--registry', registryURL, `codexivo@${root.version}`]);
   assert.deepEqual([...downloads].sort(), ['codexivo', nativeName].sort());
   const installed = join(temporary, 'node_modules/codexivo');
   const pkg = await Bun.file(join(installed, 'package.json')).json();
   assert.equal(pkg.sideEffects, false);
   assert.ok(await Bun.file(join(installed, pkg.exports['.'].types)).exists());
-  assert.equal(pkg.bin, undefined);
-  assert.equal(pkg.scripts.postinstall, undefined);
+  assert.equal(pkg.bin.codexivo, './bin/codexivo.exe');
+  assert.equal(pkg.scripts.postinstall, 'node ./postinstall.mjs');
   const native = join(temporary, 'node_modules', nativeName);
   const nativePackage = await Bun.file(join(native, 'package.json')).json();
-  const nativePath = resolve(native, nativePackage.bin.codexivo);
+  assert.equal(nativePackage.bin, undefined);
+  const nativePath = join(native, 'bin', platform === 'windows' ? 'codexivo.exe' : 'codexivo');
+  const installedBinary = Bun.file(resolve(installed, pkg.bin.codexivo));
+  assert.equal(installedBinary.size, Bun.file(nativePath).size);
+  assert.deepEqual(
+    await installedBinary.slice(0, 16).arrayBuffer(),
+    await Bun.file(nativePath).slice(0, 16).arrayBuffer(),
+  );
   assert.equal(pkg.optionalDependencies[nativeName], pkg.version);
   assert.equal(await Bun.file(join(installed, 'dist/cli.js')).exists(), false);
 
@@ -112,8 +110,14 @@ try {
   await execute([process.execPath, 'run', 'vite', 'build']);
 
   await writeFile(join(temporary, 'programa.cdx'), 'imprimir(leer_número() * 2);');
-  const cli = nativePath;
+  const cli = resolve(installed, pkg.bin.codexivo);
   const withoutRuntimes = { ...process.env, PATH: '', Path: '' };
+  // Refuse stale optional dependencies instead of installing the wrong release.
+  const nativeManifest = join(native, 'package.json');
+  await Bun.write(nativeManifest, JSON.stringify({ ...nativePackage, version: '0.0.0' }));
+  await execute([Bun.which('node')!, join(installed, 'postinstall.mjs')], temporary, undefined, process.env, 1);
+  await Bun.write(nativeManifest, JSON.stringify(nativePackage));
+  await execute([Bun.which('node')!, join(installed, 'postinstall.mjs')]);
   assert.equal(await execute([cli, 'programa.cdx'], temporary, '21\n', withoutRuntimes), '42\n');
   assert.match(await execute([cli], temporary, 'variable año = 2026;\naño\nsalir\n', withoutRuntimes), /2026/);
   const command = join(temporary, 'node_modules', '.bin', process.platform === 'win32' ? 'codexivo.cmd' : 'codexivo');
@@ -137,12 +141,11 @@ try {
     '--global',
     '--prefix',
     globalPrefix,
-    '--ignore-scripts',
     '--no-audit',
     '--no-fund',
     '--registry',
     registryURL,
-    `${nativeName}@${root.version}`,
+    `codexivo@${root.version}`,
   ]);
   const globalArgs = process.platform === 'win32' ? [process.env.ComSpec!, '/d', '/c', globalCommand] : [globalCommand];
   assert.equal(await execute([...globalArgs, 'programa.cdx'], temporary, '21\n', withoutRuntimes), '42\n');
@@ -150,7 +153,7 @@ try {
   await mkdir(bunConsumer);
   await writeFile(join(bunConsumer, 'package.json'), JSON.stringify({ private: true }));
   await execute(
-    [process.execPath, 'add', '--ignore-scripts', '--registry', registryURL, `codexivo@${root.version}`],
+    [process.execPath, 'add', '--trust', '--registry', registryURL, `codexivo@${root.version}`],
     bunConsumer,
   );
   const bunLocal = join(bunConsumer, 'node_modules/.bin', process.platform === 'win32' ? 'codexivo.exe' : 'codexivo');
@@ -168,15 +171,7 @@ try {
     bunBin,
   );
   await execute(
-    [
-      process.execPath,
-      'add',
-      '--global',
-      '--ignore-scripts',
-      '--registry',
-      registryURL,
-      `${nativeName}@${root.version}`,
-    ],
+    [process.execPath, 'add', '--global', '--trust', '--registry', registryURL, `codexivo@${root.version}`],
     temporary,
     undefined,
     bunEnvironment,
