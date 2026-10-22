@@ -11,7 +11,7 @@ const DOCUMENTS = ['README.md', 'docs/lenguaje.md', 'docs/recetario.md', 'docs/g
 for (const document of DOCUMENTS) {
   describe(document, async () => {
     const text = await Bun.file(new URL(`../${document}`, import.meta.url)).text();
-    const blocks = [...text.matchAll(/```codexivo\n([\s\S]*?)```/g)].map(match => match[1]!);
+    const blocks = [...text.matchAll(/```codexivo\r?\n([\s\S]*?)```/g)].map(match => match[1]!);
 
     test('tiene ejemplos', () => {
       expect(blocks.length).toBeGreaterThan(0);
