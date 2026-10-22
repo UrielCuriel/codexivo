@@ -7,8 +7,9 @@
   "module": "dist/index.js",
   "types": "src/index.ts",
   "files": [
-    "dist/*.js",
-    "dist/*.js.map",
+    "bin/codexivo.cjs",
+    "dist/index.js",
+    "dist/index.js.map",
     "src",
     "!src/cli.ts",
     "docs",
@@ -24,13 +25,14 @@
     "test": "bun test",
     "check": "bun check",
     "repl": "bun run src/cli.ts",
-    "build": "bun run build:lib && bun run build:cli",
+    "build": "bun run build:lib && bun run build:binary",
     "build:lib": "bun build ./src/index.ts --target browser --format esm --outdir=dist --minify --sourcemap=linked",
-    "build:cli": "bun build ./src/cli.ts --target bun --outdir=dist --minify --sourcemap=linked",
     "build:binary": "bun run scripts/build-binaries.ts",
     "build:binaries": "bun run scripts/build-binaries.ts --all",
     "test:package": "bun run scripts/test-package.ts",
-    "prepack": "bun run build"
+    "prepack": "bun run build:lib",
+    "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
+    "publish:native": "bun run scripts/publish-native.ts"
   },
   "keywords": [
     "lenguaje de programación",
@@ -49,10 +51,26 @@
   },
   "packageManager": "bun@1.4.4",
   "bin": {
-    "codexivo": "./dist/cli.js"
+    "codexivo": "./bin/codexivo.cjs"
   },
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "optionalDependencies": {
+    "codexivo-linux-x64": "0.2.0",
+    "codexivo-linux-x64-musl": "0.2.0",
+    "codexivo-linux-arm64": "0.2.0",
+    "codexivo-linux-arm64-musl": "0.2.0",
+    "codexivo-darwin-x64": "0.2.0",
+    "codexivo-darwin-arm64": "0.2.0",
+    "codexivo-windows-x64": "0.2.0",
+    "codexivo-windows-arm64": "0.2.0"
   }
 }

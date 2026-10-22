@@ -41,7 +41,7 @@ el lenguaje, nivel por nivel, está en la [especificación v1](./docs/especifica
 
 ## Cómo usarlo
 
-Necesitas [Bun](https://bun.com) 1.4.4 o más reciente.
+Para desarrollar o ejecutar el código fuente necesitas [Bun](https://bun.com) 1.4.4 o más reciente.
 
 ```sh
 bun install
@@ -63,7 +63,8 @@ console.log(resultado.output); // "Hola desde Codexivo\n"
 ```
 
 El paquete incluye un bundle ESM compatible con navegador y los tipos como fuentes TypeScript. Importar la biblioteca no
-inicia el REPL ni necesita Bun. Para usar el comando desde npm necesitas Bun 1.4.4 o posterior:
+inicia el REPL ni necesita Bun. El comando npm también ejecuta un binario autónomo: npm instala la variante de tu sistema,
+arquitectura y libc automáticamente. Su lanzador utiliza Node.js 20 o posterior (incluido con npm), sin requerir Bun:
 
 ```sh
 npm install --global codexivo@0.2.0
@@ -90,12 +91,12 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 - `bun test` — pruebas.
 - `bun check` — revisión de tipos.
 - `bun run repl` — REPL.
-- `bun run build` — biblioteca ESM para navegador y CLI para Bun en `dist/`.
-- `bun run build:lib` / `bun run build:cli` — construir cada entrada por separado.
+- `bun run build` — biblioteca ESM y ejecutable autónomo para el sistema actual.
+- `bun run build:lib` — construir solamente la biblioteca para navegador.
 - `bun run build:binary` — ejecutable autónomo para el sistema actual en `dist/binaries/`.
 - `bun run build:binary bun-windows-x64` — compilación cruzada para un destino específico.
 - `bun run build:binaries` — los ocho destinos de Linux/macOS/Windows, x64/ARM64.
-- `bun run test:package` — empaquetar e instalar en un consumidor aislado, compilar con Vite y probar el CLI.
+- `bun run test:package` — instalar los tarballs reales con npm, compilar con Vite y probar el CLI sin Bun en el `PATH`.
 
 Al integrar cambios en `main` (por merge o push), el workflow incrementa automáticamente la versión con `bun pm version patch`,
 crea el commit y el tag y continúa con las validaciones y la publicación en la misma ejecución. El commit automático no
@@ -103,7 +104,8 @@ dispara otra publicación. El workflow toma el estado más reciente de `main`, p
 Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `patch`, `minor` o `major` para una publicación manual.
 
 También se admiten tags `v*` creados manualmente: deben coincidir con `package.json` y no incrementan la versión otra vez.
-Todas las compilaciones usan el SHA del commit de la versión. Las versiones preliminares se publican con el dist-tag `next`;
+Todas las compilaciones usan el SHA del commit de la versión. Los paquetes nativos se publican antes que el paquete
+principal y sus versiones se sincronizan con `bun pm version`. No se descargan ejecutables mediante scripts de instalación. Las versiones preliminares se publican con el dist-tag `next`;
 las estables, con `latest`. Los ejecutables y sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni
 notarizados.
 

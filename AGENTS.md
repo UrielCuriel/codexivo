@@ -20,6 +20,8 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `src/errors.ts` — `CodexivoError` and `formatError`.
 - `src/engine.ts` — `run`, `prepare`, `Session`. `src/index.ts` is the public API.
 - `src/cli.ts` — REPL and file runner (Bun APIs only, no `node:` imports).
+- `bin/codexivo.cjs` — npm launcher; resolves the matching native optional dependency and runs it with no Bun dependency.
+- `packages/*` — native npm packages filtered by OS, CPU and libc. Their versions track the root via the version lifecycle.
 - `tests/*.test.ts` — Bun tests, one file per area.
 
 ## Commands
@@ -27,7 +29,7 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `bun test` — run the test suite.
 - `bun check` — type check (replaces `tsc`; TypeScript is not a dependency).
 - `bun run repl` — interactive REPL. `bun run src/cli.ts file.cdx` runs a file.
-- `bun run build` — browser ESM and Bun CLI bundles in `dist/`. Types ship as the `.ts` sources in `src/`.
+- `bun run build` — browser ESM bundle and standalone CLI for the host platform. Types ship as the `.ts` sources in `src/`.
 - `bun run build:binary [target]` — standalone executable for the host or a Bun cross-compilation target.
 - `bun run build:binaries` — all eight OS/architecture/libc targets in `dist/binaries/`.
 - `bun run test:package` — tarball installation, browser/Vite consumer and CLI smoke tests (needs Node.js 24).

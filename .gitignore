@@ -4,3 +4,7 @@ node_modules/
 #dist folder
 dist/
 
+
+# Native npm package outputs
+packages/*/bin/
+*.tgz

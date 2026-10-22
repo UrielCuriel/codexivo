@@ -1,0 +1,22 @@
+{
+  "name": "codexivo-darwin-x64",
+  "version": "0.2.0",
+  "description": "Ejecutable nativo de Codexivo para darwin-x64.",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/codexivo"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UrielCuriel/codexivo.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

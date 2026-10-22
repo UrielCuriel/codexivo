@@ -1,0 +1,22 @@
+{
+  "name": "codexivo-windows-arm64",
+  "version": "0.2.0",
+  "description": "Ejecutable nativo de Codexivo para windows-arm64.",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin/codexivo.exe"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UrielCuriel/codexivo.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
