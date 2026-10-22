@@ -12,163 +12,79 @@ Inspirado por esta idea, me embarqué en este proyecto con la determinación de 
 
 4. **Fácil acceso**: Quiero que nuestro lenguaje sea fácil de usar para todos, por lo que he diseñado una solución que se puede ejecutar directamente en un navegador, sin necesidad de instalaciones adicionales ni acceso a internet.
 
-Estoy entusiasmado por compartir el progreso de este proyecto y las futuras mejoras que vendrán. Espero que Codexivo se convierta en una herramienta útil y accesible para quienes deseen aventurarse en el mundo de la programación de manera sencilla y efectiva. ¡Únete a esta emocionante travesía hacia el aprendizaje de la programación de forma amigable y en español.
+## Un ejemplo
 
-## ¿Cómo funciona?
-
-Actualmente se puede acceder a Codexivo a través del REPL incluido en este repositorio. Tras clonar el proyecto instala las dependencias con `bun install` y, posteriormente, ejecuta el comando `bun run repl` en la carpeta raíz. Esto iniciará el REPL y te permitirá ingresar código Codexivo para que se ejecute inmediatamente. También puedes ejecutar `bun run src/index.ts` si prefieres invocar directamente la entrada principal. Para salir del REPL, simplemente escribe `salir()` y presiona enter.
-
-Se está trabajando en una versión web de Codexivo que se ejecutará directamente en el navegador. Esta versión incluirá una interfaz de usuario más amigable y una visualización de diagrama de flujo integrada.
-
-### Scripts disponibles con Bun
-
-- `bun install` para instalar las dependencias.
-- `bun test` para ejecutar la suite de pruebas con el runner nativo de Bun.
-- `bun run build` para compilar el intérprete a JavaScript.
-- `bun run repl` para iniciar el intérprete en modo interactivo.
-
-## ¿Qué incluye el lenguaje?
-
-Codexivo es un lenguaje de programación de alto nivel que incluye las siguientes características:
-
-- Sintaxis en español basada en javascript
-```
-// Definición de variables
-variable n = 10;
-variable m = 20;
-variable q = "hola mundo";
-// Definición de procedimientos
-procedimiento suma(a, b) {
-  regresa a + b;
+```codexivo
+// La suma de los números del 1 al 10
+variable suma = 0;
+para (variable i = 1; i <= 10; i += 1) {
+  suma += i;
 }
-procedimiento resta(a, b) {
-  regresa a - b;
-}
-procedimiento multiplicación(a, b) {
-  regresa a * b;
-}
-procedimiento division(a, b) {
-  regresa a / b;
-}
-// Llamadas a procedimientos
-suma(n, m);
-resta(n, m);
-// Bucle "para" con condición y cuerpo de bucle
-para (variable i = 0; i < 10; i = i + 1) {
-    multiplicación(n, m);
-}
-// Bucle "hacer-hasta_que" con condición y cuerpo de bucle
-hacer {
-  division(n, m);
-} hasta_que (n > 0);
-```
-- Tipos de datos simples: números, cadenas, booleanos y arreglos
-```
-variable n = 10;
-variable m = 20;
-variable q = "hola mundo";
-variable r = verdadero;
-variable lista = [1, 2, 3];
-```
-- Operadores aritméticos: suma, resta, multiplicación, división, módulo, incremento y decremento
-```
-variable n = 10;
-variable m = 20;
-
-n + m;
-n - m;
-n * m;
-n / m;
-n % m;
-n++;
-n--;
-n += 2;
+imprimir("La suma es", suma);
 ```
 
-- Operadores de comparación: igualdad, desigualdad, mayor que, menor que, mayor o igual que, menor o igual que
-```
-variable n = 10;
-variable m = 20;
-
-n == m;
-n != m;
-n > m;
-n < m;
-n >= m;
-n <= m;
-```
-
-- Operadores lógicos: y, o, no
-```
-variable n = 10;
-variable m = 20;
-
-n == m y n > m;
-n == m o n > m;
-no n == m;
+```codexivo
+variable clasificar = procedimiento(edad) {
+  si (edad >= 18) {
+    regresa "adulto";
+  } pero_si (edad >= 13) {
+    regresa "adolescente";
+  } si_no {
+    regresa "niño";
+  }
+};
+imprimir(clasificar(16));
 ```
 
-- Estructuras de control: si, si-sino, mientras, hacer-hasta_que, para
-```
-variable n = 10;
-variable m = 20;
+Lo que funciona hoy está en [`docs/lenguaje.md`](./docs/lenguaje.md), y todos sus ejemplos se ejecutan tal cual. Hacia dónde va
+el lenguaje, nivel por nivel, está en la [especificación v1](./docs/especificacion-v1.md).
 
-si (n == m) {
-  // ...
-}
+## Cómo usarlo
 
-si (n == m) {
-  // ...
-} sino {
-  // ...
-}
+Necesitas [Bun](https://bun.com) 1.4.4 o más reciente.
 
-mientras (n < m) {
-  // ...
-}
-
-hacer {
-  // ...
-} hasta_que (n > 0);
-
-para (variable i = 0; i < 10; i = i + 1) {
-  // ...
-}
-```
-- Arreglos e índices
-```
-variable numeros = [1, 2, 3];
-numeros[0]; // 1
-"hola"[1]; // "o"
-```
-- Funciones integradas para aprendizaje: `longitud` calcula el tamaño de cadenas y arreglos
-```
-longitud("hola"); // 4
-longitud([1, 2, 3]); // 3
+```sh
+bun install
+bun run repl                      # REPL interactivo
+bun run src/cli.ts programa.cdx   # ejecutar un archivo; la entrada estándar alimenta a leer()
 ```
 
+Como biblioteca, en el navegador o en Bun:
 
-## ¿Qué sigue?
+```ts
+import { run } from 'codexivo';
 
-A continuación se muestra una lista de las características que se implementarán en el futuro:
+const resultado = run('imprimir("Hola desde Codexivo");');
+console.log(resultado.output); // "Hola desde Codexivo\n"
+```
 
-- [x] Tipos de datos: arreglos
-- [ ] Tipos de datos: diccionarios
-- [x] Operadores: asignación incremental (`+=`)
-- [ ] Operadores: concatenación de cadenas avanzada y otros operadores compuestos
-- [ ] Funciones Built-in: imprimir, leer, tipo, etc.
-- [ ] Documentación
-- [ ] Sitio web
+El intérprete compila el programa a instrucciones para una máquina propia que se puede pausar, ejecutar paso a paso y que
+reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar cómo piensa un programa. Los detalles están en la
+[arquitectura](./docs/arquitectura.md).
 
-Hasta el momento estas son las características que se han implementado en el lenguaje, pero se espera que en el futuro se agreguen más características y funcionalidades. Siéntase libre de contribuir a este proyecto y ayudar a que Codexivo sea una herramienta útil para todos.
+## Scripts
 
-## ¿Cómo contribuir?
+- `bun test` — pruebas.
+- `bun check` — revisión de tipos.
+- `bun run repl` — REPL.
+- `bun run build` — bundle para navegador en `dist/`.
 
-Si desea contribuir a este proyecto, puede hacerlo de las siguientes maneras:
+## Qué sigue
+
+- [x] Lexer, parser y máquina con posiciones exactas, errores con pistas y límites deterministas
+- [x] Ejecución paso a paso, eventos y fotografías del estado para visualización
+- [x] `imprimir`, `leer`, `leer_número`, comentarios, `nulo`
+- [ ] Nivel principiante de la v1: `repetir … veces`, `++`/`--`, `mod`/`div`, operadores en palabras, `constante`
+- [ ] Nivel intermedio: procedimientos con nombre, `para_cada`, `romper`/`continuar`, diccionarios, más biblioteca
+- [ ] Nivel avanzado: procedimientos como valores en la biblioteca, pilas y colas
+- [ ] Modo mundo (Karel)
+- [ ] Sitio con documentación y sandbox: `codexivo.urielcuriel.dev`
+
+## Cómo contribuir
 
 - Reportando errores o problemas
-- Sugerir nuevas características
-- Contribuyendo con código
+- Sugiriendo nuevas características
+- Contribuyendo con código (lee [`AGENTS.md`](./AGENTS.md))
 - Mejorando la documentación
 - Compartiendo el proyecto con otras personas
 
@@ -177,4 +93,5 @@ Si desea contribuir a este proyecto, puede hacerlo de las siguientes maneras:
 Mi nombre es [Uriel Curiel](https://twitter.com/UrielCuriel), soy un desarrollador de software con más de 8 años de
 experiencia en el desarrollo de aplicaciones web y móviles. Me apasiona la tecnología y el aprendizaje, y me encanta compartir mis conocimientos con los demás. Puedes encontrarme en [Twitter](https://twitter.com/UrielCuriel) y [LinkedIn](https://www.linkedin.com/in/urielcuriel/).
 
-Puedes seguir las actualizaciones de este proyecto en mi blog [urielcuriel.dev](https://urielcuriel.dev/blog).
+Puedes seguir las actualizaciones de este proyecto en mi blog [urielcuriel.dev](https://urielcuriel.dev/blog), en la serie
+«Construyendo Codexivo».

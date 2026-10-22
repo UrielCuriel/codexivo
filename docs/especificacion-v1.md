@@ -1,10 +1,9 @@
 # Codexivo v1 — Especificación del lenguaje
 
-> **Estado:** propuesta en revisión. Nada de lo que aparece aquí como "v1" está implementado todavía,
-> salvo donde se indica. La referencia de lo que funciona hoy sigue siendo [`lenguaje.md`](./lenguaje.md).
+> **Estado:** aprobada. Se implementa por pasos (§16). Lo que ya funciona está en
+> [`lenguaje.md`](./lenguaje.md), y todos sus ejemplos se prueban automáticamente.
 >
-> Las secciones marcadas con **⚖️ Decisión abierta** necesitan una respuesta antes de implementarse.
-> Cada una trae una recomendación.
+> Las secciones marcadas con **✅ Decidido** fueron decisiones abiertas que ya se resolvieron.
 
 ## 0. Para qué existe este documento
 
@@ -38,25 +37,27 @@ bloquean nada en el editor.
 
 ## 1. Estado actual frente a v1
 
-Probado contra `main` (`1ca0398`). Los 56 tests pasan; esto es lo que **no** cubren.
+Probado contra `main` (`1ca0398`), cuyos 56 tests pasaban sin cubrir estos casos. La columna "Estado" dice qué ya resolvió
+la reescritura del núcleo (pasos 1 a 3 de §16).
 
-| Caso | Hoy | v1 |
-| --- | --- | --- |
-| `1 < 2 y 5 < 4` | Error. `y`/`o` tienen **más** precedencia que las comparaciones y se agrupa como `1 < (2 y 5) < 4` | `falso` |
-| `no 1 == 2` | `falso` (se agrupa como `(no 1) == 2`) | `verdadero` |
-| `procedimiento suma(a, b) { … }` | Error de sintaxis | Declaración con nombre |
-| `// comentario` | Excepción de JavaScript (`value is null or undefined`) | Comentario |
-| `%`, `n++`, `n--` | Error de sintaxis | Soportados |
-| `a[0] = 9` | Error de sintaxis | Asignación por índice |
-| `nulo` | "identificador no encontrado" | Literal |
-| `imprimir(…)` / `leer()` | No existen; el programa solo devuelve su última expresión | Entrada y salida |
-| `1 / 0` | `Infinity` (el error `DIVISION_BY_ZERO` existe pero no se usa) | Error |
-| `[1, 2] == [1, 2]` | `falso` | `verdadero` |
-| `mientras (verdadero) {}` | Bloquea el proceso | Error al superar el límite de operaciones |
-| `f(20000)` recursivo | `Maximum call stack size exceeded` | Funciona (límite configurable) |
-| `hasta_que` | Se tokeniza como `WHILE` | Token propio `UNTIL` |
-| Mensajes de error | "en la linea" | "en la línea", con pista |
-| Docs y README | Usan `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron | Alineados con esta spec |
+| Caso | Antes | v1 | Estado |
+| --- | --- | --- | --- |
+| `1 < 2 y 5 < 4` | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso` | ✅ |
+| `no 1 == 2` | `falso` (se agrupaba como `(no 1) == 2`) | `verdadero` | ✅ |
+| Varios `pero_si` seguidos | Solo se conservaba el último | Todas las ramas, en orden | ✅ |
+| `procedimiento suma(a, b) { … }` | Error de sintaxis | Declaración con nombre | Paso 5 (hoy da un error con pista) |
+| `// comentario` | Excepción de JavaScript (`value is null or undefined`) | Comentario | ✅ |
+| `%`, `n++`, `n--` | Error de sintaxis | Soportados | Paso 4 |
+| `a[0] = 9` | Error de sintaxis | Asignación por índice | Paso 5 |
+| `nulo` | "identificador no encontrado" | Literal | ✅ |
+| `imprimir(…)` / `leer()` | No existían; el programa solo devolvía su última expresión | Entrada y salida | ✅ |
+| `1 / 0` | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba) | Error | ✅ |
+| `[1, 2] == [1, 2]` | `falso` | `verdadero` | ✅ |
+| `mientras (verdadero) {}` | Bloqueaba el proceso | Error al superar el límite de operaciones | ✅ |
+| `f(20000)` recursivo | `Maximum call stack size exceeded` | Funciona (límite configurable) | ✅ |
+| `hasta_que` | Se tokenizaba como `WHILE` | Token propio `UNTIL` | ✅ |
+| Mensajes de error | "en la linea" | "en la línea", con pista | ✅ |
+| Docs y README | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron | Alineados con esta spec | ✅ (y se prueban) |
 
 ## 2. Léxico
 
@@ -90,8 +91,7 @@ variable canción_favorita = "Cielito lindo";
 | Lista | `[1, 2, 3]`, `[]` | |
 | Diccionario | `{ "nombre": "Ana", "edad": 16 }` | Ver §4.6 |
 
-> **⚖️ Decisión abierta — interpolación de texto.** ¿`"Hola, {nombre}"`?
-> **Recomendación:** no en v1. `imprimir("Hola,", nombre)` resuelve el caso común sin agregar sintaxis
+> **✅ Decidido — interpolación de texto.** ¿`"Hola, {nombre}"`? No en v1. `imprimir("Hola,", nombre)` resuelve el caso común sin agregar sintaxis
 > dentro de las cadenas, y `texto(x)` cubre el resto.
 
 ### 2.4 Punto y coma
@@ -135,8 +135,7 @@ teclados lo facilitan. La documentación y los mensajes usan siempre la forma ca
   flechas, porque es uno de los errores más comunes y más difíciles de ver.
 - **Texto inmutable.** `t[0] = "x"` es un error; se construye un texto nuevo.
 
-> **⚖️ Decisión abierta — nombre del tipo de las listas.** Hoy los errores dicen `ARREGLO`.
-> **Recomendación:** `lista` en la superficie (docs, `tipo()`, mensajes). Es la palabra que alguien
+> **✅ Decidido — nombre del tipo de las listas.** Antes los errores decían `ARREGLO`. Ahora es `lista` en la superficie (docs, `tipo()`, mensajes). Es la palabra que alguien
 > usa antes de saber qué es un arreglo, y "arreglo" se explica en los docs avanzados.
 
 ## 4. Expresiones
@@ -198,9 +197,8 @@ No hay `&&` ni `||`: solo `y` / `o`.
 
 `y` y `o` evalúan en cortocircuito; la visualización muestra cuándo una parte **no** se evaluó.
 
-> **⚖️ Decisión abierta — condiciones estrictas.** Hoy `si (1)` funciona porque `0`, `""` y `nulo`
-> cuentan como falsos.
-> **Recomendación:** en v1 las condiciones de `si`, `mientras`, `hasta_que`, `y`, `o` y `no` deben ser
+> **✅ Decidido — condiciones estrictas.** Antes `si (1)` funcionaba porque `0`, `""` y `nulo`
+> contaban como falsos. En v1 las condiciones de `si`, `mientras`, `hasta_que`, `y`, `o` y `no` deben ser
 > lógicas. `si (lista)` es un error con la pista *"¿quisiste decir `longitud(lista) > 0`?"*. Obliga a
 > decir lo que uno quiere decir, que es justo lo que se practica.
 
@@ -266,8 +264,7 @@ si (edad >= 18) {
 
 Las llaves son obligatorias.
 
-> **⚖️ Decisión abierta — `según`/`caso`** (equivalente a `switch`).
-> **Recomendación:** dejarlo fuera de v1. Una cadena de `pero_si` cubre lo mismo y no hay que
+> **✅ Decidido — `según`/`caso`** (equivalente a `switch`): fuera de v1. Una cadena de `pero_si` cubre lo mismo y no hay que
 > explicar por qué un caso "se cae" al siguiente.
 
 ### 5.4 Bucles
@@ -328,7 +325,8 @@ mapear([1, 2, 3], doble); // [2, 4, 6]
   recursión mutua.
 - Llamar con un número distinto de argumentos es un error. Hoy los faltantes se rellenan con `nulo`;
   en v1 no.
-- `regresa` sin valor regresa `nulo`.
+- `regresa` sin valor regresa `nulo`, y un procedimiento que termina sin `regresa` también regresa `nulo`.
+  El valor de la última expresión **no** se regresa solo: devolver un valor siempre se dice con `regresa`.
 - Los procedimientos capturan las variables de donde se crearon (closures).
 - La profundidad de recursión solo la limita la configuración (por defecto 10 000), no JavaScript.
 
@@ -408,8 +406,7 @@ si no está), `subtexto(t, inicio, fin)`, `caracteres(t)`, `código_de(c)`, `car
 | `rebanar(l, inicio, fin)`, `invertir(l)`, `ordenar(l, comparador?)`, `copiar(l)` | Nuevas listas |
 | `sumar(l)`, `lista_de(n, valor)`, `matriz(filas, columnas, valor)` | Construcción y resumen. `lista_de` y `matriz` copian el valor en cada casilla, para no compartir sublistas por accidente |
 
-> **⚖️ Decisión abierta — `rango` inclusivo.** `rango(1, 10)` incluye el 10.
-> **Recomendación:** inclusivo. Es como lo dice una persona ("del 1 al 10"); `índices(l)` evita el
+> **✅ Decidido — `rango` inclusivo.** `rango(1, 10)` incluye el 10. Es como lo dice una persona ("del 1 al 10"); `índices(l)` evita el
 > `- 1` en el caso típico.
 
 ### 🟡 Diccionarios
@@ -497,16 +494,18 @@ procedimiento distancia(grafo, origen, destino) {
 
 ## 10. Ejecución, límites y determinismo
 
-- **Operaciones.** Cada nodo evaluado cuenta como una operación. Los procedimientos de la biblioteca
+- **Operaciones.** Cada operación básica (leer una variable, poner un valor, sumar, comparar, asignar, decidir, llamar)
+  cuenta como una. Los procedimientos de la biblioteca
   cuentan según el trabajo que hacen (por ejemplo, `ordenar` sobre `n` elementos cuesta
   `n · log₂ n`). La misma ejecución da siempre el mismo número, y los retos lo usan en lugar del
   tiempo.
 - **Límites configurables** con valores por defecto: operaciones (10 millones en el sandbox; cada
   reto define el suyo), profundidad de recursión (10 000) y tamaño de la salida (1 MB). Superarlos es
   un error de tipo `límite` que explica qué se superó y dónde estaba el programa.
-- **Ejecución reanudable.** El intérprete avanza un paso a la vez y se puede pausar, avanzar,
-  retroceder (por instantáneas) o esperar a `leer()`. Corre en un Web Worker para no congelar la
-  página.
+- **Ejecución reanudable.** El intérprete avanza un paso a la vez y se puede pausar, avanzar o esperar a
+  `leer()`. Retroceder es volver a ejecutar desde el inicio hasta el paso anterior con la misma entrada: como la
+  ejecución es determinista, el resultado es idéntico. En el sandbox corre en un Web Worker y cede el control cada
+  cierto número de operaciones para no congelar la página.
 - **Contratos de los retos:**
   - *Estilo HackerRank:* el programa lee con `leer()` y se compara lo que imprime.
   - *Estilo LeetCode:* el reto llama a un procedimiento (`resolver(...)`) y compara lo que regresa.
@@ -518,10 +517,12 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
 - Cada nodo del AST tiene un identificador estable y su **rango** en el código (inicio y fin, en
   línea, columna y desplazamiento).
 - Cada token conserva su rango, para la vista de tokens.
-- El evaluador emite eventos: `entra`/`sale` de nodo, `declara`, `asigna` (antes/después), `decide`
-  (condición, valor y rama tomada), `itera`, `llama`/`regresa`, `imprime`/`lee`, `error`.
-- Cada evento lleva una instantánea de los alcances visibles. Listas y diccionarios tienen un
-  identificador de referencia, para dibujar cuándo dos variables comparten el mismo valor.
+- La máquina emite eventos: `paso` (inicio de una sentencia), `declara`, `asigna` (antes/después),
+  `decide` (condición, valor y rama tomada), `opera` (operandos y resultado), `llama`/`regresa`,
+  `imprime`/`lee`, `error` y `fin`. Cada uno lleva el número de operaciones y la profundidad de llamadas.
+- En cualquier pausa se puede pedir una fotografía (`snapshot`) con las llamadas activas y las variables de
+  cada alcance. Listas y diccionarios tienen un identificador de referencia, para dibujar cuándo dos
+  variables comparten el mismo valor.
 - El diagrama de flujo se genera desde el AST; la máquina de estados se anima desde los eventos.
   Ninguno de los dos inventa información que el intérprete no produjo.
 
@@ -554,13 +555,16 @@ Codexivo no tiene usuarios todavía, así que v1 se permite romper compatibilida
 - condiciones estrictas (si se aprueba §4.5);
 - error al llamar con un número distinto de argumentos;
 - error al redeclarar o al asignar sin declarar;
-- `agregar` pasa a modificar la lista (hoy regresa una nueva);
+- `agregar` pasa a modificar la lista (antes regresaba una nueva);
+- un procedimiento sin `regresa` regresa `nulo` (antes regresaba el valor de su última expresión);
 - `1 / 0` pasa a ser error;
 - `ARREGLO` pasa a llamarse `lista` en mensajes y en `tipo()`.
 
-## 15. Decisiones abiertas
+## 15. Decisiones
 
-| # | Tema | Recomendación |
+Todas aprobadas.
+
+| # | Tema | Decisión |
 | --- | --- | --- |
 | 1 | Interpolación de texto (§2.3) | No en v1 |
 | 2 | Nombre del tipo de las listas (§3) | `lista` |
@@ -570,12 +574,15 @@ Codexivo no tiene usuarios todavía, así que v1 se permite romper compatibilida
 
 ## 16. Orden de implementación propuesto
 
-1. **Cimientos:** Bun 1.4.4, limpieza de dependencias, rangos en tokens y nodos, errores
-   estructurados.
-2. **Correcciones:** precedencia de `y`/`o`/`no`, comentarios, `nulo`, división entre cero, igualdad
-   por valor, `hasta_que`.
-3. **Evaluador reanudable** con generadores: pila propia, límites, eventos (§10–11). Reemplaza al
-   `RuntimeTracer` actual.
+1. ✅ **Cimientos:** Bun 1.4.4 (`bun check` en lugar de `tsc`; la única dependencia de desarrollo es
+   `@types/bun`), rangos en tokens y nodos, errores estructurados.
+2. ✅ **Correcciones:** precedencia de `y`/`o`/`no`, `pero_si` encadenados, comentarios, `nulo`, división
+   entre cero, igualdad por valor, `hasta_que`.
+3. ✅ **Ejecución reanudable:** el AST se compila a instrucciones para una máquina de pila con su propia
+   pila de llamadas, límites, eventos y fotografías (§10–11). Reemplaza al evaluador recursivo y al
+   `RuntimeTracer`. Se descartaron los generadores anidados porque, con `yield*`, la recursión profunda
+   vuelve a depender de la pila de JavaScript. Incluye `imprimir`, `leer`, `leer_número`, `tipo`, `texto`
+   y `número`, porque la entrada y salida son parte del contrato de la máquina.
 4. **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
    operadores en palabras, `constante`, alcance por bloque.
 5. **Nivel intermedio:** procedimientos con nombre, `para_cada`, `romper`/`continuar`, asignación por
