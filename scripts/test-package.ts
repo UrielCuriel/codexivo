@@ -1,10 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { strict as assert } from 'node:assert';
 
 // Exercise the tarball in an isolated consumer, rather than importing repository sources.
-const temporary = await mkdtemp(join(tmpdir(), 'codexivo-package-'));
+const temporary = await realpath(await mkdtemp(join(tmpdir(), 'codexivo-package-')));
 let registry: Bun.Server<undefined> | undefined;
 const execute = async (cmd: string[], cwd = temporary, stdin?: string, env = process.env, expectedStatus = 0) => {
   const child = Bun.spawn(cmd, {
