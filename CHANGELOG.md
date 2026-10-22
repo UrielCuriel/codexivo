@@ -8,6 +8,7 @@
 - Comando `codexivo` instalable desde npm (requiere Bun).
 - Ejecutables autónomos para Linux (glibc y musl), macOS y Windows, en x64 y ARM64.
 - Publicación desde tags `v*` mediante GitHub Actions, con OIDC, provenance y artefactos en GitHub Releases.
+- Incremento automático `patch` con `bun pm version` al integrar cambios en `main`, y publicación manual `patch`/`minor`/`major`.
 
 Esta versión reemplaza el núcleo anterior. La sintaxis implementada se describe en
 [`docs/lenguaje.md`](./docs/lenguaje.md).

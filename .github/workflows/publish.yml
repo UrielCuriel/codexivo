@@ -2,23 +2,81 @@ name: Publicar
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      increment:
+        description: Incremento de versión
+        required: true
+        default: patch
+        type: choice
+        options: [patch, minor, major]
 
 permissions:
   contents: read
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: codexivo-release
   cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_type == 'tag' && github.ref || 'main' }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Incrementar versión o validar tag existente
+        id: version
+        env:
+          INCREMENT: ${{ inputs.increment || 'patch' }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch && "$GITHUB_REF" != refs/heads/main ]]; then
+            echo 'La publicación manual debe ejecutarse desde main.' >&2
+            exit 1
+          fi
+          if [[ "$GITHUB_REF_TYPE" != tag ]]; then
+            case "$INCREMENT" in patch|minor|major) ;; *) exit 1 ;; esac
+            previous=$(git log -1 --format=%H --fixed-strings --grep="[release-run:$GITHUB_RUN_ID]")
+            if [[ -n "$previous" ]]; then
+              git checkout --detach "$previous"
+            else
+              git config user.name 'github-actions[bot]'
+              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+              bun pm version "$INCREMENT" --message "chore(release): v%s [release-run:$GITHUB_RUN_ID]"
+              tag="v$(bun -p 'require("./package.json").version')"
+              git push --atomic origin HEAD:refs/heads/main "refs/tags/$tag"
+            fi
+          fi
+          tag="v$(bun -p 'require("./package.json").version')"
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "$tag" ]]; then
+            echo 'El tag debe coincidir con package.json.' >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   validate:
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -27,9 +85,11 @@ jobs:
           node-version: '24'
           package-manager-cache: false
       - name: Comprobar versión del tag
+        env:
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
         shell: bash
         run: |
-          node --input-type=module -e 'import p from "./package.json" with { type: "json" }; if (process.env.GITHUB_REF_NAME !== `v${p.version}`) throw new Error("El tag debe coincidir con package.json");'
+          node --input-type=module -e 'import p from "./package.json" with { type: "json" }; if (process.env.RELEASE_TAG !== `v${p.version}`) throw new Error("El tag debe coincidir con package.json");'
       - run: bun install --frozen-lockfile
       - run: bun check
       - run: bun test
@@ -45,6 +105,7 @@ jobs:
           test "$result" = 'Hola desde el binario'
 
   binaries:
+    needs: version
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -59,6 +120,8 @@ jobs:
           - bun-windows-arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -71,13 +134,15 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [validate, binaries]
+    needs: [version, validate, binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4
@@ -89,10 +154,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - name: Publicar npm mediante OIDC
+        env:
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
         shell: bash
         run: |
           tag=latest
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then tag=next; fi
+          if [[ "$RELEASE_TAG" == *-* ]]; then tag=next; fi
           npm publish --access public --provenance --tag "$tag"
       - uses: actions/download-artifact@v4
         with:
@@ -101,13 +168,14 @@ jobs:
       - name: Crear release y adjuntar ejecutables
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.version.outputs.tag }}
         shell: bash
         run: |
           cd release-binaries
           sha256sum codexivo-* > SHA256SUMS.txt
-          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             flags=()
-            if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
-            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes "${flags[@]}"
+            if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes "${flags[@]}"
           fi
-          gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" codexivo-* SHA256SUMS.txt --clobber
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" codexivo-* SHA256SUMS.txt --clobber

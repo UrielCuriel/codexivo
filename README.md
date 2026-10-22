@@ -97,9 +97,15 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 - `bun run build:binaries` — los ocho destinos de Linux/macOS/Windows, x64/ARM64.
 - `bun run test:package` — empaquetar e instalar en un consumidor aislado, compilar con Vite y probar el CLI.
 
-Los tags `v*` activan el workflow de publicación. El tag debe coincidir con la versión de `package.json` y las validaciones
-deben pasar. Las versiones preliminares se publican con el dist-tag `next`; las estables, con `latest`. Los ejecutables y
-sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni notarizados.
+Al integrar cambios en `main` (por merge o push), el workflow incrementa automáticamente la versión con `bun pm version patch`,
+crea el commit y el tag y continúa con las validaciones y la publicación en la misma ejecución. El commit automático no
+dispara otra publicación. El workflow toma el estado más reciente de `main`, por lo que merges muy próximos pueden agruparse.
+Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `patch`, `minor` o `major` para una publicación manual.
+
+También se admiten tags `v*` creados manualmente: deben coincidir con `package.json` y no incrementan la versión otra vez.
+Todas las compilaciones usan el SHA del commit de la versión. Las versiones preliminares se publican con el dist-tag `next`;
+las estables, con `latest`. Los ejecutables y sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni
+notarizados.
 
 ## Qué sigue
 
