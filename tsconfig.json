@@ -1,19 +1,16 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es2017",
-    "lib": ["es2017", "dom"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "types": ["bun"],
+    "strict": true,
+    "noImplicitOverride": true,
+    "verbatimModuleSyntax": true,
     "declaration": true,
     "outDir": "./dist",
     "skipLibCheck": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts",
-    "src/cli.ts",
-    "src/repl.ts"
-  ]
+  "include": ["src/**/*", "tests/**/*"]
 }
