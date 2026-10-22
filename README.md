@@ -49,7 +49,11 @@ bun run repl                      # REPL interactivo
 bun run src/cli.ts programa.cdx   # ejecutar un archivo; la entrada estándar alimenta a leer()
 ```
 
-Como biblioteca, en el navegador o en Bun:
+Como biblioteca, en el navegador o en Bun (una vez publicada la versión):
+
+```sh
+npm install codexivo@0.2.0
+```
 
 ```ts
 import { run } from 'codexivo';
@@ -57,6 +61,25 @@ import { run } from 'codexivo';
 const resultado = run('imprimir("Hola desde Codexivo");');
 console.log(resultado.output); // "Hola desde Codexivo\n"
 ```
+
+El paquete incluye un bundle ESM compatible con navegador y los tipos como fuentes TypeScript. Importar la biblioteca no
+inicia el REPL ni necesita Bun. Para usar el comando desde npm necesitas Bun 1.4.4 o posterior:
+
+```sh
+npm install --global codexivo@0.2.0
+codexivo                         # REPL
+codexivo programa.cdx            # ejecutar un archivo
+```
+
+También puedes descargar un ejecutable autónomo desde [Releases](https://github.com/UrielCuriel/codexivo/releases), sin
+instalar Node.js ni Bun. Hay versiones x64 y ARM64 para Linux, macOS y Windows; Linux ofrece glibc y musl (Alpine).
+En Linux y macOS, dale permiso de ejecución con `chmod +x codexivo-*` antes de usarlo.
+
+```sh
+./codexivo-linux-x64 programa.cdx
+```
+
+En Windows, por ejemplo: `.\codexivo-windows-x64.exe programa.cdx`.
 
 El intérprete compila el programa a instrucciones para una máquina propia que se puede pausar, ejecutar paso a paso y que
 reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar cómo piensa un programa. Los detalles están en la
@@ -67,7 +90,16 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 - `bun test` — pruebas.
 - `bun check` — revisión de tipos.
 - `bun run repl` — REPL.
-- `bun run build` — bundle para navegador en `dist/`.
+- `bun run build` — biblioteca ESM para navegador y CLI para Bun en `dist/`.
+- `bun run build:lib` / `bun run build:cli` — construir cada entrada por separado.
+- `bun run build:binary` — ejecutable autónomo para el sistema actual en `dist/binaries/`.
+- `bun run build:binary bun-windows-x64` — compilación cruzada para un destino específico.
+- `bun run build:binaries` — los ocho destinos de Linux/macOS/Windows, x64/ARM64.
+- `bun run test:package` — empaquetar e instalar en un consumidor aislado, compilar con Vite y probar el CLI.
+
+Los tags `v*` activan el workflow de publicación. El tag debe coincidir con la versión de `package.json` y las validaciones
+deben pasar. Las versiones preliminares se publican con el dist-tag `next`; las estables, con `latest`. Los ejecutables y
+sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni notarizados.
 
 ## Qué sigue
 

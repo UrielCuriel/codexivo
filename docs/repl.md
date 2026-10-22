@@ -1,5 +1,11 @@
 # REPL y ejecución desde la terminal
 
+El comando npm `codexivo` requiere Bun 1.4.4 o posterior; después de instalar el paquete globalmente, ejecuta `codexivo` para
+abrir el REPL o `codexivo programa.cdx` para ejecutar un archivo. Los ejecutables de
+[Releases](https://github.com/UrielCuriel/codexivo/releases) incluyen el runtime y no requieren instalación de Bun.
+En Linux/macOS, aplica `chmod +x` al ejecutable descargado. Se admiten x64 y ARM64 en Linux, macOS y Windows; para Alpine
+Linux elige la variante `musl`.
+
 ## REPL
 
 ```sh

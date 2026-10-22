@@ -7,9 +7,12 @@
   "module": "dist/index.js",
   "types": "src/index.ts",
   "files": [
-    "dist",
+    "dist/*.js",
+    "dist/*.js.map",
     "src",
-    "!src/cli.ts"
+    "!src/cli.ts",
+    "docs",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {
@@ -21,7 +24,13 @@
     "test": "bun test",
     "check": "bun check",
     "repl": "bun run src/cli.ts",
-    "build": "bun build ./src/index.ts --target browser --outdir dist --minify --sourcemap=linked"
+    "build": "bun run build:lib && bun run build:cli",
+    "build:lib": "bun build ./src/index.ts --target browser --format esm --outdir=dist --minify --sourcemap=linked",
+    "build:cli": "bun build ./src/cli.ts --target bun --outdir=dist --minify --sourcemap=linked",
+    "build:binary": "bun run scripts/build-binaries.ts",
+    "build:binaries": "bun run scripts/build-binaries.ts --all",
+    "test:package": "bun run scripts/test-package.ts",
+    "prepack": "bun run build"
   },
   "keywords": [
     "lenguaje de programación",
@@ -38,5 +47,12 @@
   "devDependencies": {
     "@types/bun": "^1.4.3"
   },
-  "packageManager": "bun@1.4.4"
+  "packageManager": "bun@1.4.4",
+  "bin": {
+    "codexivo": "./dist/cli.js"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
 }

@@ -27,7 +27,10 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `bun test` — run the test suite.
 - `bun check` — type check (replaces `tsc`; TypeScript is not a dependency).
 - `bun run repl` — interactive REPL. `bun run src/cli.ts file.cdx` runs a file.
-- `bun run build` — browser bundle in `dist/`. Types ship as the `.ts` sources in `src/`.
+- `bun run build` — browser ESM and Bun CLI bundles in `dist/`. Types ship as the `.ts` sources in `src/`.
+- `bun run build:binary [target]` — standalone executable for the host or a Bun cross-compilation target.
+- `bun run build:binaries` — all eight OS/architecture/libc targets in `dist/binaries/`.
+- `bun run test:package` — tarball installation, browser/Vite consumer and CLI smoke tests (needs Node.js 24).
 
 Run `bun test` and `bun check` before every push.
 

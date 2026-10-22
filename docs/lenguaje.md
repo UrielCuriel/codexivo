@@ -8,6 +8,9 @@ donde va el lenguaje está en la [especificación v1](./especificacion-v1.md); l
 Un programa es una lista de sentencias. El punto y coma al final de cada sentencia es opcional si la siguiente empieza en otra
 línea. El valor de un programa es el de su última expresión, o lo que regrese con `regresa`.
 
+El mismo lenguaje funciona mediante la biblioteca ESM `codexivo`, el comando npm `codexivo` (con Bun) y los ejecutables
+autónomos de cada sistema. Consulta [REPL y terminal](./repl.md) para ejecutar archivos y proporcionar entrada estándar.
+
 ```codexivo
 // comentario de una línea
 /* comentario
