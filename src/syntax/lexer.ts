@@ -112,10 +112,15 @@ export const tokenize = (source: string): LexResult => {
       advance();
       while (offset < source.length && !(peek() === '*' && peek(1) === '/')) advance();
       if (offset >= source.length) {
-        lexicalError('COMENTARIO_SIN_CERRAR', 'El comentario que empieza aquí no se cerró.', {
-          start,
-          end: { line: start.line, column: start.column + 2, offset: start.offset + 2 },
-        }, 'Cierra el comentario con `*/`.');
+        lexicalError(
+          'COMENTARIO_SIN_CERRAR',
+          'El comentario que empieza aquí no se cerró.',
+          {
+            start,
+            end: { line: start.line, column: start.column + 2, offset: start.offset + 2 },
+          },
+          'Cierra el comentario con `*/`.',
+        );
       } else {
         advance();
         advance();
@@ -213,7 +218,12 @@ export const tokenize = (source: string): LexResult => {
 
     advance();
     const token = push(TokenType.ILLEGAL, start);
-    lexicalError('CARÁCTER_DESCONOCIDO', `Codexivo no reconoce el carácter \`${character}\`.`, token.span, ILLEGAL_HINTS[character]);
+    lexicalError(
+      'CARÁCTER_DESCONOCIDO',
+      `Codexivo no reconoce el carácter \`${character}\`.`,
+      token.span,
+      ILLEGAL_HINTS[character],
+    );
   }
 
   const end = position();

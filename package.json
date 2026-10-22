@@ -32,7 +32,9 @@
     "test:package": "bun run scripts/test-package.ts",
     "prepack": "bun run build:lib",
     "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
-    "publish:native": "bun run scripts/publish-native.ts"
+    "publish:native": "bun run scripts/publish-native.ts",
+    "format": "bun fmt",
+    "format:check": "bun fmt --check"
   },
   "keywords": [
     "lenguaje de programación",

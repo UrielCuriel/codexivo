@@ -6,9 +6,17 @@ import { strict as assert } from 'node:assert';
 // Exercise the tarball in an isolated consumer, rather than importing repository sources.
 const temporary = await mkdtemp(join(tmpdir(), 'codexivo-package-'));
 const execute = async (cmd: string[], cwd = temporary, stdin?: string, env = process.env, expectedStatus = 0) => {
-  const child = Bun.spawn(cmd, { cwd, env, stdin: stdin === undefined ? 'ignore' : new Blob([stdin]), stdout: 'pipe', stderr: 'pipe' });
+  const child = Bun.spawn(cmd, {
+    cwd,
+    env,
+    stdin: stdin === undefined ? 'ignore' : new Blob([stdin]),
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
   const [stdout, stderr, status] = await Promise.all([
-    new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
   ]);
   assert.equal(status, expectedStatus, `${cmd.join(' ')}\n${stdout}\n${stderr}`);
   return stdout;
@@ -34,16 +42,22 @@ try {
   assert.equal(pkg.optionalDependencies[nativeName], pkg.version);
   assert.equal(await Bun.file(join(installed, 'dist/cli.js')).exists(), false);
 
-  await writeFile(join(temporary, 'consumer.ts'), `
+  await writeFile(
+    join(temporary, 'consumer.ts'),
+    `
     import { run } from 'codexivo';
     const result = run('imprimir("Hola desde el paquete");');
     if (!result.ok || result.output !== 'Hola desde el paquete\\n') throw new Error(JSON.stringify(result));
     console.log(result.output.trim());
-  `);
-  await writeFile(join(temporary, 'tsconfig.json'), JSON.stringify({
-    compilerOptions: { strict: true, target: 'ES2022', module: 'ESNext', moduleResolution: 'bundler', types: [] },
-    include: ['consumer.ts'],
-  }));
+  `,
+  );
+  await writeFile(
+    join(temporary, 'tsconfig.json'),
+    JSON.stringify({
+      compilerOptions: { strict: true, target: 'ES2022', module: 'ESNext', moduleResolution: 'bundler', types: [] },
+      include: ['consumer.ts'],
+    }),
+  );
   await execute([process.execPath, 'check']);
   assert.equal((await execute(['node', '--experimental-strip-types', 'consumer.ts'])).trim(), 'Hola desde el paquete');
   await execute([process.execPath, 'build', 'consumer.ts', '--target=browser', '--outfile=browser.js']);
@@ -59,12 +73,17 @@ try {
   assert.equal(await execute([node, cli, 'programa.cdx'], temporary, '21\n', withoutBun), '42\n');
   assert.match(await execute([node, cli], temporary, 'variable año = 2026;\naño\nsalir\n', withoutBun), /2026/);
   // Exercise the command link created by npm as well.
-  assert.equal(await execute(['npm', 'exec', '--offline', '--', 'codexivo', 'programa.cdx'], temporary, '21\n'), '42\n');
+  assert.equal(
+    await execute(['npm', 'exec', '--offline', '--', 'codexivo', 'programa.cdx'], temporary, '21\n'),
+    '42\n',
+  );
   await writeFile(join(temporary, 'error.cdx'), '1 / 0;');
   await execute([node, cli, 'error.cdx'], temporary, undefined, withoutBun, 1);
   await execute([node, cli, 'no-existe.cdx'], temporary, undefined, withoutBun, 1);
   assert.equal(await execute([node, cli, 'programa.cdx'], temporary, '21\n', withoutBun), '42\n');
-  await rm(join(temporary, 'node_modules', nativeName, 'bin', process.platform === 'win32' ? 'codexivo.exe' : 'codexivo'));
+  await rm(
+    join(temporary, 'node_modules', nativeName, 'bin', process.platform === 'win32' ? 'codexivo.exe' : 'codexivo'),
+  );
   await execute([node, cli], temporary, undefined, withoutBun, 1);
   console.log('Paquete validado: importación, navegador/Vite, tipos y CLI nativo sin Bun en PATH.');
 } finally {

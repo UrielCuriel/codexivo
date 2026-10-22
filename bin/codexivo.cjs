@@ -15,7 +15,9 @@ let binary;
 try {
   binary = require.resolve(`${packageName}/bin/${filename}`);
 } catch {
-  console.error(`No se encontró el ejecutable ${packageName}. Reinstala Codexivo con las dependencias opcionales habilitadas.`);
+  console.error(
+    `No se encontró el ejecutable ${packageName}. Reinstala Codexivo con las dependencias opcionales habilitadas.`,
+  );
   process.exit(1);
 }
 

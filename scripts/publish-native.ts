@@ -18,7 +18,8 @@ for (const name of Object.keys(root.optionalDependencies)) {
   }
   if (response.status !== 404) throw new Error(`npm respondió ${response.status} para ${name}.`);
   const child = Bun.spawn(['npm', 'publish', directory, '--access', 'public', '--provenance', '--tag', tag], {
-    stdout: 'inherit', stderr: 'inherit',
+    stdout: 'inherit',
+    stderr: 'inherit',
   });
   const status = await child.exited;
   if (status !== 0) process.exit(status);

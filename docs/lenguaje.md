@@ -29,14 +29,14 @@ verdadero  falso  nulo  y  o  no
 
 ## Valores
 
-| Tipo | Ejemplos |
-| --- | --- |
-| número | `10`, `3.14`, `.5`, `-2` |
-| texto | `"hola"`, `'mundo'`, `"línea\nnueva"` (escapes: `\n`, `\t`, `\\`, `\"`, `\'`) |
-| lógico | `verdadero`, `falso` |
-| nulo | `nulo` |
-| lista | `[1, "a", verdadero]` |
-| procedimiento | `procedimiento(x) { regresa x * 2; }` |
+| Tipo          | Ejemplos                                                                      |
+| ------------- | ----------------------------------------------------------------------------- |
+| número        | `10`, `3.14`, `.5`, `-2`                                                      |
+| texto         | `"hola"`, `'mundo'`, `"línea\nnueva"` (escapes: `\n`, `\t`, `\\`, `\"`, `\'`) |
+| lógico        | `verdadero`, `falso`                                                          |
+| nulo          | `nulo`                                                                        |
+| lista         | `[1, "a", verdadero]`                                                         |
+| procedimiento | `procedimiento(x) { regresa x * 2; }`                                         |
 
 Las listas se comparten: si dos variables apuntan a la misma lista, un cambio se ve desde las dos.
 
@@ -58,16 +58,16 @@ Los nombres pueden llevar `ñ`, acentos y diéresis: `año`, `canción`, `pingü
 
 De menor a mayor precedencia:
 
-| Operadores | Notas |
-| --- | --- |
-| `o` | Cortocircuito |
-| `y` | Cortocircuito |
-| `no`, `!` | |
-| `==` `!=` `<` `>` `<=` `>=` | No se pueden encadenar: `1 < x < 5` es un error; escribe `1 < x y x < 5` |
-| `+` `-` | `+` también une dos textos |
-| `*` `/` | `/` es división real; dividir entre cero es un error |
-| `-` (signo) | |
-| llamadas `f(x)`, índices `lista[i]` | |
+| Operadores                          | Notas                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| `o`                                 | Cortocircuito                                                            |
+| `y`                                 | Cortocircuito                                                            |
+| `no`, `!`                           |                                                                          |
+| `==` `!=` `<` `>` `<=` `>=`         | No se pueden encadenar: `1 < x < 5` es un error; escribe `1 < x y x < 5` |
+| `+` `-`                             | `+` también une dos textos                                               |
+| `*` `/`                             | `/` es división real; dividir entre cero es un error                     |
+| `-` (signo)                         |                                                                          |
+| llamadas `f(x)`, índices `lista[i]` |                                                                          |
 
 - `==` compara por valor, también listas: `[1, 2] == [1, 2]` es `verdadero`.
 - `+` no mezcla textos y números: `"Total: " + 5` es un error. Usa `texto(5)` o `imprimir("Total:", 5)`.
@@ -133,19 +133,19 @@ Los índices son enteros desde 0; un índice fuera de rango es un error que dice
 
 Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
 
-| Procedimiento | Qué hace |
-| --- | --- |
-| `imprimir(a, b, …)` | Escribe los valores separados por un espacio y termina la línea |
-| `leer()` | Siguiente línea de entrada como texto, o `nulo` si ya no hay |
-| `leer_número()` | Siguiente línea de entrada como número |
-| `tipo(x)` | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"` o `"procedimiento"` |
-| `texto(x)`, `número(x)` | Conversiones explícitas |
-| `longitud(x)` | Caracteres de un texto o elementos de una lista |
-| `absoluto(x)` | Valor absoluto |
-| `máximo(…)`, `mínimo(…)` | De varios números o de una lista |
-| `redondear(x, decimales?)` | Redondea; los `.5` se alejan del cero |
-| `agregar(lista, x)` | Agrega al final (cambia la lista) |
-| `primero(lista)`, `último(lista)` | Primer y último elemento |
+| Procedimiento                     | Qué hace                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `imprimir(a, b, …)`               | Escribe los valores separados por un espacio y termina la línea            |
+| `leer()`                          | Siguiente línea de entrada como texto, o `nulo` si ya no hay               |
+| `leer_número()`                   | Siguiente línea de entrada como número                                     |
+| `tipo(x)`                         | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"` o `"procedimiento"` |
+| `texto(x)`, `número(x)`           | Conversiones explícitas                                                    |
+| `longitud(x)`                     | Caracteres de un texto o elementos de una lista                            |
+| `absoluto(x)`                     | Valor absoluto                                                             |
+| `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                           |
+| `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                      |
+| `agregar(lista, x)`               | Agrega al final (cambia la lista)                                          |
+| `primero(lista)`, `último(lista)` | Primer y último elemento                                                   |
 
 ## Errores
 

@@ -261,7 +261,10 @@ class Parser {
       case TokenType.IDENT: {
         const typoHint = KEYWORD_LIKE_TYPOS[token.lexeme];
         const next = this.peek();
-        if (typoHint && (next.type === TokenType.LBRACE || next.type === TokenType.IF || next.type === TokenType.LPAREN)) {
+        if (
+          typoHint &&
+          (next.type === TokenType.LBRACE || next.type === TokenType.IF || next.type === TokenType.LPAREN)
+        ) {
           this.error('PALABRA_DESCONOCIDA', `\`${token.lexeme}\` no es una palabra de Codexivo.`, token.span, typoHint);
         }
         if (ASSIGNMENT_OPERATORS[next.type]) {
@@ -305,7 +308,11 @@ class Parser {
   private parseVariableDeclaration(): ast.VariableDeclaration {
     const start = this.advance().span.start; // variable
     const name = this.parseBindingName('después de `variable`');
-    this.expect(TokenType.ASSIGN, `después de \`variable ${name.name}\``, `Toda variable empieza con un valor: \`variable ${name.name} = 0\`.`);
+    this.expect(
+      TokenType.ASSIGN,
+      `después de \`variable ${name.name}\``,
+      `Toda variable empieza con un valor: \`variable ${name.name} = 0\`.`,
+    );
     const value = this.parseExpression();
     if (value.kind === 'FunctionLiteral' && !value.name) value.name = name.name;
     return { kind: 'VariableDeclaration', id: this.id(), name, value, span: this.spanFrom(start) };
@@ -323,7 +330,11 @@ class Parser {
           'Elige otro nombre, por ejemplo agregando una palabra: `valor_inicial`.',
         );
       }
-      this.error('NOMBRE_ESPERADO', `Se esperaba un nombre ${context}, pero se encontró ${describeToken(token)}.`, token.span);
+      this.error(
+        'NOMBRE_ESPERADO',
+        `Se esperaba un nombre ${context}, pero se encontró ${describeToken(token)}.`,
+        token.span,
+      );
     }
     this.advance();
     return { kind: 'Identifier', id: this.id(), name: token.lexeme, span: token.span };
@@ -331,7 +342,12 @@ class Parser {
 
   private parseAssignment(): ast.Assignment {
     const targetToken = this.advance();
-    const target: ast.Identifier = { kind: 'Identifier', id: this.id(), name: targetToken.lexeme, span: targetToken.span };
+    const target: ast.Identifier = {
+      kind: 'Identifier',
+      id: this.id(),
+      name: targetToken.lexeme,
+      span: targetToken.span,
+    };
     const operator = ASSIGNMENT_OPERATORS[this.advance().type]!;
     const value = this.parseExpression();
     if (value.kind === 'FunctionLiteral' && !value.name) value.name = target.name;
@@ -346,7 +362,9 @@ class Parser {
         'ASIGNACIÓN_INVÁLIDA',
         'Solo se le puede asignar un valor a una variable.',
         this.current.span,
-        expression.kind === 'Index' ? 'Cambiar un elemento de una lista con `lista[i] = valor` llegará en la siguiente versión.' : undefined,
+        expression.kind === 'Index'
+          ? 'Cambiar un elemento de una lista con `lista[i] = valor` llegará en la siguiente versión.'
+          : undefined,
       );
     }
     return { kind: 'ExpressionStatement', id: this.id(), expression, span: this.spanFrom(start) };
@@ -378,7 +396,11 @@ class Parser {
   }
 
   private parseCondition(keyword: string): ast.Expression {
-    this.expect(TokenType.LPAREN, `después de \`${keyword}\``, `La condición va entre paréntesis: \`${keyword} (x > 0)\`.`);
+    this.expect(
+      TokenType.LPAREN,
+      `después de \`${keyword}\``,
+      `La condición va entre paréntesis: \`${keyword} (x > 0)\`.`,
+    );
     const condition = this.parseExpression();
     this.expect(TokenType.RPAREN, `para cerrar la condición de \`${keyword}\``);
     return condition;
@@ -399,7 +421,12 @@ class Parser {
     let alternative: ast.Block | undefined;
     if (this.match(TokenType.ELSE)) {
       if (this.check(TokenType.IF)) {
-        this.error('SI_NO_SI', 'Después de `si_no` va directamente un bloque.', this.current.span, 'Para otra condición usa `pero_si (…)`.');
+        this.error(
+          'SI_NO_SI',
+          'Después de `si_no` va directamente un bloque.',
+          this.current.span,
+          'Para otra condición usa `pero_si (…)`.',
+        );
       }
       alternative = this.parseBlock('después de `si_no`');
     }
@@ -416,14 +443,22 @@ class Parser {
   private parseDoUntil(): ast.DoUntil {
     const start = this.advance().span.start;
     const body = this.parseBlock('después de `hacer`');
-    this.expect(TokenType.UNTIL, 'después del bloque de `hacer`', 'La forma completa es `hacer { … } hasta_que (condición);`.');
+    this.expect(
+      TokenType.UNTIL,
+      'después del bloque de `hacer`',
+      'La forma completa es `hacer { … } hasta_que (condición);`.',
+    );
     const condition = this.parseCondition('hasta_que');
     return { kind: 'DoUntil', id: this.id(), body, condition, span: this.spanFrom(start) };
   }
 
   private parseFor(): ast.For {
     const start = this.advance().span.start;
-    this.expect(TokenType.LPAREN, 'después de `para`', 'La forma completa es `para (variable i = 0; i < 10; i += 1) { … }`.');
+    this.expect(
+      TokenType.LPAREN,
+      'después de `para`',
+      'La forma completa es `para (variable i = 0; i < 10; i += 1) { … }`.',
+    );
 
     let init: ast.For['init'];
     if (!this.check(TokenType.SEMICOLON)) {
@@ -513,7 +548,12 @@ class Parser {
           token.span,
         );
       case TokenType.EOF:
-        this.error('EXPRESIÓN_INCOMPLETA', 'El programa terminó a mitad de una expresión.', token.span, 'Revisa que no falte un valor al final.');
+        this.error(
+          'EXPRESIÓN_INCOMPLETA',
+          'El programa terminó a mitad de una expresión.',
+          token.span,
+          'Revisa que no falte un valor al final.',
+        );
       default:
         this.error(
           'EXPRESIÓN_ESPERADA',
@@ -538,7 +578,12 @@ class Parser {
       case TokenType.LBRACKET: {
         this.advance();
         if (this.check(TokenType.RBRACKET)) {
-          this.error('ÍNDICE_VACÍO', 'Falta el índice entre los corchetes.', this.current.span, 'Por ejemplo: `lista[0]`.');
+          this.error(
+            'ÍNDICE_VACÍO',
+            'Falta el índice entre los corchetes.',
+            this.current.span,
+            'Por ejemplo: `lista[0]`.',
+          );
         }
         const index = this.parseExpression();
         this.expect(TokenType.RBRACKET, 'para cerrar el índice');
@@ -598,7 +643,11 @@ class Parser {
         `Por ahora escribe \`variable ${name} = procedimiento(…) { … };\`.`,
       );
     }
-    this.expect(TokenType.LPAREN, 'después de `procedimiento`', 'Los parámetros van entre paréntesis: `procedimiento(a, b) { … }`.');
+    this.expect(
+      TokenType.LPAREN,
+      'después de `procedimiento`',
+      'Los parámetros van entre paréntesis: `procedimiento(a, b) { … }`.',
+    );
     const params: ast.Identifier[] = [];
     const seen = new Set<string>();
     while (!this.check(TokenType.RPAREN)) {

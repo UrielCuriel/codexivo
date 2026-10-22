@@ -27,6 +27,7 @@ Pipeline: `tokenize → parse → compile → Machine`.
 ## Commands
 
 - `bun test` — run the test suite.
+- `bun fmt` / `bun fmt --check` — format the repository / check formatting without writing.
 - `bun check` — type check (replaces `tsc`; TypeScript is not a dependency).
 - `bun run repl` — interactive REPL. `bun run src/cli.ts file.cdx` runs a file.
 - `bun run build` — browser ESM bundle and standalone CLI for the host platform. Types ship as the `.ts` sources in `src/`.
@@ -34,7 +35,7 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `bun run build:binaries` — all eight OS/architecture/libc targets in `dist/binaries/`.
 - `bun run test:package` — tarball installation, browser/Vite consumer and CLI smoke tests (needs Node.js 24).
 
-Run `bun test` and `bun check` before every push.
+Run `bun fmt --check`, `bun test` and `bun check` before every push.
 
 ## Conventions
 
@@ -45,7 +46,7 @@ Run `bun test` and `bun check` before every push.
 - Every AST node and token keeps its `span`; every instruction keeps its node. Visualizations depend on it.
 - The machine must stay deterministic: same program + same input ⇒ same output, same operation count.
 - Built-in names with accents are canonical; the unaccented alias is registered automatically.
-- 2-space indentation, single quotes, trailing commas (see `.prettierrc.json`).
+- 2-space indentation, single quotes, trailing commas (see `[fmt]` in `bunfig.toml`).
 
 ## Tests
 

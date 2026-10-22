@@ -90,6 +90,7 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 
 - `bun test` — pruebas.
 - `bun check` — revisión de tipos.
+- `bun fmt` / `bun fmt --check` — aplicar o comprobar formato; configuración en `bunfig.toml`.
 - `bun run repl` — REPL.
 - `bun run build` — biblioteca ESM y ejecutable autónomo para el sistema actual.
 - `bun run build:lib` — construir solamente la biblioteca para navegador.

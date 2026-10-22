@@ -70,7 +70,9 @@ describe('lexer', () => {
   });
 
   test('números enteros y decimales', () => {
-    const values = tokenize('10 3.14 .5 0').tokens.slice(0, -1).map(token => token.value);
+    const values = tokenize('10 3.14 .5 0')
+      .tokens.slice(0, -1)
+      .map(token => token.value);
     expect(values).toEqual([10, 3.14, 0.5, 0]);
   });
 
@@ -80,13 +82,20 @@ describe('lexer', () => {
   });
 
   test('ignora comentarios de línea y de bloque', () => {
-    expect(types('1 // comentario\n/* varias\nlíneas */ 2')).toEqual([TokenType.NUMBER, TokenType.NUMBER, TokenType.EOF]);
+    expect(types('1 // comentario\n/* varias\nlíneas */ 2')).toEqual([
+      TokenType.NUMBER,
+      TokenType.NUMBER,
+      TokenType.EOF,
+    ]);
   });
 
   test('cada token conoce su línea, columna y desplazamiento', () => {
     const [first, second] = tokenize('x\n  siguiente').tokens;
     expect(first!.span).toEqual({ start: { line: 1, column: 1, offset: 0 }, end: { line: 1, column: 2, offset: 1 } });
-    expect(second!.span).toEqual({ start: { line: 2, column: 3, offset: 4 }, end: { line: 2, column: 12, offset: 13 } });
+    expect(second!.span).toEqual({
+      start: { line: 2, column: 3, offset: 4 },
+      end: { line: 2, column: 12, offset: 13 },
+    });
   });
 
   describe('errores', () => {

@@ -190,15 +190,22 @@ describe('procedimientos', () => {
   });
 
   test('procedimientos como argumentos', () => {
-    expect(value('variable aplicar = procedimiento(f, x) { regresa f(x); }; aplicar(procedimiento(n) { regresa n * n; }, 4);')).toBe('16');
+    expect(
+      value(
+        'variable aplicar = procedimiento(f, x) { regresa f(x); }; aplicar(procedimiento(n) { regresa n * n; }, 4);',
+      ),
+    ).toBe('16');
   });
 
   test('recursión', () => {
-    expect(value('variable fib = procedimiento(n) { si (n < 2) { regresa n; } regresa fib(n - 1) + fib(n - 2); }; fib(20);')).toBe('6765');
+    expect(
+      value('variable fib = procedimiento(n) { si (n < 2) { regresa n; } regresa fib(n - 1) + fib(n - 2); }; fib(20);'),
+    ).toBe('6765');
   });
 
   test('recursión profunda sin depender de la pila de JavaScript', () => {
-    const source = 'variable cuenta = procedimiento(n) { si (n == 0) { regresa 0; } regresa 1 + cuenta(n - 1); }; cuenta(9999);';
+    const source =
+      'variable cuenta = procedimiento(n) { si (n == 0) { regresa 0; } regresa 1 + cuenta(n - 1); }; cuenta(9999);';
     expect(value(source)).toBe('9999');
   });
 

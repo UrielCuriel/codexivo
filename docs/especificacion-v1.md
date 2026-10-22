@@ -29,35 +29,35 @@ Principios, en orden de prioridad cuando chocan:
 Cada característica pertenece a un nivel. Los niveles ordenan la documentación y los retos; no
 bloquean nada en el editor.
 
-| Nivel | Qué se practica |
-| --- | --- |
-| 🟢 **Principiante** | Secuencia, variables, entrada/salida, condiciones, bucles |
-| 🟡 **Intermedio** | Procedimientos, listas, texto, diccionarios, recursión |
-| 🔴 **Avanzado** | Procedimientos como valores, estructuras de datos, algoritmos clásicos |
+| Nivel               | Qué se practica                                                        |
+| ------------------- | ---------------------------------------------------------------------- |
+| 🟢 **Principiante** | Secuencia, variables, entrada/salida, condiciones, bucles              |
+| 🟡 **Intermedio**   | Procedimientos, listas, texto, diccionarios, recursión                 |
+| 🔴 **Avanzado**     | Procedimientos como valores, estructuras de datos, algoritmos clásicos |
 
 ## 1. Estado actual frente a v1
 
 Probado contra `main` (`1ca0398`), cuyos 56 tests pasaban sin cubrir estos casos. La columna "Estado" dice qué ya resolvió
 la reescritura del núcleo (pasos 1 a 3 de §16).
 
-| Caso | Antes | v1 | Estado |
-| --- | --- | --- | --- |
-| `1 < 2 y 5 < 4` | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso` | ✅ |
-| `no 1 == 2` | `falso` (se agrupaba como `(no 1) == 2`) | `verdadero` | ✅ |
-| Varios `pero_si` seguidos | Solo se conservaba el último | Todas las ramas, en orden | ✅ |
-| `procedimiento suma(a, b) { … }` | Error de sintaxis | Declaración con nombre | Paso 5 (hoy da un error con pista) |
-| `// comentario` | Excepción de JavaScript (`value is null or undefined`) | Comentario | ✅ |
-| `%`, `n++`, `n--` | Error de sintaxis | Soportados | Paso 4 |
-| `a[0] = 9` | Error de sintaxis | Asignación por índice | Paso 5 |
-| `nulo` | "identificador no encontrado" | Literal | ✅ |
-| `imprimir(…)` / `leer()` | No existían; el programa solo devolvía su última expresión | Entrada y salida | ✅ |
-| `1 / 0` | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba) | Error | ✅ |
-| `[1, 2] == [1, 2]` | `falso` | `verdadero` | ✅ |
-| `mientras (verdadero) {}` | Bloqueaba el proceso | Error al superar el límite de operaciones | ✅ |
-| `f(20000)` recursivo | `Maximum call stack size exceeded` | Funciona (límite configurable) | ✅ |
-| `hasta_que` | Se tokenizaba como `WHILE` | Token propio `UNTIL` | ✅ |
-| Mensajes de error | "en la linea" | "en la línea", con pista | ✅ |
-| Docs y README | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron | Alineados con esta spec | ✅ (y se prueban) |
+| Caso                             | Antes                                                                                                | v1                                        | Estado                             |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------- |
+| `1 < 2 y 5 < 4`                  | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso`                                   | ✅                                 |
+| `no 1 == 2`                      | `falso` (se agrupaba como `(no 1) == 2`)                                                             | `verdadero`                               | ✅                                 |
+| Varios `pero_si` seguidos        | Solo se conservaba el último                                                                         | Todas las ramas, en orden                 | ✅                                 |
+| `procedimiento suma(a, b) { … }` | Error de sintaxis                                                                                    | Declaración con nombre                    | Paso 5 (hoy da un error con pista) |
+| `// comentario`                  | Excepción de JavaScript (`value is null or undefined`)                                               | Comentario                                | ✅                                 |
+| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | Paso 4                             |
+| `a[0] = 9`                       | Error de sintaxis                                                                                    | Asignación por índice                     | Paso 5                             |
+| `nulo`                           | "identificador no encontrado"                                                                        | Literal                                   | ✅                                 |
+| `imprimir(…)` / `leer()`         | No existían; el programa solo devolvía su última expresión                                           | Entrada y salida                          | ✅                                 |
+| `1 / 0`                          | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba)                                    | Error                                     | ✅                                 |
+| `[1, 2] == [1, 2]`               | `falso`                                                                                              | `verdadero`                               | ✅                                 |
+| `mientras (verdadero) {}`        | Bloqueaba el proceso                                                                                 | Error al superar el límite de operaciones | ✅                                 |
+| `f(20000)` recursivo             | `Maximum call stack size exceeded`                                                                   | Funciona (límite configurable)            | ✅                                 |
+| `hasta_que`                      | Se tokenizaba como `WHILE`                                                                           | Token propio `UNTIL`                      | ✅                                 |
+| Mensajes de error                | "en la linea"                                                                                        | "en la línea", con pista                  | ✅                                 |
+| Docs y README                    | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron                          | Alineados con esta spec                   | ✅ (y se prueban)                  |
 
 ## 2. Léxico
 
@@ -82,14 +82,14 @@ variable canción_favorita = "Cielito lindo";
 
 ### 2.3 Literales
 
-| Literal | Ejemplos | Notas |
-| --- | --- | --- |
-| Número | `10`, `3.14`, `.5`, `1_000_000` | Un solo tipo numérico (doble precisión). `_` solo como separador visual |
-| Texto | `"hola"`, `'mundo'`, `"línea\nnueva"` | Escapes: `\n`, `\t`, `\"`, `\'`, `\\` |
-| Lógico | `verdadero`, `falso` | |
-| Nulo | `nulo` | Ausencia de valor |
-| Lista | `[1, 2, 3]`, `[]` | |
-| Diccionario | `{ "nombre": "Ana", "edad": 16 }` | Ver §4.6 |
+| Literal     | Ejemplos                              | Notas                                                                   |
+| ----------- | ------------------------------------- | ----------------------------------------------------------------------- |
+| Número      | `10`, `3.14`, `.5`, `1_000_000`       | Un solo tipo numérico (doble precisión). `_` solo como separador visual |
+| Texto       | `"hola"`, `'mundo'`, `"línea\nnueva"` | Escapes: `\n`, `\t`, `\"`, `\'`, `\\`                                   |
+| Lógico      | `verdadero`, `falso`                  |                                                                         |
+| Nulo        | `nulo`                                | Ausencia de valor                                                       |
+| Lista       | `[1, 2, 3]`, `[]`                     |                                                                         |
+| Diccionario | `{ "nombre": "Ana", "edad": 16 }`     | Ver §4.6                                                                |
 
 > **✅ Decidido — interpolación de texto.** ¿`"Hola, {nombre}"`? No en v1. `imprimir("Hola,", nombre)` resuelve el caso común sin agregar sintaxis
 > dentro de las cadenas, y `texto(x)` cubre el resto.
@@ -120,14 +120,14 @@ teclados lo facilitan. La documentación y los mensajes usan siempre la forma ca
 
 ## 3. Tipos y valores
 
-| Tipo (`tipo(x)`) | Valores |
-| --- | --- |
-| `"número"` | `0`, `-3`, `2.5` |
-| `"texto"` | `"hola"` |
-| `"lógico"` | `verdadero`, `falso` |
-| `"nulo"` | `nulo` |
-| `"lista"` | `[1, "a", verdadero]` |
-| `"diccionario"` | `{ "a": 1 }` |
+| Tipo (`tipo(x)`)  | Valores                                       |
+| ----------------- | --------------------------------------------- |
+| `"número"`        | `0`, `-3`, `2.5`                              |
+| `"texto"`         | `"hola"`                                      |
+| `"lógico"`        | `verdadero`, `falso`                          |
+| `"nulo"`          | `nulo`                                        |
+| `"lista"`         | `[1, "a", verdadero]`                         |
+| `"diccionario"`   | `{ "a": 1 }`                                  |
 | `"procedimiento"` | Procedimientos del usuario y de la biblioteca |
 
 - **Valor contra referencia.** Números, textos, lógicos y `nulo` se copian. Las listas y los
@@ -142,19 +142,19 @@ teclados lo facilitan. La documentación y los mensajes usan siempre la forma ca
 
 ### 4.1 Precedencia (de menor a mayor)
 
-| Nivel | Operadores | Asociatividad |
-| --- | --- | --- |
-| 1 | `o` | izquierda |
-| 2 | `y` | izquierda |
-| 3 | `no` (`!`) | prefijo |
-| 4 | `==` `!=` `<` `>` `<=` `>=` y sus formas en palabras | **sin encadenar** |
-| 5 | `+` `-` | izquierda |
-| 6 | `*` `/` `div` `mod` (`%`) | izquierda |
-| 7 | `-` unario | prefijo |
-| 8 | `^` (potencia) | **derecha** |
-| 9 | llamada `f(x)`, índice `l[i]`, acceso `d.campo` | izquierda |
+| Nivel | Operadores                                           | Asociatividad     |
+| ----- | ---------------------------------------------------- | ----------------- |
+| 1     | `o`                                                  | izquierda         |
+| 2     | `y`                                                  | izquierda         |
+| 3     | `no` (`!`)                                           | prefijo           |
+| 4     | `==` `!=` `<` `>` `<=` `>=` y sus formas en palabras | **sin encadenar** |
+| 5     | `+` `-`                                              | izquierda         |
+| 6     | `*` `/` `div` `mod` (`%`)                            | izquierda         |
+| 7     | `-` unario                                           | prefijo           |
+| 8     | `^` (potencia)                                       | **derecha**       |
+| 9     | llamada `f(x)`, índice `l[i]`, acceso `d.campo`      | izquierda         |
 
-- `1 < x < 5` es un error con la pista *"escribe `1 < x y x < 5`"*. Encadenar comparaciones se ve
+- `1 < x < 5` es un error con la pista _"escribe `1 < x y x < 5`"_. Encadenar comparaciones se ve
   natural pero esconde dos comparaciones.
 - `-2 ^ 2` es `-4`, como en matemáticas.
 
@@ -163,17 +163,17 @@ teclados lo facilitan. La documentación y los mensajes usan siempre la forma ca
 Cada forma en palabras es **exactamente equivalente** a su símbolo. El sandbox puede mostrar
 cualquiera de las dos.
 
-| Símbolo | Palabra | Ejemplo |
-| --- | --- | --- |
-| `==` | `es_igual_a` | `si (respuesta es_igual_a 42)` |
-| `!=` | `es_distinto_de` | `mientras (letra es_distinto_de "x")` |
-| `<` | `es_menor_que` | `edad es_menor_que 18` |
-| `>` | `es_mayor_que` | `puntos es_mayor_que récord` |
-| `<=` | `es_menor_o_igual_a` | `i es_menor_o_igual_a 10` |
-| `>=` | `es_mayor_o_igual_a` | `edad es_mayor_o_igual_a 18` |
-| `%` | `mod` | `n mod 2 == 0` |
-| — | `div` | `7 div 2` → `3` |
-| `!` | `no` | `no encontrado` |
+| Símbolo | Palabra              | Ejemplo                               |
+| ------- | -------------------- | ------------------------------------- |
+| `==`    | `es_igual_a`         | `si (respuesta es_igual_a 42)`        |
+| `!=`    | `es_distinto_de`     | `mientras (letra es_distinto_de "x")` |
+| `<`     | `es_menor_que`       | `edad es_menor_que 18`                |
+| `>`     | `es_mayor_que`       | `puntos es_mayor_que récord`          |
+| `<=`    | `es_menor_o_igual_a` | `i es_menor_o_igual_a 10`             |
+| `>=`    | `es_mayor_o_igual_a` | `edad es_mayor_o_igual_a 18`          |
+| `%`     | `mod`                | `n mod 2 == 0`                        |
+| —       | `div`                | `7 div 2` → `3`                       |
+| `!`     | `no`                 | `no encontrado`                       |
 
 No hay `&&` ni `||`: solo `y` / `o`.
 
@@ -185,7 +185,7 @@ No hay `&&` ni `||`: solo `y` / `o`.
   `-7 mod 3` → `2`, que es lo que se espera al preguntar "¿es par?" o al dar vueltas en un círculo.
 - Dividir entre cero (con `/`, `div` o `mod`) es un error.
 - `+` suma números o une textos. **No mezcla**: `"Total: " + 5` es un error con la pista
-  *"convierte el número con `texto(5)` o usa `imprimir("Total:", 5)`"*.
+  _"convierte el número con `texto(5)` o usa `imprimir("Total:", 5)`"_.
 
 ### 4.4 Comparación e igualdad
 
@@ -199,7 +199,7 @@ No hay `&&` ni `||`: solo `y` / `o`.
 
 > **✅ Decidido — condiciones estrictas.** Antes `si (1)` funcionaba porque `0`, `""` y `nulo`
 > contaban como falsos. En v1 las condiciones de `si`, `mientras`, `hasta_que`, `y`, `o` y `no` deben ser
-> lógicas. `si (lista)` es un error con la pista *"¿quisiste decir `longitud(lista) > 0`?"*. Obliga a
+> lógicas. `si (lista)` es un error con la pista _"¿quisiste decir `longitud(lista) > 0`?"_. Obliga a
 > decir lo que uno quiere decir, que es justo lo que se practica.
 
 ### 4.6 Listas y diccionarios
@@ -219,8 +219,8 @@ persona.ciudad = "León"; // agrega la clave
 - Índices enteros desde `0`. Fuera de rango es un error que muestra el índice y la longitud.
 - Las claves de un diccionario son textos o números. `d.campo` solo funciona con claves que sean
   identificadores válidos.
-- Leer una clave que no existe es un error con la pista *"usa `tiene(d, clave)` para preguntar
-  antes"*.
+- Leer una clave que no existe es un error con la pista _"usa `tiene(d, clave)` para preguntar
+  antes"_.
 - Al inicio de una sentencia, `{` abre un bloque; en cualquier otra posición, un diccionario.
 
 ## 5. Sentencias
@@ -233,7 +233,7 @@ constante PI = 3.14159;
 contador = contador + 1;
 ```
 
-- Asignar a una variable no declarada es un error: *"¿olvidaste escribir `variable`?"*.
+- Asignar a una variable no declarada es un error: _"¿olvidaste escribir `variable`?"_.
 - Declarar dos veces el mismo nombre en el mismo bloque es un error.
 - Reasignar una `constante` es un error.
 - **Alcance por bloque:** lo declarado dentro de `{ }` deja de existir al cerrar el bloque.
@@ -332,11 +332,11 @@ mapear([1, 2, 3], doble); // [2, 4, 6]
 
 ## 6. Entrada y salida
 
-| Procedimiento | Qué hace |
-| --- | --- |
-| `imprimir(a, b, …)` | Escribe los valores separados por un espacio y termina la línea |
-| `leer()` | Lee la siguiente línea de entrada como texto. Si no hay más, regresa `nulo` |
-| `leer_número()` | Lee la siguiente línea y la convierte en número; si no es un número, error |
+| Procedimiento       | Qué hace                                                                    |
+| ------------------- | --------------------------------------------------------------------------- |
+| `imprimir(a, b, …)` | Escribe los valores separados por un espacio y termina la línea             |
+| `leer()`            | Lee la siguiente línea de entrada como texto. Si no hay más, regresa `nulo` |
+| `leer_número()`     | Lee la siguiente línea y la convierte en número; si no es un número, error  |
 
 - En el **sandbox libre**, `leer()` pausa el programa y pide el dato en la consola.
 - En los **retos**, la entrada viene del caso de prueba.
@@ -372,13 +372,13 @@ cambian la lista; todo lo demás regresa un valor nuevo.**
 
 ### 🟢 Básicos
 
-| Nombre | Descripción |
-| --- | --- |
-| `imprimir`, `leer`, `leer_número` | §6 |
-| `tipo(x)` | Nombre del tipo (§3) |
-| `texto(x)`, `número(x)` | Conversiones explícitas |
-| `longitud(x)` | Elementos de una lista o diccionario, o caracteres de un texto |
-| `afirmar(cond, mensaje)` | §7 |
+| Nombre                            | Descripción                                                    |
+| --------------------------------- | -------------------------------------------------------------- |
+| `imprimir`, `leer`, `leer_número` | §6                                                             |
+| `tipo(x)`                         | Nombre del tipo (§3)                                           |
+| `texto(x)`, `número(x)`           | Conversiones explícitas                                        |
+| `longitud(x)`                     | Elementos de una lista o diccionario, o caracteres de un texto |
+| `afirmar(cond, mensaje)`          | §7                                                             |
 
 ### 🟢 Matemáticas
 
@@ -396,15 +396,15 @@ si no está), `subtexto(t, inicio, fin)`, `caracteres(t)`, `código_de(c)`, `car
 
 ### 🟡 Listas
 
-| Nombre | Descripción |
-| --- | --- |
-| `agregar(l, x)` · `insertar(l, i, x)` | Cambian la lista |
-| `quitar(l, i)` · `quitar_último(l)` · `quitar_primero(l)` · `vaciar(l)` | Cambian la lista; los tres primeros regresan lo que quitaron |
-| `primero`, `último`, `contiene`, `posición_de` | Consulta |
-| `rango(a, b, paso?)` | Lista de `a` a `b` **inclusive** |
-| `índices(l)` | `rango(0, longitud(l) - 1)` |
-| `rebanar(l, inicio, fin)`, `invertir(l)`, `ordenar(l, comparador?)`, `copiar(l)` | Nuevas listas |
-| `sumar(l)`, `lista_de(n, valor)`, `matriz(filas, columnas, valor)` | Construcción y resumen. `lista_de` y `matriz` copian el valor en cada casilla, para no compartir sublistas por accidente |
+| Nombre                                                                           | Descripción                                                                                                              |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `agregar(l, x)` · `insertar(l, i, x)`                                            | Cambian la lista                                                                                                         |
+| `quitar(l, i)` · `quitar_último(l)` · `quitar_primero(l)` · `vaciar(l)`          | Cambian la lista; los tres primeros regresan lo que quitaron                                                             |
+| `primero`, `último`, `contiene`, `posición_de`                                   | Consulta                                                                                                                 |
+| `rango(a, b, paso?)`                                                             | Lista de `a` a `b` **inclusive**                                                                                         |
+| `índices(l)`                                                                     | `rango(0, longitud(l) - 1)`                                                                                              |
+| `rebanar(l, inicio, fin)`, `invertir(l)`, `ordenar(l, comparador?)`, `copiar(l)` | Nuevas listas                                                                                                            |
+| `sumar(l)`, `lista_de(n, valor)`, `matriz(filas, columnas, valor)`               | Construcción y resumen. `lista_de` y `matriz` copian el valor en cada casilla, para no compartir sublistas por accidente |
 
 > **✅ Decidido — `rango` inclusivo.** `rango(1, 10)` incluye el 10. Es como lo dice una persona ("del 1 al 10"); `índices(l)` evita el
 > `- 1` en el caso típico.
@@ -423,12 +423,12 @@ inserción.
 
 Pilas y colas son listas con un vocabulario propio, para que el algoritmo se lea como se explica:
 
-| Pila | Cola | Equivale a |
-| --- | --- | --- |
-| `apilar(p, x)` | `encolar(c, x)` | `agregar` |
-| `desapilar(p)` | — | `quitar_último` |
-| — | `desencolar(c)` | `quitar_primero` |
-| `tope(p)` | `frente(c)` | `último` / `primero` |
+| Pila           | Cola            | Equivale a           |
+| -------------- | --------------- | -------------------- |
+| `apilar(p, x)` | `encolar(c, x)` | `agregar`            |
+| `desapilar(p)` | —               | `quitar_último`      |
+| —              | `desencolar(c)` | `quitar_primero`     |
+| `tope(p)`      | `frente(c)`     | `último` / `primero` |
 
 Los conjuntos se modelan con diccionarios (`visitados[nodo] = verdadero`), y los registros con
 diccionarios y `.`.
@@ -507,8 +507,8 @@ procedimiento distancia(grafo, origen, destino) {
   ejecución es determinista, el resultado es idéntico. En el sandbox corre en un Web Worker y cede el control cada
   cierto número de operaciones para no congelar la página.
 - **Contratos de los retos:**
-  - *Estilo HackerRank:* el programa lee con `leer()` y se compara lo que imprime.
-  - *Estilo LeetCode:* el reto llama a un procedimiento (`resolver(...)`) y compara lo que regresa.
+  - _Estilo HackerRank:_ el programa lee con `leer()` y se compara lo que imprime.
+  - _Estilo LeetCode:_ el reto llama a un procedimiento (`resolver(...)`) y compara lo que regresa.
 
 ## 11. Contrato para la visualización
 
@@ -531,13 +531,13 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
 El mismo lenguaje con procedimientos adicionales para controlar un robot en una cuadrícula. Solo
 existen cuando el programa corre en un mundo.
 
-| Acción | Pregunta |
-| --- | --- |
-| `avanzar()` | `frente_libre()`, `izquierda_libre()`, `derecha_libre()` |
-| `girar_izquierda()` | `hay_zumbador()` |
-| `recoger_zumbador()` | `tengo_zumbadores()` |
-| `dejar_zumbador()` | `mirando_al_norte()`, `mirando_al_sur()`, `mirando_al_este()`, `mirando_al_oeste()` |
-| `apagar()` | |
+| Acción               | Pregunta                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| `avanzar()`          | `frente_libre()`, `izquierda_libre()`, `derecha_libre()`                            |
+| `girar_izquierda()`  | `hay_zumbador()`                                                                    |
+| `recoger_zumbador()` | `tengo_zumbadores()`                                                                |
+| `dejar_zumbador()`   | `mirando_al_norte()`, `mirando_al_sur()`, `mirando_al_este()`, `mirando_al_oeste()` |
+| `apagar()`           |                                                                                     |
 
 Chocar con una pared o recoger donde no hay zumbadores es un error de ejecución, con la posición del
 robot. No hay `girar_derecha()`: construirlo con tres `girar_izquierda()` es el primer ejercicio, igual
@@ -564,13 +564,13 @@ Codexivo no tiene usuarios todavía, así que v1 se permite romper compatibilida
 
 Todas aprobadas.
 
-| # | Tema | Decisión |
-| --- | --- | --- |
-| 1 | Interpolación de texto (§2.3) | No en v1 |
-| 2 | Nombre del tipo de las listas (§3) | `lista` |
-| 3 | Condiciones estrictas (§4.5) | Sí |
-| 4 | `según`/`caso` (§5.3) | No en v1 |
-| 5 | `rango` inclusivo (§8) | Sí |
+| #   | Tema                               | Decisión |
+| --- | ---------------------------------- | -------- |
+| 1   | Interpolación de texto (§2.3)      | No en v1 |
+| 2   | Nombre del tipo de las listas (§3) | `lista`  |
+| 3   | Condiciones estrictas (§4.5)       | Sí       |
+| 4   | `según`/`caso` (§5.3)              | No en v1 |
+| 5   | `rango` inclusivo (§8)             | Sí       |
 
 ## 16. Orden de implementación propuesto
 

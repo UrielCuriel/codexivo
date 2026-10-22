@@ -166,15 +166,7 @@ export interface For extends BaseNode {
 }
 
 export type Statement =
-  | VariableDeclaration
-  | Assignment
-  | ExpressionStatement
-  | Return
-  | Block
-  | If
-  | While
-  | DoUntil
-  | For;
+  VariableDeclaration | Assignment | ExpressionStatement | Return | Block | If | While | DoUntil | For;
 
 export interface Program extends BaseNode {
   kind: 'Program';
@@ -211,7 +203,10 @@ export const childrenOf = (node: Node): Node[] => {
     case 'Return':
       return node.value ? [node.value] : [];
     case 'If':
-      return [...node.branches.flatMap(branch => [branch.condition, branch.body]), ...(node.alternative ? [node.alternative] : [])];
+      return [
+        ...node.branches.flatMap(branch => [branch.condition, branch.body]),
+        ...(node.alternative ? [node.alternative] : []),
+      ];
     case 'While':
       return [node.condition, node.body];
     case 'DoUntil':
