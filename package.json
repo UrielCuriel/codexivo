@@ -1,33 +1,42 @@
 {
-  "name": "lpp-interprete",
-  "version": "1.0.0",
-  "description": "",
+  "name": "codexivo",
+  "version": "0.2.0",
+  "description": "Lenguaje de programación en español para practicar lógica y algoritmos, que se ejecuta en el navegador.",
+  "type": "module",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "module": "dist/index.js",
+  "types": "src/index.ts",
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "!src/cli.ts"
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
     "test": "bun test",
+    "check": "bun check",
     "repl": "bun run src/cli.ts",
-    "clean": "rm -rf dist",
-    "bundle": "bun build ./src/index.ts --target browser --outdir dist --external ./src/repl",
-    "types": "bunx tsc --emitDeclarationOnly --outDir dist",
-    "build": "bun run clean && bun run bundle && bun run types"
+    "build": "bun build ./src/index.ts --target browser --outdir dist --minify --sourcemap=linked"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "lenguaje de programación",
+    "español",
+    "educación",
+    "intérprete"
+  ],
+  "author": "Uriel Curiel",
   "license": "ISC",
-  "devDependencies": {
-    "@types/node": "^20.1.1",
-    "typescript": "^5.0.4"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UrielCuriel/codexivo.git"
   },
-  "packageManager": "bun@1.2.14"
+  "devDependencies": {
+    "@types/bun": "^1.4.3"
+  },
+  "packageManager": "bun@1.4.4"
 }

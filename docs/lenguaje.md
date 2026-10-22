@@ -1,192 +1,159 @@
-# Especificación del lenguaje Codexivo
+# El lenguaje Codexivo, hoy
 
-Esta guía define Codexivo como si fuera un lenguaje de programación formal. Describe qué construcciones son válidas, cómo se
-interpreta cada una y qué mensajes de error expone el intérprete. Úsala como referencia definitiva mientras escribes código.
+Esta guía describe **lo que funciona hoy** en el intérprete. Todos los ejemplos se ejecutan tal cual. El diseño completo hacia
+donde va el lenguaje está en la [especificación v1](./especificacion-v1.md); lo que aquí no aparece, todavía no existe.
 
-## Filosofía general
+## Un programa
 
-Codexivo está pensado para personas hispanohablantes que se inician en programación. Sus decisiones de diseño buscan:
+Un programa es una lista de sentencias. El punto y coma al final de cada sentencia es opcional si la siguiente empieza en otra
+línea. El valor de un programa es el de su última expresión, o lo que regrese con `regresa`.
 
-- **Claridad verbal**: se prefieren palabras clave en español sobre símbolos crípticos.
-- **Modelo mental cercano a JavaScript**: las expresiones se evalúan de izquierda a derecha y los procedimientos funcionan como
-  funciones regulares.
-- **Simplicidad en tipos**: actualmente se soportan números, cadenas, booleanos y el valor especial `nulo`.
-
-## Estructura de un programa
-
-Un programa es una secuencia de declaraciones separadas por punto y coma opcional (`;`). El intérprete ignora saltos de línea y
-espacios en blanco, de modo que puedes formatear tu código libremente. Internamente cada archivo se convierte en un `Program`
-con una lista de nodos del árbol de sintaxis abstracta (AST). 【F:src/ast.ts†L33-L61】
+```codexivo
+// comentario de una línea
+/* comentario
+   de varias líneas */
+variable nombre = "Ana"
+imprimir("Hola,", nombre)
+```
 
 ## Palabras reservadas
 
-Las siguientes palabras tienen significado especial y no pueden utilizarse como identificadores ni nombres de parámetros:
-
 ```
-hacer, hasta_que, pero_si, procedimiento, regresa, si, si_no, falso, variable,
-verdadero, mientras, no, o, para, y
+variable  procedimiento  regresa
+si  pero_si  si_no  mientras  hacer  hasta_que  para
+verdadero  falso  nulo  y  o  no
 ```
 
-Son detectadas tanto en el léxico como al validar identificadores. 【F:src/token.ts†L44-L75】【F:src/parser.ts†L560-L567】
+## Valores
 
-## Literales y operadores
+| Tipo | Ejemplos |
+| --- | --- |
+| número | `10`, `3.14`, `.5`, `-2` |
+| texto | `"hola"`, `'mundo'`, `"línea\nnueva"` (escapes: `\n`, `\t`, `\\`, `\"`, `\'`) |
+| lógico | `verdadero`, `falso` |
+| nulo | `nulo` |
+| lista | `[1, "a", verdadero]` |
+| procedimiento | `procedimiento(x) { regresa x * 2; }` |
 
-### Números
+Las listas se comparten: si dos variables apuntan a la misma lista, un cambio se ve desde las dos.
 
-- Se aceptan enteros y decimales escritos con punto (`10`, `0.5`, `.8`).
-- Los operadores aritméticos soportados son `+`, `-`, `*`, `/` y la negación prefija `-`. 【F:src/evaluator.ts†L330-L382】
-- El intérprete conserva la precisión de los decimales según lo provea JavaScript.
-
-### Booleanos
-
-- Las constantes `verdadero` y `falso` evalúan a valores lógicos.
-- Puedes combinarlos con los operadores de comparación (`==`, `!=`, `<`, `>`, `<=`, `>=`) y con las operaciones lógicas `y`,
-  `o` y la negación `!`. 【F:src/token.ts†L1-L43】【F:src/evaluator.ts†L382-L422】
-- Toda expresión tiene una "verdad" implícita: `0`, cadenas vacías y `nulo` se consideran falsy, el resto truthy. 【F:src/evaluator.ts†L443-L462】
-
-### Cadenas de texto
-
-- Se delimita con comillas simples o dobles (`"hola"`, `'mundo'`). 【F:src/lexer.ts†L58-L89】
-- Puede concatenarse con `+` y compararse con `==` / `!=`. 【F:src/evaluator.ts†L394-L421】
-
-### Agrupación y precedencia
-
-Usa paréntesis para agrupar expresiones y forzar la precedencia estándar (multiplicación y división antes que suma y resta). El
-parser emplea un sistema de precedencias inspirado en Pratt parsing. 【F:src/parser.ts†L40-L119】【F:src/parser.ts†L230-L246】
-
-## Declaraciones y expresiones
-
-### Variables
-
-Declara variables con la palabra clave `variable` seguida de un identificador y una expresión asignada:
+## Variables
 
 ```codexivo
-variable edad = 16;
-variable mensaje = "Hola" + " mundo";
+variable contador = 0;
+contador = contador + 1;
+contador += 5;   // también -=, *=, /=
 ```
 
-Cada declaración produce un nodo `LetStatement` y, al evaluarse, almacena el resultado en el entorno actual. 【F:src/parser.ts†L536-L568】【F:src/evaluator.ts†L120-L143】
+- Toda variable se declara una vez con `variable` y un valor inicial.
+- Asignar a una variable sin declararla es un error.
+- Lo que se declara dentro de un bloque `{ }` solo existe dentro de él.
 
-### Expresiones sueltas
+Los nombres pueden llevar `ñ`, acentos y diéresis: `año`, `canción`, `pingüino`.
 
-Cualquier expresión puede aparecer como sentencia; su valor se devuelve como resultado del programa si es la última en ejecutarse.
-Esto permite escribir scripts orientados a cálculo rápido en el REPL. 【F:src/parser.ts†L500-L533】【F:src/evaluator.ts†L57-L77】
+## Operadores
 
-### Procedimientos (funciones)
+De menor a mayor precedencia:
 
-Los procedimientos encapsulan lógica reutilizable y admiten parámetros por nombre:
+| Operadores | Notas |
+| --- | --- |
+| `o` | Cortocircuito |
+| `y` | Cortocircuito |
+| `no`, `!` | |
+| `==` `!=` `<` `>` `<=` `>=` | No se pueden encadenar: `1 < x < 5` es un error; escribe `1 < x y x < 5` |
+| `+` `-` | `+` también une dos textos |
+| `*` `/` | `/` es división real; dividir entre cero es un error |
+| `-` (signo) | |
+| llamadas `f(x)`, índices `lista[i]` | |
+
+- `==` compara por valor, también listas: `[1, 2] == [1, 2]` es `verdadero`.
+- `+` no mezcla textos y números: `"Total: " + 5` es un error. Usa `texto(5)` o `imprimir("Total:", 5)`.
+- `y`, `o`, `no` y las condiciones solo aceptan `verdadero` o `falso`. `si (1)` es un error con una pista.
+
+## Condiciones y bucles
+
+```codexivo
+variable edad = 15;
+si (edad >= 18) {
+  imprimir("adulto");
+} pero_si (edad >= 13) {
+  imprimir("adolescente");
+} si_no {
+  imprimir("niño");
+}
+
+variable i = 0;
+mientras (i < 3) {
+  i += 1;
+}
+
+hacer {
+  i -= 1;
+} hasta_que (i == 0);
+
+para (variable j = 0; j < 3; j += 1) {
+  imprimir(j);
+}
+```
+
+- `hacer … hasta_que` ejecuta el bloque al menos una vez y repite **hasta que** la condición sea verdadera.
+- La variable de un `para` solo existe dentro del bucle.
+
+## Procedimientos
 
 ```codexivo
 variable saludar = procedimiento(nombre) {
-  regresa "Hola " + nombre;
+  regresa "Hola, " + nombre;
 };
-
 saludar("Uriel");
 ```
 
-- Se definen con `procedimiento(<parametros>) { ... }`.
-- Pueden asignarse a variables o retornarse desde otros procedimientos.
-- Dentro del cuerpo es válido usar `regresa` para devolver un valor y terminar la ejecución. 【F:src/parser.ts†L448-L523】【F:src/evaluator.ts†L143-L215】
+- Se crean con `procedimiento(parámetros) { … }` y se guardan en variables.
+- Hay que llamarlos con exactamente tantos valores como parámetros.
+- Sin `regresa`, un procedimiento regresa `nulo`.
+- Recuerdan las variables de donde se crearon (closures) y pueden llamarse a sí mismos.
 
-### Llamadas a procedimientos
+Los procedimientos con nombre (`procedimiento saludar(nombre) { … }`) llegarán con la v1.
 
-Invoca un procedimiento escribiendo su nombre seguido de paréntesis con los argumentos separados por comas. Durante la ejecución
-se crea un entorno interno que vincula cada parámetro con el valor recibido; los argumentos faltantes se rellenan con `nulo`.
-【F:src/parser.ts†L124-L203】【F:src/evaluator.ts†L212-L320】
-
-### Sentencias condicionales
-
-Codexivo ofrece estructuras condicionales encadenadas:
+## Listas y textos
 
 ```codexivo
-si (edad >= 18) {
-  regresa "adulto";
-} pero_si (edad >= 13) {
-  regresa "adolescente";
-} si_no {
-  regresa "niño";
-}
+variable números = [10, 20, 30];
+números[0];    // 10
+números[-1];   // 30, desde el final
+"hola"[1];     // "o"
 ```
 
-- `si` evalúa la condición y ejecuta el bloque correspondiente.
-- `pero_si` agrega ramas evaluadas en cascada.
-- `si_no` actúa como rama por defecto.
-- Las condiciones usan las reglas de verdad descritas arriba. 【F:src/parser.ts†L324-L399】【F:src/evaluator.ts†L215-L248】
+Los índices son enteros desde 0; un índice fuera de rango es un error que dice cuántos elementos hay.
 
-### Bucles
+## Biblioteca
 
-El lenguaje soporta tres tipos de bucles completamente funcionales:
+Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
 
-**Bucle `mientras`**: Se ejecuta mientras la condición sea verdadera.
-```codexivo
-variable contador = 0;
-mientras (contador < 5) {
-  contador += 1;
-}
+| Procedimiento | Qué hace |
+| --- | --- |
+| `imprimir(a, b, …)` | Escribe los valores separados por un espacio y termina la línea |
+| `leer()` | Siguiente línea de entrada como texto, o `nulo` si ya no hay |
+| `leer_número()` | Siguiente línea de entrada como número |
+| `tipo(x)` | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"` o `"procedimiento"` |
+| `texto(x)`, `número(x)` | Conversiones explícitas |
+| `longitud(x)` | Caracteres de un texto o elementos de una lista |
+| `absoluto(x)` | Valor absoluto |
+| `máximo(…)`, `mínimo(…)` | De varios números o de una lista |
+| `redondear(x, decimales?)` | Redondea; los `.5` se alejan del cero |
+| `agregar(lista, x)` | Agrega al final (cambia la lista) |
+| `primero(lista)`, `último(lista)` | Primer y último elemento |
+
+## Errores
+
+Cada error dice de qué tipo es (léxico, sintaxis, ejecución o límite), qué pasó, dónde y, casi siempre, una pista:
+
+```
+Error de ejecución en la línea 2, columna 5: No se puede dividir entre cero.
+Pista: Revisa que el divisor no valga 0 antes de dividir.
 ```
 
-**Bucle `hacer-hasta_que`**: Se ejecuta al menos una vez, luego repite hasta que la condición se vuelva verdadera.
-```codexivo
-variable x = 1;
-hacer {
-  x *= 2;
-} hasta_que (x > 10);
-```
+## Límites
 
-**Bucle `para`**: Ideal para iteraciones con inicialización, condición e incremento.
-```codexivo
-variable suma = 0;
-para (variable i = 1; i <= 10; i += 1) {
-  suma += i;
-}
-```
-
-Todos los bucles soportan operadores de asignación compuesta (`+=`, `-=`, `*=`, `/=`) para facilitar las operaciones comunes de conteo y acumulación.
-
-## Bibliotecas estándar
-
-El lenguaje incluye un conjunto de funciones built-in útiles para aprender programación. Cada llamada se valida en cuanto al número y tipo de argumentos.
-
-### Funciones matemáticas
-
-| Nombre     | Descripción                                   | Firma                  |
-|------------|-----------------------------------------------|------------------------|
-| `absoluto` | Devuelve el valor absoluto de un número | `absoluto(numero)` |
-| `maximo` | Devuelve el valor máximo entre uno o más números | `maximo(n1, n2, ...)` |
-| `minimo` | Devuelve el valor mínimo entre uno o más números | `minimo(n1, n2, ...)` |
-| `redondear` | Redondea un número al entero más cercano | `redondear(numero)` |
-
-### Funciones de cadenas y arreglos
-
-| Nombre     | Descripción                                   | Firma                  |
-|------------|-----------------------------------------------|------------------------|
-| `longitud` | Devuelve la cantidad de caracteres de una cadena o elementos de un arreglo | `longitud(cadena_o_arreglo)` |
-| `agregar` | Devuelve un nuevo arreglo con un elemento agregado al final | `agregar(arreglo, elemento)` |
-| `primero` | Devuelve el primer elemento de un arreglo | `primero(arreglo)` |
-| `ultimo` | Devuelve el último elemento de un arreglo | `ultimo(arreglo)` |
-
-Internamente los built-ins viven en `src/builtins.ts` y se exponen automáticamente al resolver identificadores.
-
-## Manejo de errores
-
-Cuando se detecta un problema semántico, el evaluador genera objetos de error con mensajes en español que incluyen la ubicación
-(linea y columna). Entre los casos cubiertos están: uso de palabras reservadas, tipos incompatibles, identificadores desconocidos
-u operadores inválidos. 【F:src/errors.ts†L1-L200】【F:src/evaluator.ts†L248-L352】
-
-El parser también acumula errores sintácticos si encuentra tokens inesperados o identificadores prohibidos. Revísalos antes de
-ejecutar un programa. 【F:src/parser.ts†L86-L117】【F:src/parser.ts†L244-L285】
-
-## Valor de un programa
-
-El resultado de ejecutar un archivo es el valor de la última sentencia evaluada (o el valor retornado explícitamente). Si ninguna
-sentencia produce resultado, el programa devuelve `nulo`. Esto es útil para experimentar en el REPL y para escribir scripts que
-simplemente imprimen o retornan valores. 【F:src/evaluator.ts†L41-L83】
-
-## Próximos pasos
-
-- Completar la semántica de bucles y arreglos.
-- Ampliar la biblioteca estándar (entrada/salida, estructuras de datos).
-- Documentar futuras características en este mismo estándar.
-
-Mantén esta especificación a mano mientras practicas: cada ejemplo de código en el recetario hace referencia a los apartados
-anteriores para reforzar el aprendizaje progresivo.
+Para que un error nunca congele la página, la ejecución se detiene con un error de límite al superar 10 000 000 de
+operaciones, 10 000 llamadas anidadas o 1 000 000 de caracteres impresos. Los tres se pueden configurar.

@@ -155,19 +155,5 @@ estadisticas([5, 2, 8, 1, 9]); // [5, 9, 1]
 
 Muestra el uso de las funciones matemáticas built-in y manipulación de arreglos.
 
-## ⚠️ Estado actual
-
-✅ **Completo:** Todas las características principales del lenguaje están implementadas y funcionando:
-- Variables y operadores aritméticos
-- Procedimientos (funciones) con parámetros y valores de retorno
-- Sentencias condicionales (`si`/`pero_si`/`si_no`)
-- Bucles completamente funcionales (`mientras`, `hacer-hasta_que`, `para`)
-- Operadores de asignación compuesta (`+=`, `-=`, `*=`, `/=`)
-- Arreglos con indexación y manipulación
-- Cadenas y operaciones de texto
-- Biblioteca de funciones built-in
-
-El lenguaje está listo para usar en programas de aprendizaje y práctica de algoritmos.
-
-
-Experimenta combinando estos patrones y consulta la [especificación del lenguaje](./lenguaje.md) para profundizar en cada tema.
+Todos los ejemplos de este recetario se ejecutan con la versión actual del intérprete. Consulta [qué funciona hoy](./lenguaje.md)
+y [hacia dónde va el lenguaje](./especificacion-v1.md).

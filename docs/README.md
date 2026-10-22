@@ -7,6 +7,7 @@ Bienvenido al compendio oficial del lenguaje **Codexivo**. Este directorio recop
 
 ## Guías disponibles
 
+- [Especificación v1 (propuesta en revisión)](./especificacion-v1.md): el diseño objetivo del lenguaje por niveles, con las brechas frente a la implementación actual y las decisiones abiertas.
 - [Especificación del lenguaje](./lenguaje.md): describe la sintaxis, palabras reservadas, tipos de dato y reglas semánticas que definen a Codexivo como si fuera un lenguaje formal.
 - [Arquitectura del intérprete](./arquitectura.md): recorre el código fuente módulo por módulo para explicar cómo se procesa un programa desde el texto hasta su evaluación.
 - [Guía práctica: entender el intérprete desde el código](./guia-aprender-desde-el-codigo.md): actividades guiadas para relacionar cada módulo con ejemplos reales del lenguaje.
