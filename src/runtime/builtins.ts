@@ -92,7 +92,10 @@ const library: NativeValue[] = [
     const value = expectNumber('redondear', args[0]!, context);
     const decimals = args.length > 1 ? expectNumber('redondear', args[1]!, context, ' de decimales') : 0;
     if (!Number.isInteger(decimals) || decimals < 0) {
-      throw context.fail('TIPO_DE_ARGUMENTO', 'La cantidad de decimales de `redondear` tiene que ser un entero positivo o 0.');
+      throw context.fail(
+        'TIPO_DE_ARGUMENTO',
+        'La cantidad de decimales de `redondear` tiene que ser un entero positivo o 0.',
+      );
     }
     return roundHalfAway(value, decimals);
   }),

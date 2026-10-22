@@ -71,7 +71,14 @@ export type MachineEvent = EventBase &
     | { type: 'declara'; name: string; value: SerializedValue; nodeId: number; span: Span }
     | { type: 'asigna'; name: string; before: SerializedValue; after: SerializedValue; nodeId: number; span: Span }
     | { type: 'decide'; label: DecisionLabel; value: boolean; nodeId: number; ownerId: number; span: Span }
-    | { type: 'opera'; operator: string; operands: SerializedValue[]; result: SerializedValue; nodeId: number; span: Span }
+    | {
+        type: 'opera';
+        operator: string;
+        operands: SerializedValue[];
+        result: SerializedValue;
+        nodeId: number;
+        span: Span;
+      }
     | { type: 'llama'; name: string; args: SerializedValue[]; nodeId: number; span: Span }
     | { type: 'regresa'; name: string; value: SerializedValue }
     | { type: 'imprime'; text: string }
@@ -146,7 +153,10 @@ export class Machine {
   result: Value = null;
   error?: CodexivoError;
 
-  constructor(program: Chunk, private readonly options: MachineOptions = {}) {
+  constructor(
+    program: Chunk,
+    private readonly options: MachineOptions = {},
+  ) {
     this.natives = { ...defaultNatives, ...options.natives };
     this.limits = {
       maxOperations: options.maxOperations ?? DEFAULTS.maxOperations,
@@ -288,7 +298,12 @@ export class Machine {
     switch (instruction.op) {
       case 'step':
         this.currentNode = instruction.node;
-        this.emit({ type: 'paso', nodeId: instruction.node.id, nodeKind: instruction.node.kind, span: instruction.node.span });
+        this.emit({
+          type: 'paso',
+          nodeId: instruction.node.id,
+          nodeKind: instruction.node.kind,
+          span: instruction.node.span,
+        });
         return true;
 
       case 'const':
@@ -327,7 +342,13 @@ export class Machine {
           );
         }
         frame.scope.variables.set(instruction.name, value);
-        this.emit({ type: 'declara', name: instruction.name, value: serialize(value), nodeId: instruction.node.id, span: instruction.node.span });
+        this.emit({
+          type: 'declara',
+          name: instruction.name,
+          value: serialize(value),
+          nodeId: instruction.node.id,
+          span: instruction.node.span,
+        });
         return false;
       }
 
@@ -414,7 +435,8 @@ export class Machine {
 
       case 'branch': {
         const condition = this.stack.pop()!;
-        if (typeof condition !== 'boolean') throw this.nonBooleanCondition(instruction.label, condition, instruction.node);
+        if (typeof condition !== 'boolean')
+          throw this.nonBooleanCondition(instruction.label, condition, instruction.node);
         this.currentNode = instruction.node;
         this.emit({
           type: 'decide',
@@ -476,7 +498,10 @@ export class Machine {
   private call(frame: Frame, argc: number, node: ast.Call): boolean {
     const calleeIndex = this.stack.length - argc - 1;
     const callee = this.stack[calleeIndex]!;
-    const name = callee !== null && typeof callee === 'object' && 'name' in callee && callee.name ? callee.name : describeCallee(node);
+    const name =
+      callee !== null && typeof callee === 'object' && 'name' in callee && callee.name
+        ? callee.name
+        : describeCallee(node);
 
     if (!isCallable(callee)) {
       throw this.runtimeError(
@@ -488,7 +513,9 @@ export class Machine {
 
     const args = this.stack.slice(calleeIndex + 1);
     const expected = callee.kind === 'nativo' ? callee.arity : callee.chunk.params.length;
-    checkArity(expected, argc, name, (message, hint) => this.runtimeError('CANTIDAD_DE_ARGUMENTOS', message, node, hint));
+    checkArity(expected, argc, name, (message, hint) =>
+      this.runtimeError('CANTIDAD_DE_ARGUMENTOS', message, node, hint),
+    );
 
     if (callee.kind === 'nativo') {
       const result = callee.call(args, this.nativeContext(node));
@@ -568,7 +595,11 @@ export class Machine {
   private unary(operator: ast.UnaryOperator, operand: Value, node: ast.Unary): Value {
     if (operator === '-') {
       if (typeof operand !== 'number') {
-        throw this.runtimeError('TIPO_INVÁLIDO', `El signo \`-\` solo funciona con números, no con ${describeType(typeOf(operand))}.`, node);
+        throw this.runtimeError(
+          'TIPO_INVÁLIDO',
+          `El signo \`-\` solo funciona con números, no con ${describeType(typeOf(operand))}.`,
+          node,
+        );
       }
       return -operand;
     }
@@ -624,7 +655,8 @@ export class Machine {
       case '<=':
       case '>=': {
         const comparable =
-          (typeof left === 'number' && typeof right === 'number') || (typeof left === 'string' && typeof right === 'string');
+          (typeof left === 'number' && typeof right === 'number') ||
+          (typeof left === 'string' && typeof right === 'string');
         if (!comparable) {
           throw this.runtimeError(
             'COMPARACIÓN_INVÁLIDA',
@@ -668,7 +700,9 @@ export class Machine {
         'ÍNDICE_FUERA_DE_RANGO',
         `El índice ${index} está fuera de ${what}, que tiene ${length} ${length === 1 ? unit : unit === 'carácter' ? 'caracteres' : 'elementos'}.`,
         node.index,
-        length === 0 ? `${what[0]!.toUpperCase()}${what.slice(1)} está vacía.` : `Los índices válidos van de 0 a ${length - 1} (o de -1 a -${length} desde el final).`,
+        length === 0
+          ? `${what[0]!.toUpperCase()}${what.slice(1)} está vacía.`
+          : `Los índices válidos van de 0 a ${length - 1} (o de -1 a -${length} desde el final).`,
       );
     }
     return isList(object) ? object.items[position]! : object[position]!;
@@ -705,13 +739,16 @@ export class Machine {
 
   private unknownName(frame: Frame, name: string, node: ast.Identifier): CodexivoError {
     const visible: string[] = [...Object.keys(this.natives)];
-    for (let scope: Scope | undefined = frame.scope; scope; scope = scope.parent) visible.push(...scope.variables.keys());
+    for (let scope: Scope | undefined = frame.scope; scope; scope = scope.parent)
+      visible.push(...scope.variables.keys());
     const suggestion = suggestName(name, visible);
     return this.runtimeError(
       'NOMBRE_DESCONOCIDO',
       `No existe nada llamado \`${name}\`.`,
       node,
-      suggestion ? `¿Quisiste decir \`${suggestion}\`?` : `Si es una variable nueva, declárala con \`variable ${name} = …\`.`,
+      suggestion
+        ? `¿Quisiste decir \`${suggestion}\`?`
+        : `Si es una variable nueva, declárala con \`variable ${name} = …\`.`,
     );
   }
 

@@ -3,18 +3,85 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "lpp-interprete",
+      "name": "codexivo",
       "devDependencies": {
         "@types/bun": "^1.4.3",
       },
     },
+    "packages/cli": {
+      "name": "@codexivo/cli",
+      "version": "0.2.0",
+      "bin": {
+        "codexivo": "./bin/codexivo.exe",
+      },
+      "optionalDependencies": {
+        "codexivo-darwin-arm64": "0.2.0",
+        "codexivo-darwin-x64": "0.2.0",
+        "codexivo-linux-arm64": "0.2.0",
+        "codexivo-linux-arm64-musl": "0.2.0",
+        "codexivo-linux-x64": "0.2.0",
+        "codexivo-linux-x64-musl": "0.2.0",
+        "codexivo-windows-arm64": "0.2.0",
+        "codexivo-windows-x64": "0.2.0",
+      },
+    },
+    "packages/codexivo-darwin-arm64": {
+      "name": "codexivo-darwin-arm64",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-darwin-x64": {
+      "name": "codexivo-darwin-x64",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-linux-arm64": {
+      "name": "codexivo-linux-arm64",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-linux-arm64-musl": {
+      "name": "codexivo-linux-arm64-musl",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-linux-x64": {
+      "name": "codexivo-linux-x64",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-linux-x64-musl": {
+      "name": "codexivo-linux-x64-musl",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-windows-arm64": {
+      "name": "codexivo-windows-arm64",
+      "version": "0.2.0",
+    },
+    "packages/codexivo-windows-x64": {
+      "name": "codexivo-windows-x64",
+      "version": "0.2.0",
+    },
   },
   "packages": {
+    "@codexivo/cli": ["@codexivo/cli@workspace:packages/cli"],
+
     "@types/bun": ["@types/bun@1.4.3", "", { "dependencies": { "bun-types": "1.4.3" } }, "sha512-N67Pqy8JXbAY/j0tNraS3V5mubGvc6rrrNDmDCtZLlFzccbUJPDb0tvgUBC5q4m8ybkP93Jcn1QB+RYQ6PvBhw=="],
 
     "@types/node": ["@types/node@20.19.17", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-gfehUI8N1z92kygssiuWvLiwcbOB3IRktR6hTDgJlXMYh5OvkPSRmgfoBUmfZt+vhwJtX7v1Yw4KvvAf7c5QKQ=="],
 
     "bun-types": ["bun-types@1.4.3", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-tinRJNGOmUN+tEAsn2y2e942n9JHRHR42iUYzDH75NmhJqVBokGSQkkfSFdNWwsANIdrK6ACH9t01M452YyTwg=="],
+
+    "codexivo-darwin-arm64": ["codexivo-darwin-arm64@workspace:packages/codexivo-darwin-arm64"],
+
+    "codexivo-darwin-x64": ["codexivo-darwin-x64@workspace:packages/codexivo-darwin-x64"],
+
+    "codexivo-linux-arm64": ["codexivo-linux-arm64@workspace:packages/codexivo-linux-arm64"],
+
+    "codexivo-linux-arm64-musl": ["codexivo-linux-arm64-musl@workspace:packages/codexivo-linux-arm64-musl"],
+
+    "codexivo-linux-x64": ["codexivo-linux-x64@workspace:packages/codexivo-linux-x64"],
+
+    "codexivo-linux-x64-musl": ["codexivo-linux-x64-musl@workspace:packages/codexivo-linux-x64-musl"],
+
+    "codexivo-windows-arm64": ["codexivo-windows-arm64@workspace:packages/codexivo-windows-arm64"],
+
+    "codexivo-windows-x64": ["codexivo-windows-x64@workspace:packages/codexivo-windows-x64"],
 
     "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
   }

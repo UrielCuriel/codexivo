@@ -1,5 +1,15 @@
 # REPL y ejecución desde la terminal
 
+Instala el principal con `npm install -g codexivo` o `bun add -g --trust codexivo`. El gestor selecciona el paquete nativo
+compatible mediante `os`, `cpu` y `libc`; `postinstall` verifica la versión y coloca el ejecutable en la ruta `bin` del
+principal. Una vez instalado, `codexivo` abre el REPL y `codexivo programa.cdx` ejecuta archivos sin necesitar Node.js ni Bun.
+
+Si omites scripts, la biblioteca sigue disponible; para preparar el CLI tras una instalación local, ejecuta
+`node node_modules/codexivo/postinstall.mjs` una vez. Los ejecutables de
+[Releases](https://github.com/UrielCuriel/codexivo/releases) funcionan directamente sin gestores ni runtimes externos.
+En Linux/macOS, aplica `chmod +x` al ejecutable descargado. Se admiten x64 y ARM64 en Linux, macOS y Windows; para Alpine
+Linux elige la variante `musl`.
+
 ## REPL
 
 ```sh

@@ -1,0 +1,35 @@
+{
+  "name": "@codexivo/cli",
+  "description": "CLI nativo de Codexivo: REPL y ejecución de archivos sin Node.js ni Bun.",
+  "version": "0.2.0",
+  "license": "ISC",
+  "author": "Uriel Curiel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UrielCuriel/codexivo.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "files": [
+    "bin/codexivo.exe",
+    "postinstall.mjs"
+  ],
+  "bin": {
+    "codexivo": "./bin/codexivo.exe"
+  },
+  "scripts": {
+    "postinstall": "node ./postinstall.mjs"
+  },
+  "optionalDependencies": {
+    "codexivo-linux-x64": "0.2.0",
+    "codexivo-linux-x64-musl": "0.2.0",
+    "codexivo-linux-arm64": "0.2.0",
+    "codexivo-linux-arm64-musl": "0.2.0",
+    "codexivo-darwin-x64": "0.2.0",
+    "codexivo-darwin-arm64": "0.2.0",
+    "codexivo-windows-x64": "0.2.0",
+    "codexivo-windows-arm64": "0.2.0"
+  }
+}

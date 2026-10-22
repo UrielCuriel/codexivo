@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { formatError } from './errors';
 import { prepare, Session } from './engine';
 import { tokenize } from './syntax/lexer';

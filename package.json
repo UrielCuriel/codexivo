@@ -7,9 +7,12 @@
   "module": "dist/index.js",
   "types": "src/index.ts",
   "files": [
-    "dist",
+    "dist/index.js",
+    "dist/index.js.map",
     "src",
-    "!src/cli.ts"
+    "!src/cli.ts",
+    "docs",
+    "CHANGELOG.md"
   ],
   "exports": {
     ".": {
@@ -21,7 +24,16 @@
     "test": "bun test",
     "check": "bun check",
     "repl": "bun run src/cli.ts",
-    "build": "bun build ./src/index.ts --target browser --outdir dist --minify --sourcemap=linked"
+    "build": "bun run build:lib && bun run build:binary",
+    "build:lib": "bun build ./src/index.ts --target browser --format esm --outdir=dist --minify --sourcemap=linked",
+    "build:binary": "bun run scripts/build-binaries.ts",
+    "build:binaries": "bun run scripts/build-binaries.ts --all",
+    "test:package": "bun run scripts/test-package.ts",
+    "prepack": "bun run build:lib",
+    "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
+    "publish:native": "bun run scripts/publish-native.ts",
+    "format": "bun fmt",
+    "format:check": "bun fmt --check"
   },
   "keywords": [
     "lenguaje de programación",
@@ -38,5 +50,12 @@
   "devDependencies": {
     "@types/bun": "^1.4.3"
   },
-  "packageManager": "bun@1.4.4"
+  "packageManager": "bun@1.4.4",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

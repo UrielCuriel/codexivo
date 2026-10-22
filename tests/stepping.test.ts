@@ -23,21 +23,27 @@ describe('ejecución paso a paso', () => {
   });
 
   test('snapshot() muestra las variables de cada alcance y el contenido de las listas', () => {
-    const machine = machineFor(`
+    const machine = machineFor(
+      `
       variable lista = [1, 2];
       variable doble = procedimiento(n) {
         variable resultado = n * 2;
         regresa resultado;
       };
       doble(21);
-    `, { breakpoints: [5] });
+    `,
+      { breakpoints: [5] },
+    );
     machine.run();
     expect(machine.status).toBe('pausada');
     const snapshot = machine.snapshot();
     expect(snapshot.frames.map(frame => frame.name)).toEqual(['programa', 'doble']);
     const [global, call] = snapshot.frames;
     expect(Object.keys(global!.scopes[0]!)).toEqual(['lista', 'doble']);
-    expect(call!.scopes[0]).toMatchObject({ n: { type: 'número', value: 21 }, resultado: { type: 'número', value: 42 } });
+    expect(call!.scopes[0]).toMatchObject({
+      n: { type: 'número', value: 21 },
+      resultado: { type: 'número', value: 42 },
+    });
     const list = global!.scopes[0]!.lista!;
     expect(list.type).toBe('lista');
     if (list.type === 'lista') expect(snapshot.heap[list.ref]?.map(item => item.repr)).toEqual(['1', '2']);

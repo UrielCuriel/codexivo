@@ -41,7 +41,7 @@ el lenguaje, nivel por nivel, está en la [especificación v1](./docs/especifica
 
 ## Cómo usarlo
 
-Necesitas [Bun](https://bun.com) 1.4.4 o más reciente.
+Para desarrollar o ejecutar el código fuente necesitas [Bun](https://bun.com) 1.4.4 o más reciente.
 
 ```sh
 bun install
@@ -49,7 +49,11 @@ bun run repl                      # REPL interactivo
 bun run src/cli.ts programa.cdx   # ejecutar un archivo; la entrada estándar alimenta a leer()
 ```
 
-Como biblioteca, en el navegador o en Bun:
+Como biblioteca, en el navegador o en Bun (una vez publicada la versión):
+
+```sh
+npm install codexivo@0.2.0
+```
 
 ```ts
 import { run } from 'codexivo';
@@ -57,6 +61,49 @@ import { run } from 'codexivo';
 const resultado = run('imprimir("Hola desde Codexivo");');
 console.log(resultado.output); // "Hola desde Codexivo\n"
 ```
+
+El paquete incluye un bundle ESM compatible con navegador y los tipos como fuentes TypeScript. Importar la biblioteca no
+inicia el REPL, no necesita Bun y no instala binarios ni ejecuta scripts de instalación.
+
+El CLI se instala por separado como `@codexivo/cli`. Este paquete declara `bin` y las variantes nativas en `optionalDependencies`; cada variante
+incluye los campos `os`, `cpu` y, en Linux, `libc`. El gestor instala la variante compatible y `postinstall` verifica su versión
+y enlaza o copia el ejecutable a `bin/codexivo.exe` del CLI. El nombre interno también funciona en Linux y macOS.
+
+```sh
+npm install --global @codexivo/cli@0.2.0
+codexivo                         # REPL
+codexivo programa.cdx            # ejecutar un archivo
+```
+
+Con Bun, usa `bun add --global --trust @codexivo/cli@0.2.0` para permitir el script de instalación. Node se usa únicamente durante
+la instalación con npm; el comando resultante es el ejecutable nativo y funciona sin Node.js ni Bun en el `PATH`.
+
+Si bloqueas scripts al instalar el CLI, para preparar el comando tras una instalación local ejecuta
+`node node_modules/@codexivo/cli/postinstall.mjs` una vez. El instalador toma el paquete opcional ya instalado por el gestor y exige
+que su versión coincida con la del CLI; no descarga ni compila binarios.
+
+Las variantes publicadas son:
+
+| Sistema        | Arquitectura | libc  | Paquete                     |
+| -------------- | ------------ | ----- | --------------------------- |
+| Linux          | x64          | glibc | `codexivo-linux-x64`        |
+| Linux          | ARM64        | glibc | `codexivo-linux-arm64`      |
+| Linux (Alpine) | x64          | musl  | `codexivo-linux-x64-musl`   |
+| Linux (Alpine) | ARM64        | musl  | `codexivo-linux-arm64-musl` |
+| macOS          | x64          | —     | `codexivo-darwin-x64`       |
+| macOS          | ARM64        | —     | `codexivo-darwin-arm64`     |
+| Windows        | x64          | —     | `codexivo-windows-x64`      |
+| Windows        | ARM64        | —     | `codexivo-windows-arm64`    |
+
+También puedes descargar un ejecutable autónomo desde [Releases](https://github.com/UrielCuriel/codexivo/releases), sin
+instalar Node.js ni Bun. Hay versiones x64 y ARM64 para Linux, macOS y Windows; Linux ofrece glibc y musl (Alpine).
+En Linux y macOS, dale permiso de ejecución con `chmod +x codexivo-*` antes de usarlo.
+
+```sh
+./codexivo-linux-x64 programa.cdx
+```
+
+En Windows, por ejemplo: `.\codexivo-windows-x64.exe programa.cdx`.
 
 El intérprete compila el programa a instrucciones para una máquina propia que se puede pausar, ejecutar paso a paso y que
 reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar cómo piensa un programa. Los detalles están en la
@@ -66,8 +113,24 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 
 - `bun test` — pruebas.
 - `bun check` — revisión de tipos.
+- `bun fmt` / `bun fmt --check` — aplicar o comprobar formato; configuración en `bunfig.toml`.
 - `bun run repl` — REPL.
-- `bun run build` — bundle para navegador en `dist/`.
+- `bun run build` — biblioteca ESM y ejecutable autónomo para el sistema actual.
+- `bun run build:lib` — construir solamente la biblioteca para navegador.
+- `bun run build:binary` — ejecutable autónomo para el sistema actual en `dist/binaries/`.
+- `bun run build:binary bun-windows-x64` — compilación cruzada para un destino específico.
+- `bun run build:binaries` — los ocho destinos de Linux/macOS/Windows, x64/ARM64.
+- `bun run test:package` — instalar los tarballs reales con npm, compilar con Vite y probar el comando nativo sin Node.js ni Bun en el `PATH`.
+
+Al integrar cambios en `main` (por merge o push), el workflow incrementa automáticamente la versión con `bun pm version patch`,
+crea el commit y el tag y continúa con las validaciones y la publicación en la misma ejecución. El commit automático no
+dispara otra publicación. El workflow toma el estado más reciente de `main`, por lo que merges muy próximos pueden agruparse.
+Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `patch`, `minor` o `major` para una publicación manual.
+
+También se admiten tags `v*` creados manualmente: deben coincidir con `package.json` y no incrementan la versión otra vez.
+Todas las compilaciones usan el SHA del commit de la versión. Los paquetes nativos se publican primero, después `@codexivo/cli` y finalmente `codexivo`. Las diez versiones se sincronizan con `bun pm version`. Solo el CLI declara `bin` y su `postinstall` coloca allí el ejecutable del paquete nativo compatible. Las versiones preliminares se publican con el dist-tag `next`;
+las estables, con `latest`. Los ejecutables y sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni
+notarizados.
 
 ## Qué sigue
 

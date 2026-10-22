@@ -1,0 +1,25 @@
+{
+  "name": "codexivo-linux-arm64-musl",
+  "version": "0.2.0",
+  "description": "Ejecutable nativo de Codexivo para linux-arm64-musl.",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin/codexivo"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UrielCuriel/codexivo.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "libc": [
+    "musl"
+  ]
+}

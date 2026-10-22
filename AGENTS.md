@@ -20,16 +20,23 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `src/errors.ts` — `CodexivoError` and `formatError`.
 - `src/engine.ts` — `run`, `prepare`, `Session`. `src/index.ts` is the public API.
 - `src/cli.ts` — REPL and file runner (Bun APIs only, no `node:` imports).
+- `packages/cli` — `@codexivo/cli`, the native command installer; declares platform packages as optional dependencies.
+- `packages/codexivo-*` — native npm packages filtered by OS, CPU and libc. All package versions track the root via the version lifecycle.
+- `packages/cli/postinstall.mjs` — installation only: validates the selected native package version, then links/copies the executable over the CLI package’s `bin/codexivo.exe` placeholder. The installed command is native, with no JavaScript runtime launcher.
 - `tests/*.test.ts` — Bun tests, one file per area.
 
 ## Commands
 
 - `bun test` — run the test suite.
+- `bun fmt` / `bun fmt --check` — format the repository / check formatting without writing.
 - `bun check` — type check (replaces `tsc`; TypeScript is not a dependency).
 - `bun run repl` — interactive REPL. `bun run src/cli.ts file.cdx` runs a file.
-- `bun run build` — browser bundle in `dist/`. Types ship as the `.ts` sources in `src/`.
+- `bun run build` — browser ESM bundle and standalone CLI for the host platform. Types ship as the `.ts` sources in `src/`.
+- `bun run build:binary [target]` — standalone executable for the host or a Bun cross-compilation target.
+- `bun run build:binaries` — all eight OS/architecture/libc targets in `dist/binaries/`.
+- `bun run test:package` — tarball installation, browser/Vite consumer and CLI smoke tests (needs Node.js 24).
 
-Run `bun test` and `bun check` before every push.
+Run `bun fmt --check`, `bun test` and `bun check` before every push.
 
 ## Conventions
 
@@ -40,7 +47,7 @@ Run `bun test` and `bun check` before every push.
 - Every AST node and token keeps its `span`; every instruction keeps its node. Visualizations depend on it.
 - The machine must stay deterministic: same program + same input ⇒ same output, same operation count.
 - Built-in names with accents are canonical; the unaccented alias is registered automatically.
-- 2-space indentation, single quotes, trailing commas (see `.prettierrc.json`).
+- 2-space indentation, single quotes, trailing commas (see `[fmt]` in `bunfig.toml`).
 
 ## Tests
 

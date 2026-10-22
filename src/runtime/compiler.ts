@@ -27,7 +27,14 @@ export type Instruction =
   | { op: 'return'; hasValue: boolean; node: ast.Return }
   | { op: 'jump'; target: number }
   /** Saca la condición (debe ser lógica) y salta si vale `jumpWhen`. */
-  | { op: 'branch'; target: number; jumpWhen: boolean; label: DecisionLabel; node: ast.Expression; owner: ast.Statement }
+  | {
+      op: 'branch';
+      target: number;
+      jumpWhen: boolean;
+      label: DecisionLabel;
+      node: ast.Expression;
+      owner: ast.Statement;
+    }
   /** Cortocircuito: revisa el lado izquierdo de `y`/`o`; si ya decide el resultado, lo deja y salta. */
   | { op: 'shortCircuit'; target: number; node: ast.Logical }
   /** Revisa que el lado derecho de `y`/`o` sea lógico. */
@@ -134,7 +141,14 @@ class Compiler {
       case 'While': {
         const start = this.here;
         this.expression(node.condition);
-        const exit = this.emit({ op: 'branch', target: -1, jumpWhen: false, label: 'mientras', node: node.condition, owner: node });
+        const exit = this.emit({
+          op: 'branch',
+          target: -1,
+          jumpWhen: false,
+          label: 'mientras',
+          node: node.condition,
+          owner: node,
+        });
         this.block(node.body);
         this.emit({ op: 'jump', target: start });
         this.patch(exit, this.here);
@@ -144,7 +158,14 @@ class Compiler {
         const start = this.here;
         this.block(node.body);
         this.expression(node.condition);
-        this.emit({ op: 'branch', target: start, jumpWhen: false, label: 'hasta_que', node: node.condition, owner: node });
+        this.emit({
+          op: 'branch',
+          target: start,
+          jumpWhen: false,
+          label: 'hasta_que',
+          node: node.condition,
+          owner: node,
+        });
         return;
       }
       case 'For': {
@@ -154,7 +175,14 @@ class Compiler {
         let exit = -1;
         if (node.condition) {
           this.expression(node.condition);
-          exit = this.emit({ op: 'branch', target: -1, jumpWhen: false, label: 'para', node: node.condition, owner: node });
+          exit = this.emit({
+            op: 'branch',
+            target: -1,
+            jumpWhen: false,
+            label: 'para',
+            node: node.condition,
+            owner: node,
+          });
         }
         this.block(node.body);
         if (node.update) this.statement(node.update);

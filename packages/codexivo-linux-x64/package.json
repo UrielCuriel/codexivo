@@ -1,0 +1,25 @@
+{
+  "name": "codexivo-linux-x64",
+  "version": "0.2.0",
+  "description": "Ejecutable nativo de Codexivo para linux-x64.",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/codexivo"
+  ],
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UrielCuriel/codexivo.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "libc": [
+    "glibc"
+  ]
+}

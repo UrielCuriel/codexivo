@@ -23,7 +23,9 @@ import { readFileSync } from 'node:fs';
 import { tokenize } from './src';
 
 const { tokens } = tokenize(readFileSync('semilla.cdx', 'utf8'));
-console.table(tokens.map(t => ({ tipo: t.type, texto: t.lexeme, línea: t.span.start.line, columna: t.span.start.column })));
+console.table(
+  tokens.map(t => ({ tipo: t.type, texto: t.lexeme, línea: t.span.start.line, columna: t.span.start.column })),
+);
 ```
 
 - Ubica en `src/syntax/lexer.ts` dónde se reconocen los nombres y cómo se decide si son palabras reservadas (`KEYWORDS` en
@@ -63,7 +65,11 @@ const { machine } = prepare(codigo);
 while (machine && !machine.done) {
   machine.step();
   const foto = machine.snapshot();
-  console.log(foto.span?.start.line, foto.frames.map(f => f.name).join(' > '), JSON.stringify(foto.frames.at(-1)?.scopes));
+  console.log(
+    foto.span?.start.line,
+    foto.frames.map(f => f.name).join(' > '),
+    JSON.stringify(foto.frames.at(-1)?.scopes),
+  );
 }
 ```
 
