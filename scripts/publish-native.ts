@@ -1,7 +1,7 @@
 export {};
 
 // Publish native dependencies first; reruns can resume a partially published release.
-const root = await Bun.file('package.json').json();
+const root = await Bun.file('packages/cli/package.json').json();
 const tag = root.version.includes('-') ? 'next' : 'latest';
 for (const name of Object.keys(root.optionalDependencies)) {
   const directory = `packages/${name}`;

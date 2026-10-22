@@ -7,7 +7,8 @@ const directory = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 // Development checkouts build their executables after installing dependencies.
-if (existsSync(join(directory, 'src/cli.ts')) && existsSync(join(directory, 'packages'))) process.exit(0);
+if (existsSync(resolve(directory, '../../src/cli.ts')) && existsSync(resolve(directory, '../../packages')))
+  process.exit(0);
 
 const root = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'));
 const platform = process.platform === 'win32' ? 'windows' : process.platform;

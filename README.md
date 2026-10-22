@@ -63,22 +63,24 @@ console.log(resultado.output); // "Hola desde Codexivo\n"
 ```
 
 El paquete incluye un bundle ESM compatible con navegador y los tipos como fuentes TypeScript. Importar la biblioteca no
-inicia el REPL ni necesita Bun. El principal declara `bin` y las variantes nativas en `optionalDependencies`; cada variante
+inicia el REPL, no necesita Bun y no instala binarios ni ejecuta scripts de instalación.
+
+El CLI se instala por separado como `@codexivo/cli`. Este paquete declara `bin` y las variantes nativas en `optionalDependencies`; cada variante
 incluye los campos `os`, `cpu` y, en Linux, `libc`. El gestor instala la variante compatible y `postinstall` verifica su versión
-y enlaza o copia el ejecutable a `bin/codexivo.exe` del principal. El nombre interno también funciona en Linux y macOS.
+y enlaza o copia el ejecutable a `bin/codexivo.exe` del CLI. El nombre interno también funciona en Linux y macOS.
 
 ```sh
-npm install --global codexivo@0.2.0
+npm install --global @codexivo/cli@0.2.0
 codexivo                         # REPL
 codexivo programa.cdx            # ejecutar un archivo
 ```
 
-Con Bun, usa `bun add --global --trust codexivo@0.2.0` para permitir el script de instalación. Node se usa únicamente durante
+Con Bun, usa `bun add --global --trust @codexivo/cli@0.2.0` para permitir el script de instalación. Node se usa únicamente durante
 la instalación con npm; el comando resultante es el ejecutable nativo y funciona sin Node.js ni Bun en el `PATH`.
 
-Si bloqueas scripts, puedes usar la biblioteca normalmente. Para preparar el comando tras una instalación local, ejecuta
-`node node_modules/codexivo/postinstall.mjs` una vez. El instalador toma el paquete opcional ya instalado por el gestor y exige
-que su versión coincida con la del principal; no descarga ni compila binarios.
+Si bloqueas scripts al instalar el CLI, para preparar el comando tras una instalación local ejecuta
+`node node_modules/@codexivo/cli/postinstall.mjs` una vez. El instalador toma el paquete opcional ya instalado por el gestor y exige
+que su versión coincida con la del CLI; no descarga ni compila binarios.
 
 Las variantes publicadas son:
 
@@ -126,8 +128,7 @@ dispara otra publicación. El workflow toma el estado más reciente de `main`, p
 Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `patch`, `minor` o `major` para una publicación manual.
 
 También se admiten tags `v*` creados manualmente: deben coincidir con `package.json` y no incrementan la versión otra vez.
-Todas las compilaciones usan el SHA del commit de la versión. Los paquetes nativos se publican antes que el paquete
-principal y sus versiones se sincronizan con `bun pm version`. El principal declara `bin` y su `postinstall` coloca allí el ejecutable del paquete nativo compatible. Las versiones preliminares se publican con el dist-tag `next`;
+Todas las compilaciones usan el SHA del commit de la versión. Los paquetes nativos se publican primero, después `@codexivo/cli` y finalmente `codexivo`. Las diez versiones se sincronizan con `bun pm version`. Solo el CLI declara `bin` y su `postinstall` coloca allí el ejecutable del paquete nativo compatible. Las versiones preliminares se publican con el dist-tag `next`;
 las estables, con `latest`. Los ejecutables y sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni
 notarizados.
 

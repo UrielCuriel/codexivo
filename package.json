@@ -7,8 +7,6 @@
   "module": "dist/index.js",
   "types": "src/index.ts",
   "files": [
-    "bin/codexivo.exe",
-    "postinstall.mjs",
     "dist/index.js",
     "dist/index.js.map",
     "src",
@@ -35,8 +33,7 @@
     "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
     "publish:native": "bun run scripts/publish-native.ts",
     "format": "bun fmt",
-    "format:check": "bun fmt --check",
-    "postinstall": "node ./postinstall.mjs"
+    "format:check": "bun fmt --check"
   },
   "keywords": [
     "lenguaje de programación",
@@ -60,18 +57,5 @@
   },
   "workspaces": [
     "packages/*"
-  ],
-  "optionalDependencies": {
-    "codexivo-linux-x64": "0.2.0",
-    "codexivo-linux-x64-musl": "0.2.0",
-    "codexivo-linux-arm64": "0.2.0",
-    "codexivo-linux-arm64-musl": "0.2.0",
-    "codexivo-darwin-x64": "0.2.0",
-    "codexivo-darwin-arm64": "0.2.0",
-    "codexivo-windows-x64": "0.2.0",
-    "codexivo-windows-arm64": "0.2.0"
-  },
-  "bin": {
-    "codexivo": "./bin/codexivo.exe"
-  }
+  ]
 }

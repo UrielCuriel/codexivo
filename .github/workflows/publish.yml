@@ -166,6 +166,7 @@ jobs:
         run: |
           tag=latest
           if [[ "$RELEASE_TAG" == *-* ]]; then tag=next; fi
+          npm publish --workspace @codexivo/cli --access public --provenance --tag "$tag"
           npm publish --access public --provenance --tag "$tag"
       - name: Crear release y adjuntar ejecutables
         env:

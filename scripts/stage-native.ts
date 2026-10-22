@@ -2,7 +2,7 @@ import { chmod, copyFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const source = Bun.argv[2] ?? 'dist/binaries';
-const root = await Bun.file('package.json').json();
+const root = await Bun.file('packages/cli/package.json').json();
 for (const name of Object.keys(root.optionalDependencies)) {
   const pkg = await Bun.file(`packages/${name}/package.json`).json();
   if (pkg.version !== root.version || root.optionalDependencies[name] !== root.version) {

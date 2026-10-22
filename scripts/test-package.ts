@@ -25,6 +25,8 @@ const execute = async (cmd: string[], cwd = temporary, stdin?: string, env = pro
 
 try {
   const tarball = join(temporary, 'codexivo.tgz');
+  const cliTarball = join(temporary, 'cli.tgz');
+  await execute([process.execPath, 'pm', 'pack', '--filename', cliTarball], resolve('packages/cli'));
   await execute([process.execPath, 'pm', 'pack', '--filename', tarball], process.cwd());
   const platform = process.platform === 'win32' ? 'windows' : process.platform;
   const report = process.report.getReport() as { header: { glibcVersionRuntime?: string } };
@@ -34,11 +36,14 @@ try {
   await execute([process.execPath, 'pm', 'pack', '--filename', nativeTarball], resolve('packages', nativeName));
   await writeFile(join(temporary, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
   await execute(['npm', 'install', '--save-dev', '--no-audit', '--no-fund', 'vite@8.0.3']);
-  // Serve the real tarballs locally so only the main package is a direct dependency.
-  // This catches missing transitive bin links, which installing both packages directly would hide.
+  // Serve real tarballs to verify library-only installs and platform selection through the CLI.
   const root = await Bun.file('package.json').json();
-  const manifests = new Map<string, Record<string, unknown>>([['codexivo', root]]);
-  for (const name of Object.keys(root.optionalDependencies)) {
+  const cliManifest = await Bun.file('packages/cli/package.json').json();
+  const manifests = new Map<string, Record<string, unknown>>([
+    ['codexivo', root],
+    ['@codexivo/cli', cliManifest],
+  ]);
+  for (const name of Object.keys(cliManifest.optionalDependencies)) {
     manifests.set(name, await Bun.file(`packages/${name}/package.json`).json());
   }
   const downloads = new Set<string>();
@@ -52,8 +57,11 @@ try {
       if (!manifest) return new Response('No encontrado', { status: 404 });
       if (url.pathname.endsWith('.tgz')) {
         downloads.add(name);
-        if (name !== 'codexivo' && name !== nativeName) return new Response('Destino incorrecto', { status: 404 });
-        return new Response(Bun.file(name === 'codexivo' ? tarball : nativeTarball));
+        if (name !== 'codexivo' && name !== '@codexivo/cli' && name !== nativeName)
+          return new Response('Destino incorrecto', { status: 404 });
+        return new Response(
+          Bun.file(name === 'codexivo' ? tarball : name === '@codexivo/cli' ? cliTarball : nativeTarball),
+        );
       }
       return Response.json({
         name,
@@ -66,25 +74,19 @@ try {
   });
   const registryURL = `http://127.0.0.1:${registry.port}`;
   await execute(['npm', 'install', '--no-audit', '--no-fund', '--registry', registryURL, `codexivo@${root.version}`]);
-  assert.deepEqual([...downloads].sort(), ['codexivo', nativeName].sort());
+  assert.deepEqual([...downloads], ['codexivo']);
   const installed = join(temporary, 'node_modules/codexivo');
   const pkg = await Bun.file(join(installed, 'package.json')).json();
   assert.equal(pkg.sideEffects, false);
   assert.ok(await Bun.file(join(installed, pkg.exports['.'].types)).exists());
-  assert.equal(pkg.bin.codexivo, './bin/codexivo.exe');
-  assert.equal(pkg.scripts.postinstall, 'node ./postinstall.mjs');
-  const native = join(temporary, 'node_modules', nativeName);
-  const nativePackage = await Bun.file(join(native, 'package.json')).json();
-  assert.equal(nativePackage.bin, undefined);
-  const nativePath = join(native, 'bin', platform === 'windows' ? 'codexivo.exe' : 'codexivo');
-  const installedBinary = Bun.file(resolve(installed, pkg.bin.codexivo));
-  assert.equal(installedBinary.size, Bun.file(nativePath).size);
-  assert.deepEqual(
-    await installedBinary.slice(0, 16).arrayBuffer(),
-    await Bun.file(nativePath).slice(0, 16).arrayBuffer(),
-  );
-  assert.equal(pkg.optionalDependencies[nativeName], pkg.version);
-  assert.equal(await Bun.file(join(installed, 'dist/cli.js')).exists(), false);
+  assert.equal(pkg.bin, undefined);
+  assert.equal(pkg.scripts.postinstall, undefined);
+  assert.equal(pkg.optionalDependencies, undefined);
+  assert.equal(await Bun.file(join(installed, 'postinstall.mjs')).exists(), false);
+  assert.equal(await Bun.file(join(installed, 'bin/codexivo.exe')).exists(), false);
+  for (const name of Object.keys(cliManifest.optionalDependencies)) {
+    assert.equal(await Bun.file(join(temporary, 'node_modules', name, 'package.json')).exists(), false);
+  }
 
   await writeFile(
     join(temporary, 'consumer.ts'),
@@ -109,15 +111,42 @@ try {
   await writeFile(join(temporary, 'index.html'), '<script type="module" src="/consumer.ts"></script>');
   await execute([process.execPath, 'run', 'vite', 'build']);
 
+  await execute([
+    'npm',
+    'install',
+    '--no-audit',
+    '--no-fund',
+    '--registry',
+    registryURL,
+    `@codexivo/cli@${root.version}`,
+  ]);
+  assert.deepEqual([...downloads].sort(), ['codexivo', '@codexivo/cli', nativeName].sort());
+  const installedCLI = join(temporary, 'node_modules/@codexivo/cli');
+  const cliPackage = await Bun.file(join(installedCLI, 'package.json')).json();
+  assert.equal(cliPackage.bin.codexivo, './bin/codexivo.exe');
+  assert.equal(cliPackage.scripts.postinstall, 'node ./postinstall.mjs');
+  const native = join(temporary, 'node_modules', nativeName);
+  const nativePackage = await Bun.file(join(native, 'package.json')).json();
+  assert.equal(nativePackage.bin, undefined);
+  const nativePath = join(native, 'bin', platform === 'windows' ? 'codexivo.exe' : 'codexivo');
+  const installedBinary = Bun.file(resolve(installedCLI, cliPackage.bin.codexivo));
+  assert.equal(installedBinary.size, Bun.file(nativePath).size);
+  assert.deepEqual(
+    await installedBinary.slice(0, 16).arrayBuffer(),
+    await Bun.file(nativePath).slice(0, 16).arrayBuffer(),
+  );
+  assert.equal(cliPackage.optionalDependencies[nativeName], cliPackage.version);
+  assert.equal(await Bun.file(join(installed, 'dist/cli.js')).exists(), false);
+
   await writeFile(join(temporary, 'programa.cdx'), 'imprimir(leer_número() * 2);');
-  const cli = resolve(installed, pkg.bin.codexivo);
+  const cli = resolve(installedCLI, cliPackage.bin.codexivo);
   const withoutRuntimes = { ...process.env, PATH: '', Path: '' };
   // Refuse stale optional dependencies instead of installing the wrong release.
   const nativeManifest = join(native, 'package.json');
   await Bun.write(nativeManifest, JSON.stringify({ ...nativePackage, version: '0.0.0' }));
-  await execute([Bun.which('node')!, join(installed, 'postinstall.mjs')], temporary, undefined, process.env, 1);
+  await execute([Bun.which('node')!, join(installedCLI, 'postinstall.mjs')], temporary, undefined, process.env, 1);
   await Bun.write(nativeManifest, JSON.stringify(nativePackage));
-  await execute([Bun.which('node')!, join(installed, 'postinstall.mjs')]);
+  await execute([Bun.which('node')!, join(installedCLI, 'postinstall.mjs')]);
   assert.equal(await execute([cli, 'programa.cdx'], temporary, '21\n', withoutRuntimes), '42\n');
   assert.match(await execute([cli], temporary, 'variable año = 2026;\naño\nsalir\n', withoutRuntimes), /2026/);
   const command = join(temporary, 'node_modules', '.bin', process.platform === 'win32' ? 'codexivo.cmd' : 'codexivo');
@@ -145,7 +174,7 @@ try {
     '--no-fund',
     '--registry',
     registryURL,
-    `codexivo@${root.version}`,
+    `@codexivo/cli@${root.version}`,
   ]);
   const globalArgs = process.platform === 'win32' ? [process.env.ComSpec!, '/d', '/c', globalCommand] : [globalCommand];
   assert.equal(await execute([...globalArgs, 'programa.cdx'], temporary, '21\n', withoutRuntimes), '42\n');
@@ -153,7 +182,7 @@ try {
   await mkdir(bunConsumer);
   await writeFile(join(bunConsumer, 'package.json'), JSON.stringify({ private: true }));
   await execute(
-    [process.execPath, 'add', '--trust', '--registry', registryURL, `codexivo@${root.version}`],
+    [process.execPath, 'add', '--trust', '--registry', registryURL, `@codexivo/cli@${root.version}`],
     bunConsumer,
   );
   const bunLocal = join(bunConsumer, 'node_modules/.bin', process.platform === 'win32' ? 'codexivo.exe' : 'codexivo');
@@ -171,14 +200,16 @@ try {
     bunBin,
   );
   await execute(
-    [process.execPath, 'add', '--global', '--trust', '--registry', registryURL, `codexivo@${root.version}`],
+    [process.execPath, 'add', '--global', '--trust', '--registry', registryURL, `@codexivo/cli@${root.version}`],
     temporary,
     undefined,
     bunEnvironment,
   );
   const bunGlobalCommand = join(bunBin, process.platform === 'win32' ? 'codexivo.exe' : 'codexivo');
   assert.equal(await execute([bunGlobalCommand, 'programa.cdx'], temporary, '21\n', withoutRuntimes), '42\n');
-  console.log('Paquete validado: importación, navegador/Vite, tipos y comando nativo sin Node ni Bun en PATH.');
+  console.log(
+    'Paquetes validados: biblioteca sin binarios, navegador/Vite, tipos y CLI nativo sin Node ni Bun en PATH.',
+  );
 } finally {
   registry?.stop(true);
   await rm(temporary, { recursive: true, force: true });

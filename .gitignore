@@ -6,5 +6,5 @@ dist/
 
 
 # Native npm package outputs
-packages/*/bin/
+packages/codexivo-*/bin/
 *.tgz
