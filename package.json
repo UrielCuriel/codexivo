@@ -7,7 +7,8 @@
   "module": "dist/index.js",
   "types": "src/index.ts",
   "files": [
-    "bin/codexivo.cjs",
+    "bin/codexivo.exe",
+    "install.cjs",
     "dist/index.js",
     "dist/index.js.map",
     "src",
@@ -34,7 +35,8 @@
     "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
     "publish:native": "bun run scripts/publish-native.ts",
     "format": "bun fmt",
-    "format:check": "bun fmt --check"
+    "format:check": "bun fmt --check",
+    "postinstall": "node install.cjs"
   },
   "keywords": [
     "lenguaje de programación",
@@ -53,7 +55,7 @@
   },
   "packageManager": "bun@1.4.4",
   "bin": {
-    "codexivo": "./bin/codexivo.cjs"
+    "codexivo": "./bin/codexivo.exe"
   },
   "sideEffects": false,
   "publishConfig": {
@@ -62,9 +64,6 @@
   "workspaces": [
     "packages/*"
   ],
-  "engines": {
-    "node": ">=20"
-  },
   "optionalDependencies": {
     "codexivo-linux-x64": "0.2.0",
     "codexivo-linux-x64-musl": "0.2.0",

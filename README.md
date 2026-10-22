@@ -64,13 +64,17 @@ console.log(resultado.output); // "Hola desde Codexivo\n"
 
 El paquete incluye un bundle ESM compatible con navegador y los tipos como fuentes TypeScript. Importar la biblioteca no
 inicia el REPL ni necesita Bun. El comando npm también ejecuta un binario autónomo: npm instala la variante de tu sistema,
-arquitectura y libc automáticamente. Su lanzador utiliza Node.js 20 o posterior (incluido con npm), sin requerir Bun:
+arquitectura y libc automáticamente. Durante la instalación, `postinstall` copia el ejecutable a la ruta declarada en `bin`.
+Después, `codexivo` ejecuta ese archivo directamente: no requiere Node.js ni Bun. Node solo interviene en la instalación con npm:
 
 ```sh
 npm install --global codexivo@0.2.0
 codexivo                         # REPL
 codexivo programa.cdx            # ejecutar un archivo
 ```
+
+Si bloqueas los scripts de instalación, ejecuta `node node_modules/codexivo/install.cjs` una vez después de instalar el
+paquete local. El REPL y la ejecución posterior de archivos funcionan sin runtimes de JavaScript instalados.
 
 También puedes descargar un ejecutable autónomo desde [Releases](https://github.com/UrielCuriel/codexivo/releases), sin
 instalar Node.js ni Bun. Hay versiones x64 y ARM64 para Linux, macOS y Windows; Linux ofrece glibc y musl (Alpine).
@@ -97,7 +101,7 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 - `bun run build:binary` — ejecutable autónomo para el sistema actual en `dist/binaries/`.
 - `bun run build:binary bun-windows-x64` — compilación cruzada para un destino específico.
 - `bun run build:binaries` — los ocho destinos de Linux/macOS/Windows, x64/ARM64.
-- `bun run test:package` — instalar los tarballs reales con npm, compilar con Vite y probar el CLI sin Bun en el `PATH`.
+- `bun run test:package` — instalar los tarballs reales con npm, compilar con Vite y probar el comando nativo sin Node.js ni Bun en el `PATH`.
 
 Al integrar cambios en `main` (por merge o push), el workflow incrementa automáticamente la versión con `bun pm version patch`,
 crea el commit y el tag y continúa con las validaciones y la publicación en la misma ejecución. El commit automático no
@@ -106,7 +110,7 @@ Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `pat
 
 También se admiten tags `v*` creados manualmente: deben coincidir con `package.json` y no incrementan la versión otra vez.
 Todas las compilaciones usan el SHA del commit de la versión. Los paquetes nativos se publican antes que el paquete
-principal y sus versiones se sincronizan con `bun pm version`. No se descargan ejecutables mediante scripts de instalación. Las versiones preliminares se publican con el dist-tag `next`;
+principal y sus versiones se sincronizan con `bun pm version`. El script de instalación solo copia el binario ya instalado por npm; no descarga ni compila código. Las versiones preliminares se publican con el dist-tag `next`;
 las estables, con `latest`. Los ejecutables y sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni
 notarizados.
 

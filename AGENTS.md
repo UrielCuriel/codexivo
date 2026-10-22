@@ -20,7 +20,8 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `src/errors.ts` — `CodexivoError` and `formatError`.
 - `src/engine.ts` — `run`, `prepare`, `Session`. `src/index.ts` is the public API.
 - `src/cli.ts` — REPL and file runner (Bun APIs only, no `node:` imports).
-- `bin/codexivo.cjs` — npm launcher; resolves the matching native optional dependency and runs it with no Bun dependency.
+- `install.cjs` — npm postinstall; copies the matching native optional dependency to `bin/codexivo.exe`.
+- `bin/codexivo.exe` — packaging placeholder, replaced by the native executable at install time. The `.exe` filename also works on Unix. No JS launcher remains at runtime.
 - `packages/*` — native npm packages filtered by OS, CPU and libc. Their versions track the root via the version lifecycle.
 - `tests/*.test.ts` — Bun tests, one file per area.
 
