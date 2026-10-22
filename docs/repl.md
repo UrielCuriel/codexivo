@@ -1,10 +1,12 @@
 # REPL y ejecución desde la terminal
 
-El comando npm `codexivo` apunta directamente al binario nativo preparado durante la instalación. Para ejecutarlo no
-necesitas Node.js ni Bun; Node solo se usa durante la instalación con npm.
-Después de instalar el paquete globalmente, ejecuta `codexivo` para
-abrir el REPL o `codexivo programa.cdx` para ejecutar un archivo. Los ejecutables de
-[Releases](https://github.com/UrielCuriel/codexivo/releases) incluyen el runtime y no requieren instalación de Bun.
+Cada paquete nativo declara el comando `codexivo` en su campo `bin`. Para instalarlo globalmente, elige el paquete del
+[sistema y arquitectura correspondientes](../README.md#cómo-usarlo), por ejemplo `npm install -g codexivo-linux-x64` en Linux
+x64 con glibc. No hay scripts de instalación. Para ejecutarlo no necesitas Node.js ni Bun.
+
+Después de instalarlo, ejecuta `codexivo` para abrir el REPL o `codexivo programa.cdx` para ejecutar un archivo. El paquete
+principal `codexivo` proporciona la biblioteca y selecciona el binario compatible en instalaciones locales. Los ejecutables de
+[Releases](https://github.com/UrielCuriel/codexivo/releases) también funcionan sin runtimes externos.
 En Linux/macOS, aplica `chmod +x` al ejecutable descargado. Se admiten x64 y ARM64 en Linux, macOS y Windows; para Alpine
 Linux elige la variante `musl`.
 

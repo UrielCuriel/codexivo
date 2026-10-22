@@ -63,18 +63,32 @@ console.log(resultado.output); // "Hola desde Codexivo\n"
 ```
 
 El paquete incluye un bundle ESM compatible con navegador y los tipos como fuentes TypeScript. Importar la biblioteca no
-inicia el REPL ni necesita Bun. El comando npm también ejecuta un binario autónomo: npm instala la variante de tu sistema,
-arquitectura y libc automáticamente. Durante la instalación, `postinstall` copia el ejecutable a la ruta declarada en `bin`.
-Después, `codexivo` ejecuta ese archivo directamente: no requiere Node.js ni Bun. Node solo interviene en la instalación con npm:
+inicia el REPL ni necesita Bun. El paquete principal declara las variantes nativas en `optionalDependencies`; cada variante
+incluye su propio `bin` y los campos `os`, `cpu` y, en Linux, `libc`. Una instalación local selecciona la variante compatible y
+expone `node_modules/.bin/codexivo`, sin scripts de instalación ni lanzadores JavaScript.
+
+Para instalar el comando globalmente, elige el paquete de tu plataforma. Por ejemplo, en Linux x64 con glibc:
 
 ```sh
-npm install --global codexivo@0.2.0
+npm install --global codexivo-linux-x64@0.2.0
 codexivo                         # REPL
 codexivo programa.cdx            # ejecutar un archivo
 ```
 
-Si bloqueas los scripts de instalación, ejecuta `node node_modules/codexivo/install.cjs` una vez después de instalar el
-paquete local. El REPL y la ejecución posterior de archivos funcionan sin runtimes de JavaScript instalados.
+Con Bun también puedes usar `bun add --global codexivo-linux-x64@0.2.0`. Los gestores se necesitan para instalar; ejecutar
+`codexivo` después no requiere Node.js ni Bun. Al instalar globalmente `codexivo`, los gestores no exponen los comandos de
+sus dependencias transitivas; por eso la instalación global usa directamente el paquete nativo.
+
+| Sistema        | Arquitectura | libc  | Paquete                     |
+| -------------- | ------------ | ----- | --------------------------- |
+| Linux          | x64          | glibc | `codexivo-linux-x64`        |
+| Linux          | ARM64        | glibc | `codexivo-linux-arm64`      |
+| Linux (Alpine) | x64          | musl  | `codexivo-linux-x64-musl`   |
+| Linux (Alpine) | ARM64        | musl  | `codexivo-linux-arm64-musl` |
+| macOS          | x64          | —     | `codexivo-darwin-x64`       |
+| macOS          | ARM64        | —     | `codexivo-darwin-arm64`     |
+| Windows        | x64          | —     | `codexivo-windows-x64`      |
+| Windows        | ARM64        | —     | `codexivo-windows-arm64`    |
 
 También puedes descargar un ejecutable autónomo desde [Releases](https://github.com/UrielCuriel/codexivo/releases), sin
 instalar Node.js ni Bun. Hay versiones x64 y ARM64 para Linux, macOS y Windows; Linux ofrece glibc y musl (Alpine).
@@ -110,7 +124,7 @@ Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `pat
 
 También se admiten tags `v*` creados manualmente: deben coincidir con `package.json` y no incrementan la versión otra vez.
 Todas las compilaciones usan el SHA del commit de la versión. Los paquetes nativos se publican antes que el paquete
-principal y sus versiones se sincronizan con `bun pm version`. El script de instalación solo copia el binario ya instalado por npm; no descarga ni compila código. Las versiones preliminares se publican con el dist-tag `next`;
+principal y sus versiones se sincronizan con `bun pm version`. Cada paquete nativo declara directamente el ejecutable en `bin`; no hay scripts de instalación. Las versiones preliminares se publican con el dist-tag `next`;
 las estables, con `latest`. Los ejecutables y sus sumas SHA-256 se adjuntan a la release. Los binarios no están firmados ni
 notarizados.
 

@@ -18,5 +18,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "bin": {
+    "codexivo": "./bin/codexivo.exe"
   }
 }
