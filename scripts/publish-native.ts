@@ -4,7 +4,7 @@ export {};
 const root = await Bun.file('packages/cli/package.json').json();
 const tag = root.version.includes('-') ? 'next' : 'latest';
 for (const name of Object.keys(root.optionalDependencies)) {
-  const directory = `packages/${name}`;
+  const directory = `./packages/${name}`;
   const pkg = await Bun.file(`${directory}/package.json`).json();
   if (pkg.version !== root.version || root.optionalDependencies[name] !== root.version) {
     throw new Error(`La versión de ${name} debe coincidir con ${root.version}.`);

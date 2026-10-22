@@ -32,6 +32,19 @@ try {
   const report = process.report.getReport() as { header: { glibcVersionRuntime?: string } };
   const musl = platform === 'linux' && !report.header.glibcVersionRuntime;
   const nativeName = `codexivo-${platform}-${process.arch}${musl ? '-musl' : ''}`;
+  // Match the release command: an explicit local path prevents npm treating owner/repo as GitHub shorthand.
+  const publication = JSON.parse(
+    await execute(
+      ['npm', 'publish', `./packages/${nativeName}`, '--access', 'public', '--dry-run', '--json'],
+      process.cwd(),
+    ),
+  );
+  assert.equal(publication.name, nativeName);
+  assert.ok(
+    publication.files.some(
+      (file: { path: string }) => file.path === `bin/codexivo${platform === 'windows' ? '.exe' : ''}`,
+    ),
+  );
   const nativeTarball = join(temporary, 'native.tgz');
   await execute([process.execPath, 'pm', 'pack', '--filename', nativeTarball], resolve('packages', nativeName));
   await writeFile(join(temporary, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
