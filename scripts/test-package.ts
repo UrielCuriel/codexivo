@@ -33,12 +33,14 @@ try {
   const musl = platform === 'linux' && !report.header.glibcVersionRuntime;
   const nativeName = `codexivo-${platform}-${process.arch}${musl ? '-musl' : ''}`;
   // Match the release command: an explicit local path prevents npm treating owner/repo as GitHub shorthand.
-  const publication = JSON.parse(
+  const publicationResult = JSON.parse(
     await execute(
-      ['npm', 'publish', `./packages/${nativeName}`, '--access', 'public', '--dry-run', '--json'],
+      ['npm', 'publish', `./packages/${nativeName}`, '--access', 'public', '--dry-run', '--force', '--json'],
       process.cwd(),
     ),
   );
+  // npm 11.19+ groups publish JSON by package name; older versions return the package directly.
+  const publication = publicationResult[nativeName] ?? publicationResult;
   assert.equal(publication.name, nativeName);
   assert.ok(
     publication.files.some(
