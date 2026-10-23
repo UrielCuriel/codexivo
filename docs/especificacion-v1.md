@@ -399,6 +399,10 @@ cambian la lista; todo lo demás regresa un valor nuevo.**
 `reemplazar(t, buscar, poner)`, `contiene`, `empieza_con`, `termina_con`, `posición_de` (regresa `-1`
 si no está), `subtexto(t, inicio, fin)`, `caracteres(t)`, `código_de(c)`, `carácter_de(n)`.
 
+> **✅ Decidido — `subtexto` y `rebanar` no incluyen el fin.** `subtexto("hola", 1, 3)` es `"ol"`. Así
+> `fin - inicio` es la cantidad de elementos y `rebanar(l, 0, longitud(l))` es la lista completa. `rango`, que
+> enumera, sí incluye el final; estos dos, que cortan, no.
+
 ### 🟡 Listas
 
 | Nombre                                                                           | Descripción                                                                                                              |
@@ -594,7 +598,8 @@ Todas aprobadas.
    operadores en palabras, `constante`, alcance por bloque, `1_000_000` y `PI`. `repetir` emite `decide` con la
    etiqueta `repetir` en cada vuelta y `declara` indica si el nombre es constante.
 5. **Nivel intermedio:** ✅ procedimientos con nombre, ✅ `para_cada`, ✅ `romper`/`continuar`, ✅ asignación por
-   índice (evento `modifica`), ✅ `rango` e `índices`, ✅ diccionarios, biblioteca de texto y listas.
+   índice (evento `modifica`), ✅ `rango` e `índices`, ✅ diccionarios, ✅ biblioteca de texto y listas (con
+   `cost` registrado en cada procedimiento nativo; el cobro llega en el paso 6).
 6. **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
    biblioteca.
 7. **Modo mundo.**

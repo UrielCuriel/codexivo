@@ -245,28 +245,112 @@ calculadora.suma(1, 3);   // 4
 
 ## Biblioteca
 
-Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
+Todo está disponible sin importar nada. Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
 
-| Procedimiento                     | Qué hace                                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------------------- |
-| `imprimir(a, b, …)`               | Escribe los valores separados por un espacio y termina la línea                             |
-| `leer()`                          | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                |
-| `leer_número()`                   | Siguiente línea de entrada como número                                                      |
-| `tipo(x)`                         | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"` o `"procedimiento"` |
-| `texto(x)`, `número(x)`           | Conversiones explícitas                                                                     |
-| `longitud(x)`                     | Caracteres de un texto, elementos de una lista o claves de un diccionario                   |
-| `absoluto(x)`                     | Valor absoluto                                                                              |
-| `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                                            |
-| `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                                       |
-| `PI`                              | La constante 3.14159…; una variable tuya con el mismo nombre la oculta                      |
-| `agregar(lista, x)`               | Agrega al final (cambia la lista)                                                           |
-| `rango(a, b, paso?)`              | Lista de `a` a `b`, **incluyendo** `b`; con `paso` negativo cuenta hacia abajo              |
-| `índices(lista)`                  | Las posiciones válidas: `rango(0, longitud(lista) - 1)`                                     |
-| `quitar(lista, i)`                | Quita el elemento en la posición `i` y lo regresa (cambia la lista)                         |
-| `quitar(d, clave)`                | Quita la clave y regresa su valor (cambia el diccionario)                                   |
-| `claves(d)`, `valores(d)`         | Listas nuevas con las claves o los valores, en orden de inserción                           |
-| `tiene(d, clave)`                 | `verdadero` si el diccionario tiene esa clave                                               |
-| `primero(lista)`, `último(lista)` | Primer y último elemento                                                                    |
+### Entrada, salida y tipos
+
+| Procedimiento           | Qué hace                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| `imprimir(a, b, …)`     | Escribe los valores separados por un espacio y termina la línea                             |
+| `leer()`                | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                |
+| `leer_número()`         | Siguiente línea de entrada como número                                                      |
+| `tipo(x)`               | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"` o `"procedimiento"` |
+| `texto(x)`, `número(x)` | Conversiones explícitas                                                                     |
+| `longitud(x)`           | Caracteres de un texto, elementos de una lista o claves de un diccionario                   |
+
+### Matemáticas
+
+| Procedimiento              | Qué hace                                                               |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `absoluto(x)`              | Valor absoluto                                                         |
+| `máximo(…)`, `mínimo(…)`   | De varios números o de una lista                                       |
+| `redondear(x, decimales?)` | Redondea; los `.5` se alejan del cero                                  |
+| `piso(x)`, `techo(x)`      | Redondea hacia abajo o hacia arriba: `piso(-2.1)` es `-3`              |
+| `entero(x)`                | Quita los decimales: `entero(-2.7)` es `-2`                            |
+| `raíz(x)`                  | Raíz cuadrada; de un número negativo es un error                       |
+| `aleatorio(a, b)`          | Un entero al azar entre `a` y `b`, los dos incluidos                   |
+| `PI`                       | La constante 3.14159…; una variable tuya con el mismo nombre la oculta |
+
+`aleatorio` usa una semilla por ejecución: con la misma semilla, el programa da exactamente los mismos números. `run`
+regresa la semilla que usó en `seed`, y se puede fijar con la opción `seed`.
+
+```codexivo
+variable dado = aleatorio(1, 6);
+imprimir("Salió", dado);
+imprimir(piso(7 / 2), techo(7 / 2), raíz(16));
+```
+
+### Texto
+
+Ninguno cambia el texto original (los textos no cambian nunca): todos regresan un valor nuevo.
+
+| Procedimiento                                    | Qué hace                                                                                |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `mayúsculas(t)`, `minúsculas(t)`                 | El mismo texto en mayúsculas o en minúsculas                                            |
+| `recortar(t)`                                    | Sin espacios ni saltos de línea al principio y al final                                 |
+| `dividir(t, separador)`                          | Lista con los pedazos de `t` entre cada separador                                       |
+| `unir(lista, separador)`                         | Un texto con los elementos de la lista separados por `separador`                        |
+| `reemplazar(t, buscar, poner)`                   | Cambia cada aparición de `buscar` por `poner`                                           |
+| `contiene(t, parte)`                             | `verdadero` si `parte` aparece en `t`                                                   |
+| `empieza_con(t, parte)`, `termina_con(t, parte)` | Si `t` empieza o termina con `parte`                                                    |
+| `posición_de(t, parte)`                          | Dónde empieza la primera aparición de `parte`, o `-1` si no está                        |
+| `subtexto(t, inicio, fin)`                       | Los caracteres de `inicio` hasta **antes** de `fin`: `subtexto("hola", 1, 3)` es `"ol"` |
+| `caracteres(t)`                                  | Lista con cada carácter                                                                 |
+| `invertir(t)`                                    | El texto al revés                                                                       |
+| `código_de(c)`, `carácter_de(n)`                 | El código Unicode de un carácter, y el carácter de un código                            |
+
+```codexivo
+variable frase = "  El sol sale  ";
+variable palabras = dividir(recortar(frase), " ");
+imprimir(unir(palabras, "-"));
+imprimir(mayúsculas(palabras[1]), contiene(frase, "sol"), posición_de(frase, "sale"));
+```
+
+### Listas
+
+Regla: **`agregar`, `insertar`, `quitar` (y sus variantes) y `vaciar` cambian la lista; todo lo demás regresa un valor
+nuevo.** Los índices siguen la misma convención que `[ ]`: desde 0, y los negativos cuentan desde el final.
+
+| Procedimiento                                   | Qué hace                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| `agregar(lista, x)`                             | Agrega al final                                                                |
+| `insertar(lista, i, x)`                         | Pone `x` en la posición `i` y recorre los demás                                |
+| `quitar(lista, i)`                              | Quita el elemento en la posición `i` y lo regresa                              |
+| `quitar_último(lista)`, `quitar_primero(lista)` | Quitan el último o el primero y lo regresan                                    |
+| `vaciar(lista)`                                 | Quita todos los elementos (también sirve con un diccionario)                   |
+| `primero(lista)`, `último(lista)`               | Primer y último elemento                                                       |
+| `contiene(lista, x)`, `posición_de(lista, x)`   | Si `x` está (comparando por valor) y en qué posición, o `-1`                   |
+| `rango(a, b, paso?)`                            | Lista de `a` a `b`, **incluyendo** `b`; con `paso` negativo cuenta hacia abajo |
+| `índices(lista)`                                | Las posiciones válidas: `rango(0, longitud(lista) - 1)`                        |
+| `rebanar(lista, inicio, fin)`                   | Los elementos de `inicio` hasta **antes** de `fin`                             |
+| `invertir(lista)`, `copiar(lista)`              | Una lista nueva al revés, o igual                                              |
+| `ordenar(lista)`                                | Una lista nueva ordenada; todos números o todos textos                         |
+| `sumar(lista)`                                  | La suma de sus números                                                         |
+| `lista_de(n, valor)`                            | Lista con `n` copias de `valor`                                                |
+| `matriz(filas, columnas, valor)`                | Lista de filas, cada una con `columnas` copias de `valor`                      |
+
+`lista_de` y `matriz` copian el valor en cada casilla, así cambiar una no cambia las demás:
+
+```codexivo
+variable tablero = matriz(3, 3, ".");
+tablero[1][1] = "X";
+para_cada fila en tablero {
+  imprimir(unir(fila, " "));
+}
+
+variable números = [5, 3, 8];
+insertar(números, 0, 1);
+imprimir(ordenar(números), sumar(números), quitar_último(números), números);
+```
+
+### Diccionarios
+
+| Procedimiento             | Qué hace                                                          |
+| ------------------------- | ----------------------------------------------------------------- |
+| `claves(d)`, `valores(d)` | Listas nuevas con las claves o los valores, en orden de inserción |
+| `tiene(d, clave)`         | `verdadero` si el diccionario tiene esa clave                     |
+| `quitar(d, clave)`        | Quita la clave y regresa su valor (cambia el diccionario)         |
+| `copiar(d)`               | Un diccionario nuevo con las mismas claves y valores              |
 
 ## Errores
 

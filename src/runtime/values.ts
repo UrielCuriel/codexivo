@@ -39,6 +39,8 @@ export interface NativeContext {
   readLine(): string | null | typeof WAIT_FOR_INPUT;
   newList(items: Value[]): ListValue;
   newDict(entries: Map<DictKey, Value>): DictValue;
+  /** Número pseudoaleatorio en [0, 1) del generador con semilla de la máquina. */
+  random(): number;
   /** Error de ejecución ubicado en la llamada actual. */
   fail(code: string, message: string, hint?: string): CodexivoError;
 }
@@ -51,6 +53,11 @@ export interface NativeValue {
   /** Cantidad de argumentos: exacta, o `[mínimo, máximo]` (`máximo` puede ser `Infinity`). */
   arity: number | [number, number];
   call(args: Value[], context: NativeContext): Value | typeof WAIT_FOR_INPUT;
+  /**
+   * Cuántas operaciones debería costar una llamada con estos argumentos (§10). Sin `cost`, cuesta 1.
+   * Se registra aquí para que la tabla de costos viva junto a cada procedimiento.
+   */
+  cost?: (args: Value[]) => number;
 }
 
 export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'diccionario' | 'procedimiento';

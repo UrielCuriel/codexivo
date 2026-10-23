@@ -41,6 +41,8 @@ export interface RunResult {
   output: string;
   errors: ErrorInfo[];
   operations: number;
+  /** Semilla de `aleatorio` que usó la ejecución; pásala en `seed` para repetirla. */
+  seed?: number;
   events?: MachineEvent[];
   /** `true` si se guardaron menos eventos de los que ocurrieron. */
   eventsTruncated?: boolean;
@@ -81,6 +83,7 @@ export const run = (source: string, options: RunOptions = {}): RunResult => {
     output: machine.output,
     errors: machine.error ? [machine.error.toJSON()] : [],
     operations: machine.operations,
+    seed: machine.seed,
     ...(trace ? { events, eventsTruncated } : {}),
   };
 };

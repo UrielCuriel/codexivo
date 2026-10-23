@@ -29,6 +29,11 @@ export interface MachineOptions {
   globals?: Scope;
   /** Permite volver a declarar una variable existente (útil en el REPL). */
   allowRedeclare?: boolean;
+  /**
+   * Semilla de `aleatorio`. Con la misma semilla (y la misma entrada) la ejecución se repite idéntica. Si no
+   * se da, la máquina elige una y la expone en `machine.seed`.
+   */
+  seed?: number;
   /** Recibe cada evento de la ejecución. Activarlo hace la ejecución más lenta. */
   onEvent?: (event: MachineEvent) => void;
 }
@@ -173,6 +178,10 @@ export class Machine {
   private inputClosed = false;
   private currentNode?: ast.Node;
 
+  /** Semilla de `aleatorio` de esta ejecución (la de las opciones, o una elegida al crear la máquina). */
+  readonly seed: number;
+  private randomState: number;
+
   status: MachineStatus = 'lista';
   operations = 0;
   result: Value = null;
@@ -191,6 +200,9 @@ export class Machine {
     this.inputQueue = typeof options.input === 'string' ? splitLines(options.input) : [...(options.input ?? [])];
     this.breakpoints = new Set(options.breakpoints ?? []);
     this.onEvent = options.onEvent;
+    // Elegir la semilla es lo único que no es determinista; desde ahí, todo se puede repetir.
+    this.seed = (options.seed ?? Math.floor(Math.random() * 2 ** 32)) >>> 0;
+    this.randomState = this.seed;
     const globals = options.globals ?? new Scope();
     this.frames.push({ chunk: program, pc: 0, scope: globals, root: globals, stackBase: 0, name: 'programa' });
   }
@@ -755,12 +767,22 @@ export class Machine {
       },
       newList: items => this.newList(items),
       newDict: entries => this.newDict(entries),
+      random: () => this.random(),
       fail: (code, message, hint) => this.runtimeError(code, message, node, hint),
     };
   }
 
   private newList(items: Value[]): ListValue {
     return { kind: 'lista', id: this.nextId++, items };
+  }
+
+  /** mulberry32: pequeño, rápido y suficiente para ejercicios; da lo mismo en cualquier navegador. */
+  private random(): number {
+    this.randomState = (this.randomState + 0x6d2b79f5) >>> 0;
+    let t = this.randomState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
   private newDict(entries: Map<DictKey, Value>): DictValue {
