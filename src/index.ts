@@ -63,3 +63,19 @@ export type { ProcedureDoc, ProcedureExample, ProcedureLevel, ProcedureCategory 
 export { flowGraph } from './flow';
 export type { FlowGraph, FlowNode, FlowEdge, FlowNodeKind, FlowEdgeKind, FlowEdgeLabel, FlowOptions } from './flow';
 export { printExpression, printStatement } from './printer';
+
+export { evaluarReto } from './challenge';
+export type { Challenge, ChallengeCase, ChallengeResult, CaseResult, JsonValue } from './challenge';
+export { createSandbox } from './sandbox';
+export type { Sandbox, WorkerLike } from './sandbox';
+export { SandboxHost } from './sandbox-host';
+export type {
+  SandboxOptions,
+  SandboxRequest,
+  SandboxResponse,
+  EventDetail,
+  Loaded,
+  Progress,
+  Stopped,
+  StopReason,
+} from './sandbox-host';

@@ -161,6 +161,12 @@ prueba lo comprueba ejecutando programas con cada estructura de control.
 `printExpression` y `printStatement` convierten nodos del AST en texto de Codexivo con los paréntesis justos; sirven para
 cualquier otra vista.
 
+## Sandbox en un Web Worker (`src/worker.ts`, `sandbox-host.ts`, `sandbox.ts`, `challenge.ts`)
+
+`codexivo/worker` es el script del worker; `SandboxHost` tiene la lógica del protocolo sin depender de `postMessage`
+(ejecución en tandas, eventos agrupados, retroceso por re-ejecución), y `createSandbox` es el cliente con promesas.
+`evaluarReto` ejecuta los casos de un reto. Los detalles están en [`integracion.md`](./integracion.md).
+
 ## Para estudiar el código
 
 1. `bun run repl` y escribe programas pequeños.

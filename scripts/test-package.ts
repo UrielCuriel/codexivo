@@ -94,6 +94,8 @@ try {
   const pkg = await Bun.file(join(installed, 'package.json')).json();
   assert.equal(pkg.sideEffects, false);
   assert.ok(await Bun.file(join(installed, pkg.exports['.'].types)).exists());
+  assert.ok(await Bun.file(join(installed, pkg.exports['./worker'].types)).exists());
+  assert.ok(await Bun.file(join(installed, pkg.exports['./worker'].import)).exists());
   assert.equal(pkg.bin, undefined);
   assert.equal(pkg.scripts.postinstall, undefined);
   assert.equal(pkg.optionalDependencies, undefined);

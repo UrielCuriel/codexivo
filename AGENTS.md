@@ -21,6 +21,8 @@ Pipeline: `tokenize → parse → compile → Machine`.
   `costs.ts` — the single table of operation costs.
 - `src/world.ts` — world mode (Karel): world format, `createWorld`, `robot` events, `checkGoal`.
 - `src/catalog.ts` — the language and library as data for the site. Every native needs its `doc` in `define()`.
+- `src/worker.ts`, `sandbox-host.ts`, `sandbox.ts`, `challenge.ts` — the sandbox Web Worker, its protocol, the typed
+  client and `evaluarReto` (see `docs/integracion.md`).
 - `src/errors.ts` — `CodexivoError` and `formatError`; `src/error-codes.ts` — every error code with a long explanation.
 - `src/engine.ts` — `run`, `prepare`, `Session`. `src/index.ts` is the public API.
 - `src/cli.ts` — REPL and file runner (Bun APIs only, no `node:` imports).

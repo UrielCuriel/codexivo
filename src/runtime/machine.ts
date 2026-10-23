@@ -125,6 +125,8 @@ export interface FrameSnapshot {
 export interface Snapshot {
   status: MachineStatus;
   operations: number;
+  /** Puntos de pausa por los que ya pasó la ejecución (ver `Machine.steps`). */
+  steps: number;
   /** Nodo donde está detenida la máquina. */
   nodeId?: number;
   span?: Span;
@@ -180,7 +182,7 @@ export class Machine {
   private readonly stack: Value[] = [];
   private readonly natives: Record<string, NativeValue>;
   private readonly inputQueue: string[];
-  private readonly breakpoints: Set<number>;
+  private breakpoints: Set<number>;
   private readonly limits: typeof DEFAULTS;
   private readonly onEvent?: (event: MachineEvent) => void;
   private readonly outputParts: string[] = [];
@@ -196,6 +198,13 @@ export class Machine {
 
   status: MachineStatus = 'lista';
   operations = 0;
+  /**
+   * Puntos de pausa por los que ya pasó la ejecución: cada `step()` avanza exactamente uno. Como la máquina es
+   * determinista, «volver al paso n» es ejecutar otra vez desde el inicio hasta que `steps` llegue a n.
+   */
+  steps = 0;
+  /** Por qué se detuvo la última vez que quedó `pausada`. */
+  pauseReason?: 'paso' | 'presupuesto' | 'punto_de_interrupción';
   result: Value = null;
   error?: CodexivoError;
 
@@ -236,6 +245,11 @@ export class Machine {
   /** Ejecuta hasta la siguiente sentencia o decisión. */
   step(): MachineStatus {
     return this.execute('step', Infinity);
+  }
+
+  /** Cambia las líneas donde `run()` se detiene. */
+  setBreakpoints(lines: number[]): void {
+    this.breakpoints = new Set(lines);
   }
 
   /** Entrega una línea a un `leer()` que está esperando. */
@@ -283,6 +297,7 @@ export class Machine {
     return {
       status: this.status,
       operations: this.operations,
+      steps: this.steps,
       nodeId: this.currentNode?.id,
       span: this.currentNode?.span,
       frames,
@@ -314,6 +329,7 @@ export class Machine {
           }
           if (this.operations >= stopAt) {
             this.status = 'pausada';
+            this.pauseReason = 'presupuesto';
             return this.status;
           }
         }
@@ -327,6 +343,7 @@ export class Machine {
           this.breakpoints.has(instruction.node.span.start.line)
         ) {
           this.status = 'pausada';
+          this.pauseReason = 'punto_de_interrupción';
           return this.status;
         }
 
@@ -336,9 +353,13 @@ export class Machine {
         const status = this.status as MachineStatus;
         if (status === 'esperando_entrada' || status === 'terminada') return status;
         // El código de la biblioteca nunca es un punto de pausa; sí lo es el de `f` que llama.
-        if (mode === 'step' && pause && !frame.chunk.hidden) {
-          this.status = 'pausada';
-          return this.status;
+        if (pause && !frame.chunk.hidden) {
+          this.steps += 1;
+          if (mode === 'step') {
+            this.status = 'pausada';
+            this.pauseReason = 'paso';
+            return this.status;
+          }
         }
       }
     } catch (error) {
