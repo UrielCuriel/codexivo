@@ -23,7 +23,59 @@ export type {
   SerializedValue,
   Snapshot,
   FrameSnapshot,
+  HeapEntry,
 } from './runtime/machine';
 export { natives } from './runtime/builtins';
 export { repr, show, typeOf, equals, Scope, WAIT_FOR_INPUT } from './runtime/values';
-export type { Value, ListValue, ProcedureValue, NativeValue, NativeContext, TypeName } from './runtime/values';
+export type {
+  Value,
+  ListValue,
+  DictValue,
+  DictKey,
+  ProcedureValue,
+  NativeValue,
+  NativeContext,
+  TypeName,
+} from './runtime/values';
+
+export { createWorld, validateWorld, checkGoal, DIRECTIONS } from './world';
+export type {
+  World,
+  WorldDefinition,
+  WorldState,
+  WorldGoal,
+  WorldValidationError,
+  GoalDifference,
+  Wall,
+  BeeperPile,
+  BeeperCount,
+  Robot,
+  RobotEvent,
+  RobotSnapshot,
+  RobotAction,
+  Direction,
+} from './world';
+
+export { catalog } from './catalog';
+export type { Catalog, KeywordGroup, OperatorEntry, ProcedureEntry, ConstantEntry, ErrorEntry } from './catalog';
+export type { ProcedureDoc, ProcedureExample, ProcedureLevel, ProcedureCategory } from './runtime/values';
+
+export { flowGraph } from './flow';
+export type { FlowGraph, FlowNode, FlowEdge, FlowNodeKind, FlowEdgeKind, FlowEdgeLabel, FlowOptions } from './flow';
+export { printExpression, printStatement } from './printer';
+
+export { evaluarReto } from './challenge';
+export type { Challenge, ChallengeCase, ChallengeResult, CaseResult, JsonValue } from './challenge';
+export { createSandbox } from './sandbox';
+export type { Sandbox, WorkerLike } from './sandbox';
+export { SandboxHost } from './sandbox-host';
+export type {
+  SandboxOptions,
+  SandboxRequest,
+  SandboxResponse,
+  EventDetail,
+  Loaded,
+  Progress,
+  Stopped,
+  StopReason,
+} from './sandbox-host';

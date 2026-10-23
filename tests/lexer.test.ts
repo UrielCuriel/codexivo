@@ -128,4 +128,68 @@ describe('lexer', () => {
       expect(tokenize('“hola”').errors[0]!.hint).toContain('comillas rectas');
     });
   });
+
+  describe('nivel principiante (paso 4)', () => {
+    test('palabras reservadas nuevas', () => {
+      expect(types('constante repetir veces mod div para_cada en romper continuar').slice(0, -1)).toEqual([
+        TokenType.CONST,
+        TokenType.REPEAT,
+        TokenType.TIMES,
+        TokenType.MOD,
+        TokenType.DIV,
+        TokenType.FOR_EACH,
+        TokenType.IN,
+        TokenType.BREAK,
+        TokenType.CONTINUE,
+      ]);
+    });
+
+    test('las comparaciones en palabras producen el mismo token que su símbolo', () => {
+      expect(
+        types('es_igual_a es_distinto_de es_menor_que es_mayor_que es_menor_o_igual_a es_mayor_o_igual_a').slice(0, -1),
+      ).toEqual([TokenType.EQ, TokenType.NEQ, TokenType.LT, TokenType.GT, TokenType.LTE, TokenType.GTE]);
+      expect(tokenize('a es_igual_a b').tokens[1]!.lexeme).toBe('es_igual_a');
+    });
+
+    test('`%`, `^`, `%=`, `++` y `--`', () => {
+      expect(types('% ^ %= ++ --').slice(0, -1)).toEqual([
+        TokenType.PERCENT,
+        TokenType.CARET,
+        TokenType.PERCENT_ASSIGN,
+        TokenType.INCREMENT,
+        TokenType.DECREMENT,
+      ]);
+    });
+
+    test('`_` separa grupos de dígitos', () => {
+      const { tokens, errors } = tokenize('1_000_000 3.141_592');
+      expect(errors).toEqual([]);
+      expect(tokens.slice(0, 2).map(token => token.value)).toEqual([1_000_000, 3.141592]);
+      expect(tokens[0]!.lexeme).toBe('1_000_000');
+    });
+
+    test.each(['1__0', '1_', '1_.5'])('`_` mal puesto: %s', source => {
+      const { errors } = tokenize(source);
+      expect(errors.map(error => error.code)).toEqual(['SEPARADOR_INVÁLIDO']);
+      expect(errors[0]!.hint).toContain('entre dos dígitos');
+    });
+
+    test('`:` y `.` para los diccionarios; `.5` sigue siendo un número', () => {
+      expect(types('{ "a": 1 } d.campo .5').slice(0, -1)).toEqual([
+        TokenType.LBRACE,
+        TokenType.STRING,
+        TokenType.COLON,
+        TokenType.NUMBER,
+        TokenType.RBRACE,
+        TokenType.IDENT,
+        TokenType.DOT,
+        TokenType.IDENT,
+        TokenType.NUMBER,
+      ]);
+    });
+
+    test('`_1` es un nombre, no un número', () => {
+      expect(types('_1')[0]).toBe(TokenType.IDENT);
+    });
+  });
 });

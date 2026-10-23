@@ -13,6 +13,8 @@ Bienvenido al compendio oficial del lenguaje **Codexivo**. Este directorio recop
 - [Guía práctica: entender el intérprete desde el código](./guia-aprender-desde-el-codigo.md): actividades guiadas para relacionar cada módulo con ejemplos reales del lenguaje.
 - [Uso del REPL y flujo de trabajo](./repl.md): muestra cómo ejecutar el intérprete, guardar sesiones y aprovechar las herramientas de trazado en tiempo real.
 - [Recetario de programas](./recetario.md): colección de ejemplos completos que ilustran patrones comunes de solución.
+- [Integrar Codexivo en una página](./integracion.md): el worker del sandbox, su protocolo, el retroceso y los retos.
+- [Modo mundo](./modo-mundo.md): el robot en la cuadrícula, el formato JSON de los mundos, sus eventos y los objetivos de un reto.
 
 > ℹ️ Las guías están pensadas para leerse de forma progresiva. Si tu objetivo es aprender el lenguaje, comienza por la especificación y luego pon en práctica los ejemplos del recetario. Si deseas contribuir al código, revisa primero la arquitectura y después ejecuta los escenarios del REPL.
 

@@ -21,6 +21,8 @@ export enum TokenType {
 
   // palabras reservadas
   LET = 'LET',
+  CONST = 'CONST',
+  DOMAIN = 'DOMAIN',
   FUNCTION = 'FUNCTION',
   RETURN = 'RETURN',
   IF = 'IF',
@@ -30,12 +32,23 @@ export enum TokenType {
   DO = 'DO',
   UNTIL = 'UNTIL',
   FOR = 'FOR',
+  FOR_EACH = 'FOR_EACH',
+  FROM = 'FROM',
+  TO = 'TO',
+  STEP = 'STEP',
+  IN = 'IN',
+  REPEAT = 'REPEAT',
+  TIMES = 'TIMES',
+  BREAK = 'BREAK',
+  CONTINUE = 'CONTINUE',
   TRUE = 'TRUE',
   FALSE = 'FALSE',
   NULL = 'NULL',
   AND = 'AND',
   OR = 'OR',
   NOT = 'NOT',
+  MOD = 'MOD',
+  DIV = 'DIV',
 
   // operadores
   ASSIGN = 'ASSIGN',
@@ -43,10 +56,15 @@ export enum TokenType {
   MINUS_ASSIGN = 'MINUS_ASSIGN',
   STAR_ASSIGN = 'STAR_ASSIGN',
   SLASH_ASSIGN = 'SLASH_ASSIGN',
+  PERCENT_ASSIGN = 'PERCENT_ASSIGN',
+  INCREMENT = 'INCREMENT',
+  DECREMENT = 'DECREMENT',
   PLUS = 'PLUS',
   MINUS = 'MINUS',
   STAR = 'STAR',
   SLASH = 'SLASH',
+  PERCENT = 'PERCENT',
+  CARET = 'CARET',
   BANG = 'BANG',
   EQ = 'EQ',
   NEQ = 'NEQ',
@@ -57,6 +75,8 @@ export enum TokenType {
 
   // delimitadores
   COMMA = 'COMMA',
+  COLON = 'COLON',
+  DOT = 'DOT',
   SEMICOLON = 'SEMICOLON',
   LPAREN = 'LPAREN',
   RPAREN = 'RPAREN',
@@ -80,6 +100,8 @@ export interface Token {
 
 export const KEYWORDS: Readonly<Record<string, TokenType>> = {
   variable: TokenType.LET,
+  constante: TokenType.CONST,
+  dominio: TokenType.DOMAIN,
   procedimiento: TokenType.FUNCTION,
   regresa: TokenType.RETURN,
   si: TokenType.IF,
@@ -89,12 +111,30 @@ export const KEYWORDS: Readonly<Record<string, TokenType>> = {
   hacer: TokenType.DO,
   hasta_que: TokenType.UNTIL,
   para: TokenType.FOR,
+  para_cada: TokenType.FOR_EACH,
+  desde: TokenType.FROM,
+  hasta: TokenType.TO,
+  con_paso: TokenType.STEP,
+  en: TokenType.IN,
+  repetir: TokenType.REPEAT,
+  veces: TokenType.TIMES,
+  romper: TokenType.BREAK,
+  continuar: TokenType.CONTINUE,
   verdadero: TokenType.TRUE,
   falso: TokenType.FALSE,
   nulo: TokenType.NULL,
   y: TokenType.AND,
   o: TokenType.OR,
   no: TokenType.NOT,
+  mod: TokenType.MOD,
+  div: TokenType.DIV,
+  // Las comparaciones en palabras producen el mismo token que su símbolo: el AST no las distingue.
+  es_igual_a: TokenType.EQ,
+  es_distinto_de: TokenType.NEQ,
+  es_menor_que: TokenType.LT,
+  es_mayor_que: TokenType.GT,
+  es_menor_o_igual_a: TokenType.LTE,
+  es_mayor_o_igual_a: TokenType.GTE,
 };
 
 export const isKeyword = (word: string): boolean => Object.hasOwn(KEYWORDS, word);
@@ -105,10 +145,15 @@ const SYMBOLS: Partial<Record<TokenType, string>> = {
   [TokenType.MINUS_ASSIGN]: '-=',
   [TokenType.STAR_ASSIGN]: '*=',
   [TokenType.SLASH_ASSIGN]: '/=',
+  [TokenType.PERCENT_ASSIGN]: '%=',
+  [TokenType.INCREMENT]: '++',
+  [TokenType.DECREMENT]: '--',
   [TokenType.PLUS]: '+',
   [TokenType.MINUS]: '-',
   [TokenType.STAR]: '*',
   [TokenType.SLASH]: '/',
+  [TokenType.PERCENT]: '%',
+  [TokenType.CARET]: '^',
   [TokenType.BANG]: '!',
   [TokenType.EQ]: '==',
   [TokenType.NEQ]: '!=',
@@ -117,6 +162,8 @@ const SYMBOLS: Partial<Record<TokenType, string>> = {
   [TokenType.LTE]: '<=',
   [TokenType.GTE]: '>=',
   [TokenType.COMMA]: ',',
+  [TokenType.COLON]: ':',
+  [TokenType.DOT]: '.',
   [TokenType.SEMICOLON]: ';',
   [TokenType.LPAREN]: '(',
   [TokenType.RPAREN]: ')',
@@ -162,6 +209,7 @@ export const describeToken = (token: Token): string => {
     case TokenType.ILLEGAL:
       return `el carácter \`${token.lexeme}\``;
     default:
-      return describeTokenType(token.type);
+      // `es_igual_a` y `==` son el mismo token; se nombra como se escribió.
+      return isKeyword(token.lexeme) ? `la palabra \`${token.lexeme}\`` : describeTokenType(token.type);
   }
 };

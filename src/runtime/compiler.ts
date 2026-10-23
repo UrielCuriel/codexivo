@@ -1,7 +1,7 @@
 import type * as ast from '../syntax/ast';
 import type { Value } from './values';
 
-export type DecisionLabel = 'si' | 'pero_si' | 'mientras' | 'hasta_que' | 'para';
+export type DecisionLabel = 'si' | 'pero_si' | 'mientras' | 'hasta_que' | 'para' | 'repetir' | 'para_cada';
 
 /**
  * Instrucciones de la máquina de Codexivo. Cada una conserva el nodo del AST que la originó, así la
@@ -10,17 +10,36 @@ export type DecisionLabel = 'si' | 'pero_si' | 'mientras' | 'hasta_que' | 'para'
 export type Instruction =
   /** Inicio de una sentencia: punto natural para pausar. */
   | { op: 'step'; node: ast.Statement }
-  | { op: 'const'; value: Value; node: ast.Expression }
+  | { op: 'const'; value: Value; node: ast.Node }
   | { op: 'list'; count: number; node: ast.ListLiteral }
+  /** Saca `count` pares clave–valor de la pila y crea un diccionario. */
+  | { op: 'dict'; count: number; node: ast.DictLiteral }
   | { op: 'load'; name: string; node: ast.Identifier; forUpdate?: boolean }
-  /** Saca un valor de la pila y crea la variable en el alcance actual. */
-  | { op: 'declare'; name: string; node: ast.VariableDeclaration }
+  /**
+   * Saca un valor de la pila y crea la variable (o constante) `target` en el alcance actual. `node` es la
+   * sentencia que la declara: una declaración, un procedimiento con nombre o la variable de un `para_cada`.
+   */
+  | {
+      op: 'declare';
+      name: string;
+      constant: boolean;
+      target: ast.Identifier;
+      node: ast.Node;
+      /** La variable de un `para … desde … hasta`: avanza sola y no se puede cambiar en el cuerpo. */
+      loop?: boolean;
+    }
   /** Saca un valor de la pila y lo guarda en una variable existente. */
-  | { op: 'store'; name: string; node: ast.Assignment }
+  | { op: 'store'; name: string; target: ast.Identifier; node: ast.Assignment | ast.Increment }
+  /** Saca valor, índice (o clave) y lista (o diccionario), en ese orden, y cambia el elemento. */
+  | { op: 'setIndex'; target: ast.Index; node: ast.Assignment | ast.Increment }
+  /** Copia los `count` valores de la cima de la pila. */
+  | { op: 'dup'; count: number }
+  /** Saca `count` valores de la pila (los valores ocultos de un bucle al salir con `romper`). */
+  | { op: 'pop'; count: number }
   /** Saca un valor de la pila; es el valor de una sentencia de expresión. */
   | { op: 'result'; node: ast.ExpressionStatement }
   | { op: 'unary'; operator: ast.UnaryOperator; node: ast.Unary }
-  | { op: 'binary'; operator: ast.BinaryOperator; node: ast.Binary | ast.Assignment }
+  | { op: 'binary'; operator: ast.BinaryOperator; node: ast.Binary | ast.Assignment | ast.Increment }
   | { op: 'index'; node: ast.Index }
   | { op: 'closure'; chunk: Chunk; node: ast.FunctionLiteral }
   | { op: 'call'; argc: number; node: ast.Call }
@@ -35,10 +54,35 @@ export type Instruction =
       node: ast.Expression;
       owner: ast.Statement;
     }
+  /** Revisa que la cantidad de `repetir` (en la cima de la pila) sea un entero ≥ 0; queda como contador oculto. */
+  | { op: 'repeatStart'; node: ast.Expression; owner: ast.Repeat }
+  /** Si al contador le quedan vueltas, lo reduce y sigue; si no, lo saca de la pila y salta a `target`. */
+  | { op: 'repeatNext'; target: number; node: ast.Expression; owner: ast.Repeat }
+  /**
+   * Revisa lo que se recorre y deja tres valores ocultos en la pila: lo recorrido, su longitud (o, en un
+   * diccionario, la lista de sus claves al empezar) y la posición 0.
+   */
+  | { op: 'forEachStart'; node: ast.Expression; owner: ast.ForEach }
+  /**
+   * Saca inicio, final y paso de la pila, los revisa y deja cuatro valores ocultos: el inicio, el paso, la
+   * cantidad de vueltas y la vuelta actual.
+   */
+  | { op: 'rangeStart'; explicitStep: boolean; owner: ast.ForRange }
+  /** Si quedan vueltas, pone el siguiente valor en la pila; si no, saca los valores ocultos y salta a `target`. */
+  | { op: 'rangeNext'; target: number; node: ast.Expression; owner: ast.ForRange }
+  /**
+   * Si quedan elementos, pone el siguiente en la pila (en un diccionario, la clave; o el valor y luego la
+   * clave si hay dos variables); si no, saca los valores ocultos y salta a `target`.
+   */
+  | { op: 'forEachNext'; target: number; node: ast.Expression; owner: ast.ForEach }
   /** Cortocircuito: revisa el lado izquierdo de `y`/`o`; si ya decide el resultado, lo deja y salta. */
   | { op: 'shortCircuit'; target: number; node: ast.Logical }
   /** Revisa que el lado derecho de `y`/`o` sea lógico. */
   | { op: 'checkLogical'; node: ast.Logical }
+  /** Abre el alcance de un `dominio`: ahí se declaran sus miembros. */
+  | { op: 'domainStart' }
+  /** Cierra el alcance del dominio, lo convierte en un valor y lo declara (como constante) afuera. */
+  | { op: 'domainEnd'; name: string; writable: string[]; node: ast.Domain }
   | { op: 'enterScope' }
   | { op: 'exitScope' }
   | { op: 'halt' };
@@ -49,32 +93,67 @@ export interface Chunk {
   params: string[];
   code: Instruction[];
   node: ast.Program | ast.FunctionLiteral;
+  /**
+   * Código de la biblioteca escrito en Codexivo (`prelude.ts`). Sus pasos no pausan, no emiten eventos ni
+   * cuentan operaciones: la llamada se cobra según la tabla de costos, y sus errores se ubican en la llamada.
+   */
+  hidden?: boolean;
+  /** Parámetros obligatorios, si son menos que `params` (los demás llegan como `nulo`). Solo en la biblioteca. */
+  minParams?: number;
 }
 
 /** Traduce el AST a instrucciones. El AST debe venir sin errores de sintaxis. */
 export const compile = (program: ast.Program): Chunk => {
-  const compiler = new Compiler({ name: 'programa', params: [], code: [], node: program });
-  for (const statement of program.statements) compiler.statement(statement);
+  const compiler = new Compiler({ name: 'programa', params: [], code: [], node: program }, false);
+  compiler.statements(program.statements);
   compiler.emit({ op: 'halt' });
   return compiler.chunk;
 };
 
-const compileFunction = (node: ast.FunctionLiteral): Chunk => {
-  const compiler = new Compiler({
+/** Compila un procedimiento. `hidden` marca el código de la biblioteca (ver `Chunk.hidden`). */
+export const compileProcedure = (node: ast.FunctionLiteral, hidden = false): Chunk => {
+  const chunk: Chunk = {
     name: node.name ?? 'procedimiento',
     params: node.params.map(param => param.name),
     code: [],
     node,
-  });
+  };
+  if (hidden) chunk.hidden = true;
+  const compiler = new Compiler(chunk, hidden);
   // El cuerpo comparte alcance con los parámetros: así `variable x` dentro de `procedimiento(x)` es un error.
-  for (const statement of node.body.statements) compiler.statement(statement);
+  compiler.statements(node.body.statements);
   compiler.emit({ op: 'const', value: null, node });
   compiler.emit({ op: 'return', hasValue: true, node: { kind: 'Return', id: node.id, span: node.body.span } });
   return compiler.chunk;
 };
 
+/** Operador que aplica cada asignación compuesta. */
+const COMPOUND_OPERATORS: Record<Exclude<ast.AssignmentOperator, '='>, ast.BinaryOperator> = {
+  '+=': '+',
+  '-=': '-',
+  '*=': '*',
+  '/=': '/',
+  '%=': 'mod',
+};
+
+/** Un bucle abierto: a dónde saltan `romper` y `continuar`, y qué hay que limpiar antes. */
+interface Loop {
+  breaks: number[];
+  continues: number[];
+  /** Alcances abiertos en el punto al que llegan los saltos. */
+  scopeDepth: number;
+  /** Valores ocultos del bucle en la pila (el contador de `repetir`, el estado de `para_cada`). */
+  slots: number;
+}
+
 class Compiler {
-  constructor(readonly chunk: Chunk) {}
+  private scopeDepth = 0;
+  private readonly loops: Loop[] = [];
+
+  constructor(
+    readonly chunk: Chunk,
+    private readonly hidden: boolean,
+  ) {}
 
   emit(instruction: Instruction): number {
     this.chunk.code.push(instruction);
@@ -90,22 +169,56 @@ class Compiler {
     if (instruction && 'target' in instruction) instruction.target = target;
   }
 
+  private enterScope(): void {
+    this.emit({ op: 'enterScope' });
+    this.scopeDepth += 1;
+  }
+
+  private exitScope(): void {
+    this.emit({ op: 'exitScope' });
+    this.scopeDepth -= 1;
+  }
+
+  /** Las sentencias de un bloque. Los procedimientos con nombre se crean antes que todo lo demás. */
+  statements(statements: ast.Statement[]): void {
+    for (const statement of statements) {
+      if (statement.kind !== 'FunctionDeclaration') continue;
+      this.emit({ op: 'closure', chunk: compileProcedure(statement.function, this.hidden), node: statement.function });
+      this.emit({
+        op: 'declare',
+        name: statement.name.name,
+        constant: false,
+        target: statement.name,
+        node: statement,
+      });
+    }
+    for (const statement of statements) this.statement(statement);
+  }
+
+  /** Abre un bucle, compila su cuerpo y regresa los saltos de `romper` y `continuar` para conectarlos. */
+  private loop(slots: number, body: () => void): Loop {
+    const loop: Loop = { breaks: [], continues: [], scopeDepth: this.scopeDepth, slots };
+    this.loops.push(loop);
+    body();
+    this.loops.pop();
+    return loop;
+  }
+
+  private connect(jumps: number[], target: number): void {
+    for (const jump of jumps) this.patch(jump, target);
+  }
+
   statement(node: ast.Statement): void {
+    if (node.kind === 'FunctionDeclaration') return; // ya se declaró al entrar al bloque
     if (node.kind !== 'Block') this.emit({ op: 'step', node });
     switch (node.kind) {
       case 'VariableDeclaration':
         this.expression(node.value);
-        this.emit({ op: 'declare', name: node.name.name, node });
+        this.emit({ op: 'declare', name: node.name.name, constant: node.constant, target: node.name, node });
         return;
       case 'Assignment':
-        if (node.operator !== '=') {
-          this.emit({ op: 'load', name: node.target.name, node: node.target, forUpdate: true });
-        }
-        this.expression(node.value);
-        if (node.operator !== '=') {
-          this.emit({ op: 'binary', operator: node.operator[0] as ast.BinaryOperator, node });
-        }
-        this.emit({ op: 'store', name: node.target.name, node });
+      case 'Increment':
+        this.assignment(node);
         return;
       case 'ExpressionStatement':
         this.expression(node.expression);
@@ -118,6 +231,33 @@ class Compiler {
       case 'Block':
         this.block(node);
         return;
+      case 'Domain':
+        this.emit({ op: 'domainStart' });
+        this.scopeDepth += 1;
+        this.statements(node.body.statements);
+        this.scopeDepth -= 1;
+        this.emit({
+          op: 'domainEnd',
+          name: node.name.name,
+          writable: node.body.statements.flatMap(member =>
+            member.kind === 'VariableDeclaration' && !member.constant ? [member.name.name] : [],
+          ),
+          node,
+        });
+        return;
+      case 'Break':
+      case 'Continue': {
+        const loop = this.loops[this.loops.length - 1]!;
+        // El código que sigue nunca se ejecuta, así que la cuenta de alcances no cambia.
+        for (let depth = this.scopeDepth; depth > loop.scopeDepth; depth--) this.emit({ op: 'exitScope' });
+        if (node.kind === 'Break') {
+          if (loop.slots > 0) this.emit({ op: 'pop', count: loop.slots });
+          loop.breaks.push(this.emit({ op: 'jump', target: -1 }));
+        } else {
+          loop.continues.push(this.emit({ op: 'jump', target: -1 }));
+        }
+        return;
+      }
       case 'If': {
         const exits: number[] = [];
         node.branches.forEach((branch, index) => {
@@ -149,14 +289,17 @@ class Compiler {
           node: node.condition,
           owner: node,
         });
-        this.block(node.body);
+        const loop = this.loop(0, () => this.block(node.body));
         this.emit({ op: 'jump', target: start });
         this.patch(exit, this.here);
+        this.connect(loop.continues, start);
+        this.connect(loop.breaks, this.here);
         return;
       }
       case 'DoUntil': {
         const start = this.here;
-        this.block(node.body);
+        const loop = this.loop(0, () => this.block(node.body));
+        this.connect(loop.continues, this.here);
         this.expression(node.condition);
         this.emit({
           op: 'branch',
@@ -166,10 +309,11 @@ class Compiler {
           node: node.condition,
           owner: node,
         });
+        this.connect(loop.breaks, this.here);
         return;
       }
       case 'For': {
-        this.emit({ op: 'enterScope' });
+        this.enterScope();
         if (node.init) this.statement(node.init);
         const start = this.here;
         let exit = -1;
@@ -184,20 +328,116 @@ class Compiler {
             owner: node,
           });
         }
-        this.block(node.body);
+        const loop = this.loop(0, () => this.block(node.body));
+        this.connect(loop.continues, this.here);
         if (node.update) this.statement(node.update);
         this.emit({ op: 'jump', target: start });
         if (exit >= 0) this.patch(exit, this.here);
-        this.emit({ op: 'exitScope' });
+        this.connect(loop.breaks, this.here);
+        this.exitScope();
+        return;
+      }
+      case 'Repeat': {
+        this.expression(node.count);
+        this.emit({ op: 'repeatStart', node: node.count, owner: node });
+        const start = this.here;
+        const exit = this.emit({ op: 'repeatNext', target: -1, node: node.count, owner: node });
+        const loop = this.loop(1, () => this.block(node.body));
+        this.emit({ op: 'jump', target: start });
+        this.patch(exit, this.here);
+        this.connect(loop.continues, start);
+        this.connect(loop.breaks, this.here);
+        return;
+      }
+      case 'ForRange': {
+        this.expression(node.from);
+        this.expression(node.to);
+        if (node.step) this.expression(node.step);
+        else this.emit({ op: 'const', value: 1, node });
+        this.emit({ op: 'rangeStart', explicitStep: Boolean(node.step), owner: node });
+        const start = this.here;
+        const exit = this.emit({ op: 'rangeNext', target: -1, node: node.to, owner: node });
+        const loop = this.loop(4, () => {
+          // Como en `para_cada`, la variable es nueva en cada vuelta y comparte alcance con el cuerpo.
+          this.enterScope();
+          this.emit({
+            op: 'declare',
+            name: node.variable.name,
+            constant: false,
+            loop: true,
+            target: node.variable,
+            node: node.variable,
+          });
+          this.statements(node.body.statements);
+          this.exitScope();
+        });
+        this.emit({ op: 'jump', target: start });
+        this.patch(exit, this.here);
+        this.connect(loop.continues, start);
+        this.connect(loop.breaks, this.here);
+        return;
+      }
+      case 'ForEach': {
+        this.expression(node.iterable);
+        this.emit({ op: 'forEachStart', node: node.iterable, owner: node });
+        const start = this.here;
+        const exit = this.emit({ op: 'forEachNext', target: -1, node: node.iterable, owner: node });
+        const loop = this.loop(3, () => {
+          // La variable del bucle es nueva en cada vuelta y comparte alcance con el cuerpo.
+          this.enterScope();
+          for (const variable of [node.variable, ...(node.value ? [node.value] : [])]) {
+            this.emit({ op: 'declare', name: variable.name, constant: false, target: variable, node: variable });
+          }
+          this.statements(node.body.statements);
+          this.exitScope();
+        });
+        this.emit({ op: 'jump', target: start });
+        this.patch(exit, this.here);
+        this.connect(loop.continues, start);
+        this.connect(loop.breaks, this.here);
         return;
       }
     }
   }
 
+  private assignment(node: ast.Assignment | ast.Increment): void {
+    const operator =
+      node.kind === 'Increment'
+        ? node.operator === '++'
+          ? '+'
+          : '-'
+        : node.operator === '='
+          ? undefined
+          : COMPOUND_OPERATORS[node.operator];
+    const value = () => {
+      if (node.kind === 'Increment') this.emit({ op: 'const', value: 1, node: node.target });
+      else this.expression(node.value);
+    };
+    const { target } = node;
+
+    if (target.kind === 'Identifier') {
+      if (operator) this.emit({ op: 'load', name: target.name, node: target, forUpdate: true });
+      value();
+      if (operator) this.emit({ op: 'binary', operator, node });
+      this.emit({ op: 'store', name: target.name, target, node });
+      return;
+    }
+
+    this.expression(target.object);
+    this.expression(target.index);
+    if (operator) {
+      this.emit({ op: 'dup', count: 2 });
+      this.emit({ op: 'index', node: target });
+    }
+    value();
+    if (operator) this.emit({ op: 'binary', operator, node });
+    this.emit({ op: 'setIndex', target, node });
+  }
+
   private block(node: ast.Block): void {
-    this.emit({ op: 'enterScope' });
-    for (const statement of node.statements) this.statement(statement);
-    this.emit({ op: 'exitScope' });
+    this.enterScope();
+    this.statements(node.statements);
+    this.exitScope();
   }
 
   private expression(node: ast.Expression): void {
@@ -213,6 +453,13 @@ class Compiler {
       case 'ListLiteral':
         for (const element of node.elements) this.expression(element);
         this.emit({ op: 'list', count: node.elements.length, node });
+        return;
+      case 'DictLiteral':
+        for (const entry of node.entries) {
+          this.expression(entry.key);
+          this.expression(entry.value);
+        }
+        this.emit({ op: 'dict', count: node.entries.length, node });
         return;
       case 'Identifier':
         this.emit({ op: 'load', name: node.name, node });
@@ -245,7 +492,7 @@ class Compiler {
         this.emit({ op: 'index', node });
         return;
       case 'FunctionLiteral':
-        this.emit({ op: 'closure', chunk: compileFunction(node), node });
+        this.emit({ op: 'closure', chunk: compileProcedure(node, this.hidden), node });
         return;
     }
   }

@@ -46,7 +46,8 @@ describe('ejecución paso a paso', () => {
     });
     const list = global!.scopes[0]!.lista!;
     expect(list.type).toBe('lista');
-    if (list.type === 'lista') expect(snapshot.heap[list.ref]?.map(item => item.repr)).toEqual(['1', '2']);
+    const items = list.type === 'lista' ? snapshot.heap[list.ref] : undefined;
+    expect(Array.isArray(items) && items.map(item => item.repr)).toEqual(['1', '2']);
     machine.run();
     expect(machine.result).toBe(42);
   });
@@ -86,6 +87,40 @@ describe('ejecución paso a paso', () => {
   });
 });
 
+describe('biblioteca escrita en Codexivo', () => {
+  test('step() se detiene dentro de `f`, pero no en el código de `mapear`', () => {
+    const machine = machineFor('variable r = mapear([1, 2], procedimiento(x) {\n  regresa x * 2;\n});\nr;');
+    const lines: number[] = [];
+    while (!machine.done) {
+      machine.step();
+      if (!machine.done) lines.push(machine.snapshot().span!.start.line);
+    }
+    // la declaración, una vez por cada elemento dentro de `f`, y la última expresión
+    expect(lines).toEqual([1, 2, 2, 4]);
+    expect(machine.result).toMatchObject({ kind: 'lista', items: [2, 4] });
+  });
+
+  test('snapshot() muestra el marco de la biblioteca sin sus variables', () => {
+    const machine = machineFor('mapear([1], procedimiento(x) {\n  regresa x;\n});', { breakpoints: [2] });
+    machine.run();
+    const frames = machine.snapshot().frames;
+    expect(frames.map(frame => frame.name)).toEqual(['programa', 'mapear', 'f']);
+    expect(frames[1]).toMatchObject({ library: true, scopes: [] });
+    expect(frames[2]!.scopes[0]).toMatchObject({ x: { repr: '1' } });
+  });
+
+  test('los eventos muestran las llamadas a `f`, no los pasos internos', () => {
+    const list = run('ordenar([2, 1], procedimiento(a, b) { regresa a < b; });', { trace: true }).events!;
+    expect(list.filter(event => event.type === 'llama').map(event => (event as { name: string }).name)).toEqual([
+      'ordenar',
+      'va_antes',
+    ]);
+    expect(list.filter(event => event.type === 'declara')).toEqual([]);
+    // la sentencia del programa y la del comparador; ninguna de `ordenar`
+    expect(list.filter(event => event.type === 'paso')).toHaveLength(2);
+  });
+});
+
 describe('eventos', () => {
   const events = (source: string, options = {}) => run(source, { trace: true, ...options }).events!;
   const of = <T extends MachineEvent['type']>(list: MachineEvent[], type: T) =>
@@ -104,6 +139,108 @@ describe('eventos', () => {
       'mientras:true',
       'mientras:false',
     ]);
+  });
+
+  test('cada vuelta de `repetir` es una decisión', () => {
+    const list = events('repetir 2 veces { }');
+    expect(of(list, 'decide').map(event => `${event.label}:${event.value}`)).toEqual([
+      'repetir:true',
+      'repetir:true',
+      'repetir:false',
+    ]);
+  });
+
+  test('cada vuelta de `para_cada` decide y declara la variable', () => {
+    const list = events('para_cada x en [1, 2] { }');
+    expect(of(list, 'decide').map(event => `${event.label}:${event.value}`)).toEqual([
+      'para_cada:true',
+      'para_cada:true',
+      'para_cada:false',
+    ]);
+    expect(of(list, 'declara').map(event => `${event.name}=${event.value.repr}`)).toEqual(['x=1', 'x=2']);
+  });
+
+  test('`modifica` describe el cambio de un elemento', () => {
+    const list = events('variable l = [1, 2]; l[1] += 3;');
+    const declared = of(list, 'declara')[0]!.value;
+    expect(of(list, 'modifica')[0]).toMatchObject({
+      key: { repr: '1' },
+      before: { repr: '2' },
+      after: { repr: '5' },
+    });
+    if (declared.type === 'lista') expect(of(list, 'modifica')[0]!.ref).toBe(declared.ref);
+  });
+
+  test('los procedimientos con nombre se declaran al entrar a su bloque', () => {
+    const list = events('variable x = 1; procedimiento f() { }');
+    expect(of(list, 'declara').map(event => event.name)).toEqual(['f', 'x']);
+  });
+
+  test('`modifica` también describe claves de diccionario, incluso nuevas', () => {
+    const [event] = of(events('variable d = {}; d.x = 1;'), 'modifica');
+    expect(event).toMatchObject({ key: { repr: '"x"' }, before: { repr: 'nulo' }, after: { repr: '1' } });
+  });
+
+  test('snapshot() incluye los diccionarios por referencia', () => {
+    const machine = machineFor('variable d = { "a": [1] };\nd;', { breakpoints: [2] });
+    machine.run();
+    const snapshot = machine.snapshot();
+    const d = snapshot.frames[0]!.scopes[0]!.d!;
+    expect(d).toMatchObject({ type: 'diccionario', size: 1, repr: '{"a": [1]}' });
+    if (d.type !== 'diccionario') return;
+    const entry = snapshot.heap[d.ref];
+    expect(entry).toMatchObject({ entries: [{ key: { repr: '"a"' }, value: { type: 'lista' } }] });
+    const list = entry && !Array.isArray(entry) && 'entries' in entry && entry.entries[0]!.value;
+    if (list && list.type === 'lista') expect(snapshot.heap[list.ref]).toMatchObject([{ repr: '1' }]);
+  });
+
+  test('un dominio aparece en la memoria con sus miembros', () => {
+    const machine = machineFor('dominio c {\n  variable n = [1];\n  constante K = 2;\n}\nc;', { breakpoints: [5] });
+    machine.run();
+    const snapshot = machine.snapshot();
+    const c = snapshot.frames[0]!.scopes[0]!.c!;
+    expect(c).toMatchObject({ type: 'dominio', name: 'c', repr: 'dominio c' });
+    if (c.type !== 'dominio') return;
+    expect(snapshot.heap[c.ref]).toMatchObject({
+      domain: 'c',
+      members: [
+        { name: 'n', value: { type: 'lista' }, writable: true },
+        { name: 'K', value: { repr: '2' }, writable: false },
+      ],
+    });
+  });
+
+  test('cambiar un miembro de un dominio es una asignación con su ruta', () => {
+    const list = events('dominio c { variable n = 1; } c.n = 2;');
+    expect(of(list, 'declara').map(event => `${event.name}:${event.constant}`)).toEqual(['n:false', 'c:true']);
+    expect(of(list, 'asigna')[0]).toMatchObject({ name: 'c.n', before: { repr: '1' }, after: { repr: '2' } });
+  });
+
+  test('cada vuelta de `para … desde … hasta` decide y declara la variable', () => {
+    const list = events('para i desde 1 hasta 2 { }');
+    expect(of(list, 'decide').map(event => `${event.label}:${event.value}`)).toEqual([
+      'para:true',
+      'para:true',
+      'para:false',
+    ]);
+    expect(of(list, 'declara').map(event => `${event.name}=${event.value.repr}`)).toEqual(['i=1', 'i=2']);
+  });
+
+  test('`declara` indica si es constante', () => {
+    const list = of(events('constante K = 1; variable x = 2;'), 'declara');
+    expect(list.map(event => `${event.name}:${event.constant}`)).toEqual(['K:true', 'x:false']);
+  });
+
+  test('`i++` asigna y opera', () => {
+    const list = events('variable i = 1; i++;');
+    expect(of(list, 'asigna')[0]).toMatchObject({ name: 'i', before: { repr: '1' }, after: { repr: '2' } });
+    expect(of(list, 'opera')[0]).toMatchObject({ operator: '+', result: { repr: '2' } });
+  });
+
+  test('`mod` y `%` se ven igual en los eventos', () => {
+    const operators = (source: string) => of(events(source), 'opera').map(event => event.operator);
+    expect(operators('7 % 2;')).toEqual(['mod']);
+    expect(operators('7 mod 2;')).toEqual(['mod']);
   });
 
   test('operaciones con sus operandos', () => {

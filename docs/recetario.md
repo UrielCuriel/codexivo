@@ -7,10 +7,10 @@ archivo `.codexivo`.
 
 ```codexivo
 variable saludar = procedimiento(nombre) {
-  regresa "Hola " + nombre + "!";
-};
+  regresa "Hola " + nombre + "!"
+}
 
-saludar("Codexivo");
+saludar("Codexivo")
 ```
 
 Demuestra cómo declarar un procedimiento, concatenar cadenas y retornar un valor.
@@ -19,16 +19,16 @@ Demuestra cómo declarar un procedimiento, concatenar cadenas y retornar un valo
 
 ```codexivo
 variable clasificar = procedimiento(edad) {
-  si (edad >= 18) {
-    regresa "adulto";
-  } pero_si (edad >= 13) {
-    regresa "adolescente";
+  si (edad es_mayor_o_igual_a 18) {
+    regresa "adulto"
+  } pero_si (edad es_mayor_o_igual_a 13) {
+    regresa "adolescente"
   } si_no {
-    regresa "niño";
+    regresa "niño"
   }
-};
+}
 
-clasificar(16);
+clasificar(16)
 ```
 
 Ilustra el encadenamiento `si`/`pero_si`/`si_no` y el uso de operadores relacionales.
@@ -37,11 +37,11 @@ Ilustra el encadenamiento `si`/`pero_si`/`si_no` y el uso de operadores relacion
 
 ```codexivo
 variable promedio = procedimiento(a, b, c) {
-  variable total = a + b + c;
-  regresa total / 3;
-};
+  variable total = a + b + c
+  regresa total / 3
+}
 
-promedio(8, 7.5, 9);
+promedio(8, 7.5, 9)
 ```
 
 Combina números enteros y decimales con operaciones aritméticas.
@@ -50,30 +50,30 @@ Combina números enteros y decimales con operaciones aritméticas.
 
 ```codexivo
 variable valorAbsoluto = procedimiento(n) {
-  si (n < 0) {
-    regresa -n;
+  si (n es_menor_que 0) {
+    regresa -n
   } si_no {
-    regresa n;
+    regresa n
   }
-};
+}
 
-valorAbsoluto(-42);
+valorAbsoluto(-42)
 ```
 
-Ejemplo de uso del operador prefijo `-` y del comportamiento truthy/falsy en condicionales.
+Ejemplo de uso del operador prefijo `-`.
 
 ## 5. Contador recursivo
 
 ```codexivo
 variable cuentaRegresiva = procedimiento(n) {
-  si (n == 0) {
-    regresa "¡Despegue!";
+  si (n es_igual_a 0) {
+    regresa "¡Despegue!"
   }
 
-  regresa cuentaRegresiva(n - 1);
-};
+  regresa cuentaRegresiva(n - 1)
+}
 
-cuentaRegresiva(3);
+cuentaRegresiva(3)
 ```
 
 Muestra cómo las funciones en Codexivo soportan recursión gracias a que conservan su entorno de definición.
@@ -82,48 +82,48 @@ Muestra cómo las funciones en Codexivo soportan recursión gracias a que conser
 
 ```codexivo
 variable esNombreValido = procedimiento(nombre) {
-  variable tamaño = longitud(nombre);
-  si (tamaño >= 3 y tamaño <= 15) {
-    regresa verdadero;
+  variable tamaño = longitud(nombre)
+  si (tamaño es_mayor_o_igual_a 3 y tamaño es_menor_o_igual_a 15) {
+    regresa verdadero
   }
-  regresa falso;
-};
+  regresa falso
+}
 
-esNombreValido("Ana");
+esNombreValido("Ana")
 ```
 
 Ejemplo de uso del builtin `longitud` junto con operadores de comparación y booleanos.
 
-## 7. Suma con bucle for
+## 7. Suma con un bucle que cuenta
 
 ```codexivo
-variable sumarHasta = procedimiento(n) {
-  variable suma = 0;
-  para (variable i = 1; i <= n; i += 1) {
-    suma += i;
+procedimiento sumar_hasta(n) {
+  variable suma = 0
+  para i desde 1 hasta n {
+    suma = suma + i
   }
-  regresa suma;
-};
+  regresa suma
+}
 
-sumarHasta(10); // Suma de 1 a 10 = 55
+sumar_hasta(10) // Suma de 1 a 10 = 55
 ```
 
-Demuestra el uso de bucles `para` con operadores de asignación compuesta.
+Demuestra `para … desde … hasta`, que incluye los dos extremos.
 
 ## 8. Búsqueda en arreglo
 
 ```codexivo
-variable buscar = procedimiento(arreglo, elemento) {
-  para (variable i = 0; i < longitud(arreglo); i += 1) {
-    si (arreglo[i] == elemento) {
-      regresa i;
+procedimiento buscar_posición(lista, elemento) {
+  para_cada i en índices(lista) {
+    si (lista[i] es_igual_a elemento) {
+      regresa i
     }
   }
-  regresa -1;
-};
+  regresa -1
+}
 
-variable numeros = [10, 20, 30, 40];
-buscar(numeros, 30); // Regresa 2
+variable números = [10, 20, 30, 40]
+buscar_posición(números, 30) // Regresa 2
 ```
 
 Combina bucles, acceso a arreglos, condicionales y funciones built-in.
@@ -132,25 +132,25 @@ Combina bucles, acceso a arreglos, condicionales y funciones built-in.
 
 ```codexivo
 variable estadisticas = procedimiento(datos) {
-  variable suma = 0;
-  variable mayor = primero(datos);
-  variable menor = primero(datos);
-  
-  para (variable i = 0; i < longitud(datos); i += 1) {
-    suma += datos[i];
-    si (datos[i] > mayor) {
-      mayor = datos[i];
+  variable suma = 0
+  variable mayor = primero(datos)
+  variable menor = primero(datos)
+
+  para_cada dato en datos {
+    suma = suma + dato
+    si (dato es_mayor_que mayor) {
+      mayor = dato
     }
-    si (datos[i] < menor) {
-      menor = datos[i];
+    si (dato es_menor_que menor) {
+      menor = dato
     }
   }
-  variable promedio = suma / longitud(datos);
-  
-  regresa [redondear(promedio), mayor, menor];
-};
+  variable promedio = suma / longitud(datos)
 
-estadisticas([5, 2, 8, 1, 9]); // [5, 9, 1]
+  regresa [redondear(promedio), mayor, menor]
+}
+
+estadisticas([5, 2, 8, 1, 9])  // [5, 9, 1]
 ```
 
 Muestra el uso de las funciones matemáticas built-in y manipulación de arreglos.

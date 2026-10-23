@@ -24,6 +24,11 @@ Principios, en orden de prioridad cuando chocan:
 5. **En el navegador y determinista.** Sin instalar nada. El mismo programa con la misma entrada
    produce siempre el mismo resultado y la misma cantidad de operaciones.
 
+> **✅ Decidido (#43) — regla de redacción.** Los ejemplos de nivel principiante no usan abreviaturas (`+=`, `++`) ni
+> símbolos que tengan una alternativa en palabras, y no llevan `;` al final de línea. Las abreviaturas se presentan
+> después, como atajos de algo que ya se entiende. Aplica al README, a `lenguaje.md`, al recetario, a la §9 y a los
+> mensajes de error que sugieren código.
+
 ### Niveles
 
 Cada característica pertenece a un nivel. Los niveles ordenan la documentación y los retos; no
@@ -38,26 +43,26 @@ bloquean nada en el editor.
 ## 1. Estado actual frente a v1
 
 Probado contra `main` (`1ca0398`), cuyos 56 tests pasaban sin cubrir estos casos. La columna "Estado" dice qué ya resolvió
-la reescritura del núcleo (pasos 1 a 3 de §16).
+la reescritura del núcleo y los pasos siguientes de §16.
 
-| Caso                             | Antes                                                                                                | v1                                        | Estado                             |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------- |
-| `1 < 2 y 5 < 4`                  | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso`                                   | ✅                                 |
-| `no 1 == 2`                      | `falso` (se agrupaba como `(no 1) == 2`)                                                             | `verdadero`                               | ✅                                 |
-| Varios `pero_si` seguidos        | Solo se conservaba el último                                                                         | Todas las ramas, en orden                 | ✅                                 |
-| `procedimiento suma(a, b) { … }` | Error de sintaxis                                                                                    | Declaración con nombre                    | Paso 5 (hoy da un error con pista) |
-| `// comentario`                  | Excepción de JavaScript (`value is null or undefined`)                                               | Comentario                                | ✅                                 |
-| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | Paso 4                             |
-| `a[0] = 9`                       | Error de sintaxis                                                                                    | Asignación por índice                     | Paso 5                             |
-| `nulo`                           | "identificador no encontrado"                                                                        | Literal                                   | ✅                                 |
-| `imprimir(…)` / `leer()`         | No existían; el programa solo devolvía su última expresión                                           | Entrada y salida                          | ✅                                 |
-| `1 / 0`                          | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba)                                    | Error                                     | ✅                                 |
-| `[1, 2] == [1, 2]`               | `falso`                                                                                              | `verdadero`                               | ✅                                 |
-| `mientras (verdadero) {}`        | Bloqueaba el proceso                                                                                 | Error al superar el límite de operaciones | ✅                                 |
-| `f(20000)` recursivo             | `Maximum call stack size exceeded`                                                                   | Funciona (límite configurable)            | ✅                                 |
-| `hasta_que`                      | Se tokenizaba como `WHILE`                                                                           | Token propio `UNTIL`                      | ✅                                 |
-| Mensajes de error                | "en la linea"                                                                                        | "en la línea", con pista                  | ✅                                 |
-| Docs y README                    | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron                          | Alineados con esta spec                   | ✅ (y se prueban)                  |
+| Caso                             | Antes                                                                                                | v1                                        | Estado            |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- | ----------------- |
+| `1 < 2 y 5 < 4`                  | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso`                                   | ✅                |
+| `no 1 == 2`                      | `falso` (se agrupaba como `(no 1) == 2`)                                                             | `verdadero`                               | ✅                |
+| Varios `pero_si` seguidos        | Solo se conservaba el último                                                                         | Todas las ramas, en orden                 | ✅                |
+| `procedimiento suma(a, b) { … }` | Error de sintaxis                                                                                    | Declaración con nombre                    | ✅ (paso 5)       |
+| `// comentario`                  | Excepción de JavaScript (`value is null or undefined`)                                               | Comentario                                | ✅                |
+| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | ✅ (paso 4)       |
+| `a[0] = 9`                       | Error de sintaxis                                                                                    | Asignación por índice                     | ✅ (paso 5)       |
+| `nulo`                           | "identificador no encontrado"                                                                        | Literal                                   | ✅                |
+| `imprimir(…)` / `leer()`         | No existían; el programa solo devolvía su última expresión                                           | Entrada y salida                          | ✅                |
+| `1 / 0`                          | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba)                                    | Error                                     | ✅                |
+| `[1, 2] == [1, 2]`               | `falso`                                                                                              | `verdadero`                               | ✅                |
+| `mientras (verdadero) {}`        | Bloqueaba el proceso                                                                                 | Error al superar el límite de operaciones | ✅                |
+| `f(20000)` recursivo             | `Maximum call stack size exceeded`                                                                   | Funciona (límite configurable)            | ✅                |
+| `hasta_que`                      | Se tokenizaba como `WHILE`                                                                           | Token propio `UNTIL`                      | ✅                |
+| Mensajes de error                | "en la linea"                                                                                        | "en la línea", con pista                  | ✅                |
+| Docs y README                    | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron                          | Alineados con esta spec                   | ✅ (y se prueban) |
 
 ## 2. Léxico
 
@@ -82,29 +87,34 @@ variable canción_favorita = "Cielito lindo";
 
 ### 2.3 Literales
 
-| Literal     | Ejemplos                              | Notas                                                                   |
-| ----------- | ------------------------------------- | ----------------------------------------------------------------------- |
-| Número      | `10`, `3.14`, `.5`, `1_000_000`       | Un solo tipo numérico (doble precisión). `_` solo como separador visual |
-| Texto       | `"hola"`, `'mundo'`, `"línea\nnueva"` | Escapes: `\n`, `\t`, `\"`, `\'`, `\\`                                   |
-| Lógico      | `verdadero`, `falso`                  |                                                                         |
-| Nulo        | `nulo`                                | Ausencia de valor                                                       |
-| Lista       | `[1, 2, 3]`, `[]`                     |                                                                         |
-| Diccionario | `{ "nombre": "Ana", "edad": 16 }`     | Ver §4.6                                                                |
+| Literal     | Ejemplos                              | Notas                                                               |
+| ----------- | ------------------------------------- | ------------------------------------------------------------------- |
+| Número      | `10`, `3.14`, `.5`, `1_000_000`       | Un solo tipo numérico (doble precisión). `_` solo entre dos dígitos |
+| Texto       | `"hola"`, `'mundo'`, `"línea\nnueva"` | Escapes: `\n`, `\t`, `\"`, `\'`, `\\`                               |
+| Lógico      | `verdadero`, `falso`                  |                                                                     |
+| Nulo        | `nulo`                                | Ausencia de valor                                                   |
+| Lista       | `[1, 2, 3]`, `[]`                     |                                                                     |
+| Diccionario | `{ "nombre": "Ana", "edad": 16 }`     | Ver §4.6                                                            |
 
 > **✅ Decidido — interpolación de texto.** ¿`"Hola, {nombre}"`? No en v1. `imprimir("Hola,", nombre)` resuelve el caso común sin agregar sintaxis
 > dentro de las cadenas, y `texto(x)` cubre el resto.
 
 ### 2.4 Punto y coma
 
-Separa sentencias. Es **opcional al final de línea**, como hoy; la documentación y el formateador del
-sandbox siempre lo escriben.
+Separa sentencias. Solo hace falta para poner dos en la misma línea; al final de línea es opcional y los ejemplos no lo
+escriben (§0).
+
+Sin `;`, un salto de línea termina la expresión: una línea que empieza con `-`, `(` o `[` es otra sentencia, no la
+continuación de la anterior. Una expresión sigue en la línea siguiente solo si la línea termina en un operador
+(`total = a +`) o si está dentro de paréntesis, corchetes o llaves. Así `x = 1` seguido de `-2` en la otra línea no se
+convierte en silencio en `x = 1 - 2`.
 
 ### 2.5 Palabras reservadas
 
 ```
-variable  constante  procedimiento  regresa
+variable  constante  procedimiento  regresa  dominio
 si  pero_si  si_no
-mientras  hacer  hasta_que  para  para_cada  en  repetir  veces
+mientras  hacer  hasta_que  para  desde  hasta  con_paso  para_cada  en  repetir  veces
 romper  continuar
 verdadero  falso  nulo
 y  o  no  mod  div
@@ -128,6 +138,7 @@ teclados lo facilitan. La documentación y los mensajes usan siempre la forma ca
 | `"nulo"`          | `nulo`                                        |
 | `"lista"`         | `[1, "a", verdadero]`                         |
 | `"diccionario"`   | `{ "a": 1 }`                                  |
+| `"dominio"`       | `dominio calculadora { … }` (§5.6)            |
 | `"procedimiento"` | Procedimientos del usuario y de la biblioteca |
 
 - **Valor contra referencia.** Números, textos, lógicos y `nulo` se copian. Las listas y los
@@ -222,6 +233,10 @@ persona.ciudad = "León"; // agrega la clave
 - Leer una clave que no existe es un error con la pista _"usa `tiene(d, clave)` para preguntar
   antes"_.
 - Al inicio de una sentencia, `{` abre un bloque; en cualquier otra posición, un diccionario.
+- Las claves de un literal van entre comillas (`{ nombre: "Ana" }` es un error con pista); una clave calculada va
+  entre paréntesis: `{ (clave): valor }`. Una clave literal repetida es un error de sintaxis.
+- `1` y `"1"` son claves distintas. `para_cada clave en d` recorre las claves; agregar o quitar claves durante el
+  recorrido es un error.
 
 ## 5. Sentencias
 
@@ -269,44 +284,83 @@ Las llaves son obligatorias.
 
 ### 5.4 Bucles
 
+Una forma por intención:
+
+| Intención                               | Forma                                          | Nivel |
+| --------------------------------------- | ---------------------------------------------- | ----- |
+| Repetir n veces                         | `repetir n veces { }`                          | 🟢    |
+| Contar                                  | `para i desde a hasta b [con_paso p] { }`      | 🟢    |
+| Mientras se cumpla algo                 | `mientras (c) { }` / `hacer { } hasta_que (c)` | 🟢    |
+| Recorrer una lista, texto o diccionario | `para_cada x en colección { }`                 | 🟡    |
+| Puente hacia otros lenguajes            | `para (inicio; condición; paso) { }`           | 🔴    |
+
 ```codexivo
 // 🟢 repite un número fijo de veces (herencia directa de Karel)
 repetir 4 veces {
-  avanzar();
+  avanzar()
+}
+
+// 🟢 cuenta, incluyendo los dos extremos
+para i desde 1 hasta 10 {
+  suma = suma + i
+}
+para i desde 10 hasta 0 con_paso -2 {
+  imprimir(i)
 }
 
 // 🟢 mientras la condición sea verdadera
-mientras (intentos < 3) {
-  intentos++;
+mientras (intentos es_menor_que 3) {
+  intentos = intentos + 1
 }
 
 // 🟢 al menos una vez, hasta que la condición sea verdadera
 hacer {
-  número = leer_número();
-} hasta_que (número > 0);
+  número = leer_número()
+} hasta_que (número es_mayor_que 0)
 
-// 🟡 recorrer una lista, un rango o un texto
+// 🟡 recorrer una lista o un texto
 para_cada fruta en ["mango", "piña"] {
-  imprimir(fruta);
-}
-para_cada i en rango(1, 10) {
-  imprimir(i);
+  imprimir(fruta)
 }
 
 // 🟡 recorrer un diccionario
 para_cada clave, valor en persona {
-  imprimir(clave, valor);
-}
-
-// 🟡 forma clásica, puente hacia otros lenguajes
-para (variable i = 0; i < 10; i++) {
-  imprimir(i);
+  imprimir(clave, valor)
 }
 ```
 
-- `romper` sale del bucle más cercano; `continuar` salta a la siguiente vuelta.
+> **✅ Decidido (#43) — `para … desde … hasta` es el `para` principal.** «Para i desde 1 hasta 10» es lo que la persona
+> quiere decir; el `for` de C tiene tres partes separadas por `;` que no dicen qué son. `con_paso` lleva guion bajo para no
+> reservar `paso`, que es un nombre común. `hasta` y `hasta_que` son palabras distintas. Después de `para`, un `(` empieza
+> la forma clásica y un nombre, esta.
+
+- **`para i desde a hasta b con_paso p`:**
+  - `i` se declara sola, sin `variable`, es nueva en cada vuelta y solo existe dentro del cuerpo. Cambiarla dentro del
+    bucle es el error `VARIABLE_DE_PARA` («la variable de un `para` avanza sola»).
+  - Incluye los dos extremos. El paso por defecto es `1`.
+  - `desde`, `hasta` y `con_paso` se evalúan **una vez**, al empezar; cambiar después la variable usada en `hasta` no
+    afecta al bucle.
+  - Sin magia: `desde` mayor que `hasta` sin `con_paso` es un error con la pista _«para contar hacia atrás escribe
+    `con_paso -1`»_ (no se invierte solo ni hace cero vueltas en silencio). Un paso en el sentido contrario también
+    (`PARA_SENTIDO_CONTRARIO`), igual que `con_paso 0` (`PARA_PASO_CERO`) o límites que no son números
+    (`PARA_LÍMITE_INVÁLIDO`).
+  - Cada vuelta emite `decide` con `label: 'para'` y `declara` con el nuevo valor de `i`.
+- `para_cada i en rango(1, 10)` deja de ser la forma recomendada para contar; `rango()` sigue creando listas.
+- `romper` sale del bucle más cercano; `continuar` salta a la siguiente vuelta. Fuera de un bucle son un error de
+  sintaxis, también dentro de un procedimiento: no cruzan el límite de una llamada.
 - `repetir n veces` exige un número entero no negativo.
 - Modificar la longitud de una lista mientras se recorre con `para_cada` es un error.
+
+**🔴 Puente hacia otros lenguajes.** El `para` clásico se conserva para practicar antes de pasar a C, Java o JavaScript:
+
+```codexivo
+para (variable i = 0; i < 10; i++) {
+  imprimir(i)
+}
+```
+
+Es `para i desde 0 hasta 9` escrito a mano: la condición se vuelve a evaluar en cada vuelta y la variable se puede cambiar
+dentro del cuerpo. La documentación lo presenta en su propia sección, comparándolo con `para … desde … hasta`.
 
 ### 5.5 Procedimientos
 
@@ -322,13 +376,43 @@ mapear([1, 2, 3], doble); // [2, 4, 6]
 ```
 
 - Las declaraciones con nombre se pueden usar antes de aparecer en su bloque; eso permite la
-  recursión mutua.
+  recursión mutua. Por eso su nombre no se puede repetir en el bloque, ni con otro procedimiento ni con una variable.
 - Llamar con un número distinto de argumentos es un error. Hoy los faltantes se rellenan con `nulo`;
   en v1 no.
 - `regresa` sin valor regresa `nulo`, y un procedimiento que termina sin `regresa` también regresa `nulo`.
   El valor de la última expresión **no** se regresa solo: devolver un valor siempre se dice con `regresa`.
 - Los procedimientos capturan las variables de donde se crearon (closures).
 - La profundidad de recursión solo la limita la configuración (por defecto 10 000), no JavaScript.
+
+### 5.6 Dominios
+
+> **✅ Decidido (#19) — `dominio` es un espacio de nombres**, no un objeto ni un módulo. Agrupa declaraciones bajo un
+> nombre; no hay `importar` ni archivos.
+
+```codexivo
+dominio calculadora {
+  variable operaciones = 0;
+  procedimiento suma(a, b) {
+    operaciones++;
+    regresa a + b;
+  }
+}
+calculadora.suma(1, 3); // 4
+```
+
+- **Contenido:** solo declaraciones (`variable`, `constante`, `procedimiento` y otros `dominio`). Cualquier otra
+  sentencia es el error de sintaxis `DOMINIO_SOLO_DECLARACIONES`. Las declaraciones se ejecutan en orden al llegar al
+  dominio, y los procedimientos con nombre existen desde el inicio, como en cualquier bloque.
+- **Alcance:** dentro del dominio sus miembros se usan sin prefijo y se ve lo que está fuera. Fuera se usan con `.`
+  (`geometría.círculo.área(1)`); con `[ ]` es un error. Un miembro que no existe es `MIEMBRO_INEXISTENTE`, con
+  sugerencia si se parece a otro.
+- **Asignar desde fuera:** solo a los miembros declarados con `variable`. Las constantes, los procedimientos y los
+  dominios internos son `MIEMBRO_DE_SOLO_LECTURA`, y agregar un miembro nuevo es `MIEMBRO_INEXISTENTE`: así
+  `calculadora.suma` siempre es el mismo procedimiento.
+- **Anidados:** un dominio puede contener otros.
+- **Valor:** el nombre del dominio es constante. El dominio es un valor de tipo `"dominio"` con referencia: el sandbox
+  lo muestra en la memoria con sus miembros (`snapshot().heap`), y cambiar un miembro emite `asigna` con su ruta
+  (`calculadora.operaciones`). No es un diccionario: no se recorre con `para_cada` ni tiene `longitud`.
 
 ## 6. Entrada y salida
 
@@ -394,6 +478,10 @@ cambian la lista; todo lo demás regresa un valor nuevo.**
 `reemplazar(t, buscar, poner)`, `contiene`, `empieza_con`, `termina_con`, `posición_de` (regresa `-1`
 si no está), `subtexto(t, inicio, fin)`, `caracteres(t)`, `código_de(c)`, `carácter_de(n)`.
 
+> **✅ Decidido — `subtexto` y `rebanar` no incluyen el fin.** `subtexto("hola", 1, 3)` es `"ol"`. Así
+> `fin - inicio` es la cantidad de elementos y `rebanar(l, 0, longitud(l))` es la lista completa. `rango`, que
+> enumera, sí incluye el final; estos dos, que cortan, no.
+
 ### 🟡 Listas
 
 | Nombre                                                                           | Descripción                                                                                                              |
@@ -417,7 +505,14 @@ inserción.
 ### 🔴 Procedimientos como valores
 
 `mapear(l, f)`, `filtrar(l, f)`, `reducir(l, f, inicial)`, `alguno(l, f)`, `todos(l, f)`,
-`buscar(l, f)` (el primero que cumple, o `nulo`).
+`buscar(l, f)` (el primero que cumple, o `nulo`), `ordenar(l, va_antes)`.
+
+> **✅ Decidido — el comparador de `ordenar` regresa un lógico.** `va_antes(a, b)` responde «¿va `a` antes que `b`?»
+> (`procedimiento(a, b) { regresa a < b; }`). Es la pregunta que uno se hace al ordenar a mano, no exige entender el
+> signo de una resta, y un número es un error. El orden es estable.
+>
+> Se implementan en Codexivo (ver `docs/arquitectura.md`), así una llamada a `f` se pausa, se traza y cuenta
+> operaciones como cualquier otra.
 
 ### 🔴 Estructuras de datos
 
@@ -437,15 +532,15 @@ diccionarios y `.`.
 
 ```codexivo
 // 🟢 FizzBuzz
-para_cada n en rango(1, 15) {
-  si (n mod 15 == 0) {
-    imprimir("FizzBuzz");
-  } pero_si (n mod 3 == 0) {
-    imprimir("Fizz");
-  } pero_si (n mod 5 == 0) {
-    imprimir("Buzz");
+para n desde 1 hasta 15 {
+  si (n mod 15 es_igual_a 0) {
+    imprimir("FizzBuzz")
+  } pero_si (n mod 3 es_igual_a 0) {
+    imprimir("Fizz")
+  } pero_si (n mod 5 es_igual_a 0) {
+    imprimir("Buzz")
   } si_no {
-    imprimir(n);
+    imprimir(n)
   }
 }
 ```
@@ -453,42 +548,42 @@ para_cada n en rango(1, 15) {
 ```codexivo
 // 🟡 Búsqueda binaria
 procedimiento buscar_binaria(lista, objetivo) {
-  variable inicio = 0;
-  variable fin = longitud(lista) - 1;
-  mientras (inicio <= fin) {
-    variable medio = (inicio + fin) div 2;
+  variable inicio = 0
+  variable fin = longitud(lista) - 1
+  mientras (inicio es_menor_o_igual_a fin) {
+    variable medio = (inicio + fin) div 2
     si (lista[medio] es_igual_a objetivo) {
-      regresa medio;
+      regresa medio
     } pero_si (lista[medio] es_menor_que objetivo) {
-      inicio = medio + 1;
+      inicio = medio + 1
     } si_no {
-      fin = medio - 1;
+      fin = medio - 1
     }
   }
-  regresa -1;
+  regresa -1
 }
 ```
 
 ```codexivo
 // 🔴 Recorrido en anchura: distancia mínima en un grafo
 procedimiento distancia(grafo, origen, destino) {
-  variable visitados = { };
-  variable cola = [[origen, 0]];
-  visitados[origen] = verdadero;
+  variable visitados = { }
+  variable cola = [[origen, 0]]
+  visitados[origen] = verdadero
 
   mientras (longitud(cola) > 0) {
-    variable actual = desencolar(cola);
+    variable actual = desencolar(cola)
     si (actual[0] == destino) {
-      regresa actual[1];
+      regresa actual[1]
     }
     para_cada vecino en grafo[actual[0]] {
       si (no tiene(visitados, vecino)) {
-        visitados[vecino] = verdadero;
-        encolar(cola, [vecino, actual[1] + 1]);
+        visitados[vecino] = verdadero
+        encolar(cola, [vecino, actual[1] + 1])
       }
     }
   }
-  regresa -1;
+  regresa -1
 }
 ```
 
@@ -497,7 +592,7 @@ procedimiento distancia(grafo, origen, destino) {
 - **Operaciones.** Cada operación básica (leer una variable, poner un valor, sumar, comparar, asignar, decidir, llamar)
   cuenta como una. Los procedimientos de la biblioteca
   cuentan según el trabajo que hacen (por ejemplo, `ordenar` sobre `n` elementos cuesta
-  `n · log₂ n`). La misma ejecución da siempre el mismo número, y los retos lo usan en lugar del
+  `n · ⌈log₂ n⌉`, y `contiene` cuesta `n`). La tabla vive en `src/runtime/costs.ts` y se documenta en `lenguaje.md`. La misma ejecución da siempre el mismo número, y los retos lo usan en lugar del
   tiempo.
 - **Límites configurables** con valores por defecto: operaciones (10 millones en el sandbox; cada
   reto define el suyo), profundidad de recursión (10 000) y tamaño de la salida (1 MB). Superarlos es
@@ -517,12 +612,14 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
 - Cada nodo del AST tiene un identificador estable y su **rango** en el código (inicio y fin, en
   línea, columna y desplazamiento).
 - Cada token conserva su rango, para la vista de tokens.
-- La máquina emite eventos: `paso` (inicio de una sentencia), `declara`, `asigna` (antes/después),
+- La máquina emite eventos: `paso` (inicio de una sentencia), `declara`, `asigna` (antes/después), `modifica` (un
+  elemento de una lista o diccionario, con su `ref`, la clave y el valor antes/después),
   `decide` (condición, valor y rama tomada), `opera` (operandos y resultado), `llama`/`regresa`,
   `imprime`/`lee`, `error` y `fin`. Cada uno lleva el número de operaciones y la profundidad de llamadas.
 - En cualquier pausa se puede pedir una fotografía (`snapshot`) con las llamadas activas y las variables de
   cada alcance. Listas y diccionarios tienen un identificador de referencia, para dibujar cuándo dos
-  variables comparten el mismo valor.
+  variables comparten el mismo valor. `heap` guarda, por referencia, los elementos de cada lista y los pares
+  `{ key, value }` de cada diccionario.
 - El diagrama de flujo se genera desde el AST; la máquina de estados se anima desde los eventos.
   Ninguno de los dos inventa información que el intérprete no produjo.
 
@@ -539,14 +636,20 @@ existen cuando el programa corre en un mundo.
 | `dejar_zumbador()`   | `mirando_al_norte()`, `mirando_al_sur()`, `mirando_al_este()`, `mirando_al_oeste()` |
 | `apagar()`           |                                                                                     |
 
-Chocar con una pared o recoger donde no hay zumbadores es un error de ejecución, con la posición del
-robot. No hay `girar_derecha()`: construirlo con tres `girar_izquierda()` es el primer ejercicio, igual
-que en Karel.
+Chocar con una pared (`CHOQUE_CON_PARED`), recoger donde no hay zumbadores (`SIN_ZUMBADORES`), dejar sin tener
+(`MOCHILA_VACÍA`) o hacer cualquier acción después de `apagar()` (`ROBOT_APAGADO`) es un error de ejecución, con la
+posición y la orientación del robot. `apagar()` no termina el programa; las preguntas siguen funcionando. No hay
+`girar_derecha()`: construirlo con tres `girar_izquierda()` es el primer ejercicio, igual que en Karel.
+
+El formato del mundo (versión 1), los eventos `robot` y los objetivos de un reto están en
+[`modo-mundo.md`](./modo-mundo.md).
 
 ## 13. Fuera de v1
 
 Módulos e `importar`, clases y métodos, `intentar`/`capturar`, asincronía, archivos, red, tipos
 estáticos y `según`/`caso`. Se pueden reconsiderar después, siempre con el principio 1 como filtro.
+
+`dominio` (§5.6) no es un módulo: agrupa nombres dentro del mismo programa, sin archivos ni `importar`.
 
 ## 14. Cambios que rompen programas existentes
 
@@ -583,13 +686,16 @@ Todas aprobadas.
    `RuntimeTracer`. Se descartaron los generadores anidados porque, con `yield*`, la recursión profunda
    vuelve a depender de la pila de JavaScript. Incluye `imprimir`, `leer`, `leer_número`, `tipo`, `texto`
    y `número`, porque la entrada y salida son parte del contrato de la máquina.
-4. **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
-   operadores en palabras, `constante`, alcance por bloque.
-5. **Nivel intermedio:** procedimientos con nombre, `para_cada`, `romper`/`continuar`, asignación por
-   índice, diccionarios, biblioteca de texto y listas.
-6. **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
+4. ✅ **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
+   operadores en palabras, `constante`, alcance por bloque, `1_000_000` y `PI`. `repetir` emite `decide` con la
+   etiqueta `repetir` en cada vuelta y `declara` indica si el nombre es constante.
+5. ✅ **Nivel intermedio:** ✅ procedimientos con nombre, ✅ `para_cada`, ✅ `romper`/`continuar`, ✅ asignación por
+   índice (evento `modifica`), ✅ `rango` e `índices`, ✅ diccionarios, ✅ biblioteca de texto y listas (con
+   `cost` registrado en cada procedimiento nativo; el cobro llega en el paso 6).
+6. ✅ **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
    biblioteca.
-7. **Modo mundo.**
+7. ✅ **Modo mundo:** formato JSON versionado con `validateWorld`, `createWorld`, evento `robot`, estado en
+   `snapshot()` y objetivos de reto con `checkGoal` (ver [`modo-mundo.md`](./modo-mundo.md)).
 
 Cada paso llega con tests y actualiza `lenguaje.md` para que la documentación nunca vuelva a prometer
 lo que el código no hace.

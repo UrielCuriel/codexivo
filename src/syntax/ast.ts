@@ -9,10 +9,12 @@ interface BaseNode {
   span: Span;
 }
 
-export type BinaryOperator = '+' | '-' | '*' | '/' | '==' | '!=' | '<' | '>' | '<=' | '>=';
+/** `%` y `mod` son el mismo operador; en el AST siempre aparece como `mod`. */
+export type BinaryOperator = '+' | '-' | '*' | '/' | 'div' | 'mod' | '^' | '==' | '!=' | '<' | '>' | '<=' | '>=';
 export type LogicalOperator = 'y' | 'o';
 export type UnaryOperator = '-' | 'no';
-export type AssignmentOperator = '=' | '+=' | '-=' | '*=' | '/=';
+export type AssignmentOperator = '=' | '+=' | '-=' | '*=' | '/=' | '%=';
+export type IncrementOperator = '++' | '--';
 
 // ── expresiones ──────────────────────────────────────────────────────────────
 
@@ -76,6 +78,20 @@ export interface Index extends BaseNode {
   kind: 'Index';
   object: Expression;
   index: Expression;
+  /** `true` si se escribió `d.campo`; entonces `index` es el texto `"campo"`. */
+  dot?: boolean;
+}
+
+export interface DictEntry {
+  /** Rango de `clave: valor`. */
+  span: Span;
+  key: Expression;
+  value: Expression;
+}
+
+export interface DictLiteral extends BaseNode {
+  kind: 'DictLiteral';
+  entries: DictEntry[];
 }
 
 export interface FunctionLiteral extends BaseNode {
@@ -92,6 +108,7 @@ export type Expression =
   | BooleanLiteral
   | NullLiteral
   | ListLiteral
+  | DictLiteral
   | Identifier
   | Unary
   | Binary
@@ -104,15 +121,34 @@ export type Expression =
 
 export interface VariableDeclaration extends BaseNode {
   kind: 'VariableDeclaration';
+  /** `true` si se declaró con `constante`: no se puede reasignar. */
+  constant: boolean;
   name: Identifier;
   value: Expression;
 }
 
+/** Lo que puede ir a la izquierda de `=`: una variable o un elemento (`lista[i]`). */
+export type AssignmentTarget = Identifier | Index;
+
 export interface Assignment extends BaseNode {
   kind: 'Assignment';
-  target: Identifier;
+  target: AssignmentTarget;
   operator: AssignmentOperator;
   value: Expression;
+}
+
+/** `i++` / `i--`: son sentencias, no expresiones. */
+export interface Increment extends BaseNode {
+  kind: 'Increment';
+  target: AssignmentTarget;
+  operator: IncrementOperator;
+}
+
+/** `procedimiento nombre(…) { … }`: se puede usar desde el inicio de su bloque. */
+export interface FunctionDeclaration extends BaseNode {
+  kind: 'FunctionDeclaration';
+  name: Identifier;
+  function: FunctionLiteral;
 }
 
 export interface ExpressionStatement extends BaseNode {
@@ -159,14 +195,78 @@ export interface DoUntil extends BaseNode {
 
 export interface For extends BaseNode {
   kind: 'For';
-  init?: VariableDeclaration | Assignment | ExpressionStatement;
+  init?: VariableDeclaration | Assignment | Increment | ExpressionStatement;
   condition?: Expression;
-  update?: Assignment | ExpressionStatement;
+  update?: Assignment | Increment | ExpressionStatement;
   body: Block;
 }
 
+/**
+ * `para i desde a hasta b con_paso p { … }`: cuenta de `a` a `b`, incluidos los dos. Los límites y el paso se
+ * evalúan una vez, al empezar; `i` es nueva en cada vuelta y no se puede cambiar dentro del cuerpo.
+ */
+export interface ForRange extends BaseNode {
+  kind: 'ForRange';
+  variable: Identifier;
+  from: Expression;
+  to: Expression;
+  step?: Expression;
+  body: Block;
+}
+
+/** `repetir n veces { … }`: el contador es interno, no una variable visible. */
+export interface Repeat extends BaseNode {
+  kind: 'Repeat';
+  count: Expression;
+  body: Block;
+}
+
+/** `para_cada x en lista { … }`: recorre una lista o un texto. */
+export interface ForEach extends BaseNode {
+  kind: 'ForEach';
+  variable: Identifier;
+  /** Segunda variable de `para_cada clave, valor en diccionario`. */
+  value?: Identifier;
+  iterable: Expression;
+  body: Block;
+}
+
+/**
+ * `dominio nombre { … }`: un espacio de nombres. Agrupa declaraciones (variables, constantes, procedimientos y
+ * otros dominios) que se usan desde fuera con `nombre.miembro`. No es un módulo: no hay `importar`.
+ */
+export interface Domain extends BaseNode {
+  kind: 'Domain';
+  name: Identifier;
+  body: Block;
+}
+
+export interface Break extends BaseNode {
+  kind: 'Break';
+}
+
+export interface Continue extends BaseNode {
+  kind: 'Continue';
+}
+
 export type Statement =
-  VariableDeclaration | Assignment | ExpressionStatement | Return | Block | If | While | DoUntil | For;
+  | VariableDeclaration
+  | FunctionDeclaration
+  | Assignment
+  | Increment
+  | ExpressionStatement
+  | Return
+  | Block
+  | If
+  | While
+  | DoUntil
+  | For
+  | ForRange
+  | ForEach
+  | Repeat
+  | Break
+  | Continue
+  | Domain;
 
 export interface Program extends BaseNode {
   kind: 'Program';
@@ -183,6 +283,8 @@ export const childrenOf = (node: Node): Node[] => {
       return node.statements;
     case 'ListLiteral':
       return node.elements;
+    case 'DictLiteral':
+      return node.entries.flatMap(entry => [entry.key, entry.value]);
     case 'Unary':
       return [node.operand];
     case 'Binary':
@@ -198,6 +300,12 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.name, node.value];
     case 'Assignment':
       return [node.target, node.value];
+    case 'Increment':
+      return [node.target];
+    case 'FunctionDeclaration':
+      return [node.name, node.function];
+    case 'ForEach':
+      return [node.variable, ...(node.value ? [node.value] : []), node.iterable, node.body];
     case 'ExpressionStatement':
       return [node.expression];
     case 'Return':
@@ -211,6 +319,12 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.condition, node.body];
     case 'DoUntil':
       return [node.body, node.condition];
+    case 'Domain':
+      return [node.name, node.body];
+    case 'ForRange':
+      return [node.variable, node.from, node.to, ...(node.step ? [node.step] : []), node.body];
+    case 'Repeat':
+      return [node.count, node.body];
     case 'For':
       return [
         ...(node.init ? [node.init] : []),

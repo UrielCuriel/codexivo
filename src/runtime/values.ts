@@ -1,4 +1,5 @@
 import type { CodexivoError } from '../errors';
+import type { RobotEvent } from '../world';
 import type { Chunk } from './compiler';
 
 /**
@@ -6,12 +7,35 @@ import type { Chunk } from './compiler';
  * listas y procedimientos son objetos con un `id` para poder dibujar cuándo dos variables
  * comparten el mismo valor.
  */
-export type Value = number | string | boolean | null | ListValue | ProcedureValue | NativeValue;
+export type Value =
+  number | string | boolean | null | ListValue | DictValue | DomainValue | ProcedureValue | NativeValue;
 
 export interface ListValue {
   kind: 'lista';
   id: number;
   items: Value[];
+}
+
+/** Clave de un diccionario: un texto o un número. */
+export type DictKey = string | number;
+
+/** Diccionario: conserva el orden en que se agregaron las claves. */
+export interface DictValue {
+  kind: 'diccionario';
+  id: number;
+  entries: Map<DictKey, Value>;
+}
+
+/**
+ * Un `dominio`: un espacio de nombres. Sus miembros son las variables de `scope`; desde fuera se usan con `.` y
+ * solo se pueden cambiar los que se declararon con `variable` (`writable`).
+ */
+export interface DomainValue {
+  kind: 'dominio';
+  id: number;
+  name: string;
+  scope: Scope;
+  writable: ReadonlySet<string>;
 }
 
 export interface ProcedureValue {
@@ -28,21 +52,69 @@ export interface NativeContext {
   /** Siguiente línea de entrada, `null` si ya no hay, o `WAIT_FOR_INPUT` si hay que pedirla. */
   readLine(): string | null | typeof WAIT_FOR_INPUT;
   newList(items: Value[]): ListValue;
+  newDict(entries: Map<DictKey, Value>): DictValue;
+  /** Número pseudoaleatorio en [0, 1) del generador con semilla de la máquina. */
+  random(): number;
   /** Error de ejecución ubicado en la llamada actual. */
   fail(code: string, message: string, hint?: string): CodexivoError;
+  /** Emite un evento propio del procedimiento (el modo mundo emite `robot`), ubicado en la llamada actual. */
+  emit(event: RobotEvent): void;
 }
 
 export const WAIT_FOR_INPUT: unique symbol = Symbol('esperar-entrada');
 
+export type ProcedureLevel = 'principiante' | 'intermedio' | 'avanzado';
+
+export type ProcedureCategory =
+  | 'entrada y salida'
+  | 'tipos'
+  | 'matemáticas'
+  | 'texto'
+  | 'listas'
+  | 'diccionarios'
+  | 'procedimientos'
+  | 'estructuras'
+  | 'mundo';
+
+/** Ejemplo ejecutable de un procedimiento: `result` es el valor final como se escribiría en código. */
+export interface ProcedureExample {
+  code: string;
+  result?: string;
+  output?: string;
+}
+
+/** Documentación de un procedimiento de la biblioteca; de aquí sale el catálogo (`catalog.ts`). */
+export interface ProcedureDoc {
+  level: ProcedureLevel;
+  category: ProcedureCategory;
+  /** Tipos con los nombres de `tipo(x)`, `cualquiera`, o varios separados por ` | `. */
+  params: Array<{ name: string; type: string; optional?: boolean }>;
+  /** `true` si el último parámetro se puede repetir (`imprimir(a, b, …)`). */
+  variadic?: boolean;
+  /** Lo que regresa; `nulo` si no regresa nada útil. */
+  returns: string;
+  /** `true` si cambia su primer argumento. */
+  mutates?: boolean;
+  description: string;
+  examples: ProcedureExample[];
+}
+
 export interface NativeValue {
   kind: 'nativo';
   name: string;
+  /** Documentación para el catálogo. Los nativos internos de la biblioteca no la tienen. */
+  doc?: ProcedureDoc;
   /** Cantidad de argumentos: exacta, o `[mínimo, máximo]` (`máximo` puede ser `Infinity`). */
   arity: number | [number, number];
   call(args: Value[], context: NativeContext): Value | typeof WAIT_FOR_INPUT;
+  /**
+   * Cuántas operaciones debería costar una llamada con estos argumentos (§10). Sin `cost`, cuesta 1.
+   * Se registra aquí para que la tabla de costos viva junto a cada procedimiento.
+   */
+  cost?: (args: Value[]) => number;
 }
 
-export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'procedimiento';
+export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'diccionario' | 'dominio' | 'procedimiento';
 
 export const typeOf = (value: Value): TypeName => {
   if (value === null) return 'nulo';
@@ -54,7 +126,9 @@ export const typeOf = (value: Value): TypeName => {
     case 'boolean':
       return 'lógico';
     default:
-      return value.kind === 'lista' ? 'lista' : 'procedimiento';
+      return value.kind === 'lista' || value.kind === 'diccionario' || value.kind === 'dominio'
+        ? value.kind
+        : 'procedimiento';
   }
 };
 
@@ -73,6 +147,12 @@ export const describeType = (type: TypeName): string => {
 export const isList = (value: Value): value is ListValue =>
   typeof value === 'object' && value !== null && value.kind === 'lista';
 
+export const isDomain = (value: Value): value is DomainValue =>
+  typeof value === 'object' && value !== null && value.kind === 'dominio';
+
+export const isDict = (value: Value): value is DictValue =>
+  typeof value === 'object' && value !== null && value.kind === 'diccionario';
+
 export const isCallable = (value: Value): value is ProcedureValue | NativeValue =>
   typeof value === 'object' && value !== null && (value.kind === 'procedimiento' || value.kind === 'nativo');
 
@@ -84,7 +164,7 @@ const formatNumber = (value: number): string => {
 };
 
 /** Representación como se escribiría en código: los textos van entre comillas. */
-export const repr = (value: Value, seen: Set<ListValue> = new Set()): string => {
+export const repr = (value: Value, seen: Set<ListValue | DictValue> = new Set()): string => {
   if (value === null) return 'nulo';
   switch (typeof value) {
     case 'number':
@@ -94,12 +174,16 @@ export const repr = (value: Value, seen: Set<ListValue> = new Set()): string => 
     case 'boolean':
       return value ? 'verdadero' : 'falso';
   }
-  if (value.kind === 'lista') {
-    if (seen.has(value)) return '[…]';
+  if (value.kind === 'dominio') return `dominio ${value.name}`;
+  if (value.kind === 'lista' || value.kind === 'diccionario') {
+    if (seen.has(value)) return value.kind === 'lista' ? '[…]' : '{…}';
     seen.add(value);
-    const inner = value.items.map(item => repr(item, seen)).join(', ');
+    const inner =
+      value.kind === 'lista'
+        ? value.items.map(item => repr(item, seen))
+        : [...value.entries].map(([key, item]) => `${repr(key)}: ${repr(item, seen)}`);
     seen.delete(value);
-    return `[${inner}]`;
+    return value.kind === 'lista' ? `[${inner.join(', ')}]` : `{${inner.join(', ')}}`;
   }
   return value.name ? `procedimiento ${value.name}` : 'procedimiento';
 };
@@ -107,18 +191,31 @@ export const repr = (value: Value, seen: Set<ListValue> = new Set()): string => 
 /** Como lo muestra `imprimir`: los textos sin comillas. */
 export const show = (value: Value): string => (typeof value === 'string' ? value : repr(value));
 
-/** Igualdad por valor: dos listas son iguales si tienen los mismos elementos en el mismo orden. */
-export const equals = (a: Value, b: Value, seen: Array<[ListValue, ListValue]> = []): boolean => {
+type Container = ListValue | DictValue;
+
+/**
+ * Igualdad por valor: dos listas son iguales si tienen los mismos elementos en el mismo orden, y dos
+ * diccionarios si tienen las mismas claves con los mismos valores, en cualquier orden.
+ */
+export const equals = (a: Value, b: Value, seen: Array<[Container, Container]> = []): boolean => {
   if (a === b) return true;
-  if (isList(a) && isList(b)) {
-    if (a.items.length !== b.items.length) return false;
-    if (seen.some(([x, y]) => x === a && y === b)) return true;
-    seen.push([a, b]);
-    const result = a.items.every((item, index) => equals(item, b.items[index]!, seen));
-    seen.pop();
-    return result;
+  const bothLists = isList(a) && isList(b);
+  const bothDicts = isDict(a) && isDict(b);
+  if (!bothLists && !bothDicts) return false;
+  if (seen.some(([x, y]) => x === a && y === b)) return true;
+  seen.push([a as Container, b as Container]);
+  let result: boolean;
+  if (bothLists) {
+    const [x, y] = [a as ListValue, b as ListValue];
+    result = x.items.length === y.items.length && x.items.every((item, index) => equals(item, y.items[index]!, seen));
+  } else {
+    const [x, y] = [a as DictValue, b as DictValue];
+    result =
+      x.entries.size === y.entries.size &&
+      [...x.entries].every(([key, item]) => y.entries.has(key) && equals(item, y.entries.get(key)!, seen));
   }
-  return false;
+  seen.pop();
+  return result;
 };
 
 /**
@@ -126,6 +223,10 @@ export const equals = (a: Value, b: Value, seen: Array<[ListValue, ListValue]> =
  */
 export class Scope {
   readonly variables = new Map<string, Value>();
+  /** Nombres de este alcance declarados con `constante`. */
+  readonly constants = new Set<string>();
+  /** Variables de `para … desde … hasta` en este alcance: avanzan solas. */
+  readonly loopVariables = new Set<string>();
 
   constructor(readonly parent?: Scope) {}
 
