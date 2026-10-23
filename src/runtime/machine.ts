@@ -2,7 +2,9 @@ import { CodexivoError } from '../errors';
 import type { ErrorInfo } from '../errors';
 import type * as ast from '../syntax/ast';
 import type { Span } from '../syntax/token';
-import { constants as libraryConstants, natives as defaultNatives } from './builtins';
+import { constants as libraryConstants, internals, natives as defaultNatives } from './builtins';
+import { COSTS } from './costs';
+import { libraryProcedures } from './prelude';
 import type { Chunk, DecisionLabel, Instruction } from './compiler';
 import { describeType, equals, isCallable, isDict, isList, repr, Scope, typeOf, WAIT_FOR_INPUT } from './values';
 import type { DictKey, DictValue, ListValue, NativeContext, NativeValue, ProcedureValue, Value } from './values';
@@ -110,6 +112,8 @@ export type MachineEvent = EventBase &
 export interface FrameSnapshot {
   name: string;
   callSpan?: Span;
+  /** `true` en un procedimiento de la biblioteca escrito en Codexivo; sus variables no se muestran. */
+  library?: boolean;
   /** Alcances del procedimiento, del más externo al más interno. */
   scopes: Array<Record<string, SerializedValue>>;
 }
@@ -146,6 +150,8 @@ const DEFAULTS = {
   maxCallDepth: 10_000,
   maxOutput: 1_000_000,
 };
+
+const VISIBLE_FROM_LIBRARY = new Set<MachineEvent['type']>(['llama', 'regresa', 'imprime', 'lee', 'error', 'fin']);
 
 const NO_COUNT = new Set<Instruction['op']>([
   'step',
@@ -265,6 +271,7 @@ export class Machine {
         if (scope === frame.root) break;
         scope = scope.parent;
       }
+      if (frame.chunk.hidden) return { name: frame.name, callSpan: frame.callNode?.span, library: true, scopes: [] };
       return { name: frame.name, callSpan: frame.callNode?.span, scopes };
     });
     return {
@@ -290,7 +297,7 @@ export class Machine {
         const frame = this.frames[this.frames.length - 1]!;
         const instruction = frame.chunk.code[frame.pc]!;
 
-        if (!NO_COUNT.has(instruction.op)) {
+        if (!NO_COUNT.has(instruction.op) && !frame.chunk.hidden) {
           if (this.operations >= this.limits.maxOperations) {
             throw this.limitError(
               'DEMASIADAS_OPERACIONES',
@@ -308,6 +315,7 @@ export class Machine {
         if (
           instruction.op === 'step' &&
           mode === 'run' &&
+          !frame.chunk.hidden &&
           executed > 0 &&
           this.breakpoints.has(instruction.node.span.start.line)
         ) {
@@ -320,7 +328,8 @@ export class Machine {
         // `exec` puede cambiar el estado.
         const status = this.status as MachineStatus;
         if (status === 'esperando_entrada' || status === 'terminada') return status;
-        if (mode === 'step' && pause) {
+        // El código de la biblioteca nunca es un punto de pausa; sí lo es el de `f` que llama.
+        if (mode === 'step' && pause && !frame.chunk.hidden) {
           this.status = 'pausada';
           return this.status;
         }
@@ -337,10 +346,11 @@ export class Machine {
   /** Ejecuta una instrucción. Regresa `true` si es un punto de pausa para `step()`. */
   private exec(frame: Frame, instruction: Instruction): boolean {
     frame.pc += 1;
-    if (!NO_COUNT.has(instruction.op)) this.operations += 1;
+    if (!NO_COUNT.has(instruction.op) && !frame.chunk.hidden) this.operations += 1;
 
     switch (instruction.op) {
       case 'step':
+        if (frame.chunk.hidden) return false;
         this.currentNode = instruction.node;
         this.emit({
           type: 'paso',
@@ -376,7 +386,11 @@ export class Machine {
           this.stack.push(scope.variables.get(instruction.name)!);
           return false;
         }
-        const native = this.natives[instruction.name] ?? libraryConstants[instruction.name];
+        const native =
+          (frame.chunk.hidden ? internals[instruction.name] : undefined) ??
+          this.natives[instruction.name] ??
+          libraryProcedures[instruction.name] ??
+          libraryConstants[instruction.name];
         if (native !== undefined && !instruction.forUpdate) {
           this.stack.push(native);
           return false;
@@ -496,7 +510,10 @@ export class Machine {
           this.finish(value);
           return true;
         }
-        this.emit({ type: 'regresa', name: frame.name, value: serialize(value) });
+        const caller = this.frames[this.frames.length - 2]!;
+        if (!(frame.chunk.hidden && caller.chunk.hidden)) {
+          this.emit({ type: 'regresa', name: frame.name, value: serialize(value) });
+        }
         this.frames.pop();
         this.stack.length = frame.stackBase - 1;
         this.stack.push(value);
@@ -511,7 +528,7 @@ export class Machine {
         const condition = this.stack.pop()!;
         if (typeof condition !== 'boolean')
           throw this.nonBooleanCondition(instruction.label, condition, instruction.node);
-        this.currentNode = instruction.node;
+        if (!frame.chunk.hidden) this.currentNode = instruction.node;
         this.emit({
           type: 'decide',
           label: instruction.label,
@@ -537,7 +554,7 @@ export class Machine {
         const again = remaining > 0;
         if (again) this.stack[this.stack.length - 1] = remaining - 1;
         else this.stack.pop();
-        this.currentNode = instruction.node;
+        if (!frame.chunk.hidden) this.currentNode = instruction.node;
         this.emit({
           type: 'decide',
           label: 'repetir',
@@ -621,7 +638,7 @@ export class Machine {
         } else {
           this.stack.length -= 3;
         }
-        this.currentNode = instruction.node;
+        if (!frame.chunk.hidden) this.currentNode = instruction.node;
         this.emit({
           type: 'decide',
           label: 'para_cada',
@@ -696,9 +713,22 @@ export class Machine {
     }
 
     const args = this.stack.slice(calleeIndex + 1);
-    const expected = callee.kind === 'nativo' ? callee.arity : callee.chunk.params.length;
+    const expected =
+      callee.kind === 'nativo'
+        ? callee.arity
+        : callee.chunk.minParams !== undefined
+          ? ([callee.chunk.minParams, callee.chunk.params.length] as [number, number])
+          : callee.chunk.params.length;
     checkArity(expected, argc, name, (message, hint) =>
-      this.runtimeError('CANTIDAD_DE_ARGUMENTOS', message, node, hint),
+      this.runtimeError(
+        'CANTIDAD_DE_ARGUMENTOS',
+        message,
+        node,
+        hint ??
+          (frame.chunk.hidden
+            ? `\`${frame.name}\` llama al procedimiento que recibió con ${argc === 1 ? '1 valor' : `${argc} valores`}.`
+            : undefined),
+      ),
     );
 
     if (callee.kind === 'nativo') {
@@ -706,10 +736,11 @@ export class Machine {
       if (result === WAIT_FOR_INPUT) {
         // Repetimos la llamada cuando llegue la entrada.
         frame.pc -= 1;
-        this.operations -= 1;
+        if (!frame.chunk.hidden) this.operations -= 1;
         this.status = 'esperando_entrada';
         return true;
       }
+      if (!frame.chunk.hidden) this.charge(callee.cost, args);
       this.stack.length = calleeIndex;
       this.stack.push(result);
       return false;
@@ -725,9 +756,13 @@ export class Machine {
       );
     }
 
+    // La biblioteca cobra según la tabla de costos; dentro de ella, nada más se cobra (§10).
+    if (callee.chunk.hidden && !frame.chunk.hidden) this.charge(COSTS[callee.chunk.name], args);
     const scope = new Scope(callee.closure);
-    callee.chunk.params.forEach((param, index) => scope.variables.set(param, args[index]!));
-    this.emit({ type: 'llama', name, args: args.map(serialize), nodeId: node.id, span: node.span });
+    callee.chunk.params.forEach((param, index) => scope.variables.set(param, args[index] ?? null));
+    if (!(frame.chunk.hidden && callee.chunk.hidden)) {
+      this.emit({ type: 'llama', name, args: args.map(serialize), nodeId: node.id, span: node.span });
+    }
     this.frames.push({
       chunk: callee.chunk,
       pc: 0,
@@ -738,6 +773,11 @@ export class Machine {
       callNode: node,
     });
     return false;
+  }
+
+  /** Cobra lo que cuesta un procedimiento de la biblioteca; la instrucción `call` ya contó 1. */
+  private charge(cost: ((args: Value[]) => number) | undefined, args: Value[]): void {
+    if (cost) this.operations += Math.max(0, cost(args) - 1);
   }
 
   private nativeContext(node: ast.Call): NativeContext {
@@ -1032,12 +1072,33 @@ export class Machine {
 
   // ── errores ────────────────────────────────────────────────────────────────
 
+  /** Nombres de las llamadas activas. Dentro de la biblioteca solo se ve el procedimiento que llamó el programa. */
   private callStack(): string[] {
-    return this.frames.map(frame => frame.name);
+    return this.frames
+      .filter((frame, index) => !(frame.chunk.hidden && this.frames[index - 1]?.chunk.hidden))
+      .map(frame => frame.name);
+  }
+
+  /**
+   * El código de la biblioteca no está en el programa, así que un error ahí se ubica en la llamada del programa
+   * que entró a la biblioteca (`mapear(…)`).
+   */
+  private visibleSpan(span: Span | undefined): Span | undefined {
+    let index = this.frames.length - 1;
+    if (!this.frames[index]?.chunk.hidden) return span;
+    while (index > 0 && this.frames[index - 1]!.chunk.hidden) index -= 1;
+    return this.frames[index]!.callNode?.span ?? span;
   }
 
   private runtimeError(code: string, message: string, node: { span: Span }, hint?: string): CodexivoError {
-    return new CodexivoError({ kind: 'ejecución', code, message, hint, span: node.span, callStack: this.callStack() });
+    return new CodexivoError({
+      kind: 'ejecución',
+      code,
+      message,
+      hint,
+      span: this.visibleSpan(node.span),
+      callStack: this.callStack(),
+    });
   }
 
   private limitError(code: string, message: string, hint: string, node?: { span: Span }): CodexivoError {
@@ -1046,7 +1107,7 @@ export class Machine {
       code,
       message,
       hint,
-      span: node?.span ?? this.currentNode?.span,
+      span: this.visibleSpan(node?.span ?? this.currentNode?.span),
       callStack: this.callStack(),
     });
   }
@@ -1060,7 +1121,11 @@ export class Machine {
   }
 
   private unknownName(frame: Frame, name: string, node: ast.Identifier): CodexivoError {
-    const visible: string[] = [...Object.keys(this.natives), ...Object.keys(libraryConstants)];
+    const visible: string[] = [
+      ...Object.keys(this.natives),
+      ...Object.keys(libraryProcedures),
+      ...Object.keys(libraryConstants),
+    ];
     for (let scope: Scope | undefined = frame.scope; scope; scope = scope.parent)
       visible.push(...scope.variables.keys());
     const suggestion = suggestName(name, visible);
@@ -1109,7 +1174,7 @@ export class Machine {
         `Si quieres tu propia variable con ese nombre, declárala: \`variable ${name} = …\`.`,
       );
     }
-    if (this.natives[name]) {
+    if (this.natives[name] || libraryProcedures[name]) {
       return this.runtimeError(
         'NOMBRE_RESERVADO_POR_BIBLIOTECA',
         `\`${name}\` es un procedimiento de Codexivo; no se le puede asignar un valor.`,
@@ -1156,6 +1221,8 @@ export class Machine {
 
   private emit(event: DistributiveOmit<MachineEvent, 'operations' | 'depth'>): void {
     if (!this.onEvent) return;
+    // Dentro de la biblioteca solo se ven las llamadas (a `f` y de regreso), la salida, los errores y el fin.
+    if (this.frames[this.frames.length - 1]?.chunk.hidden && !VISIBLE_FROM_LIBRARY.has(event.type)) return;
     this.onEvent({ ...event, operations: this.operations, depth: this.frames.length } as MachineEvent);
   }
 }

@@ -668,5 +668,205 @@ describe('diccionarios', () => {
     });
   });
 
-  test.todo('el recorrido en anchura de la §9 de la spec (necesita `encolar` y `desencolar`, #29)');
+  test('el recorrido en anchura de la §9 de la spec', () => {
+    expect(
+      value(`
+        procedimiento distancia(grafo, origen, destino) {
+          variable visitados = { };
+          variable cola = [[origen, 0]];
+          visitados[origen] = verdadero;
+
+          mientras (longitud(cola) > 0) {
+            variable actual = desencolar(cola);
+            si (actual[0] == destino) {
+              regresa actual[1];
+            }
+            para_cada vecino en grafo[actual[0]] {
+              si (no tiene(visitados, vecino)) {
+                visitados[vecino] = verdadero;
+                encolar(cola, [vecino, actual[1] + 1]);
+              }
+            }
+          }
+          regresa -1;
+        }
+        variable grafo = { "a": ["b", "c"], "b": ["d"], "c": ["d", "e"], "d": ["f"], "e": ["f"], "f": [], "g": [] };
+        [distancia(grafo, "a", "f"), distancia(grafo, "a", "a"), distancia(grafo, "a", "g")];
+      `),
+    ).toBe('[3, 0, -1]');
+  });
+});
+
+describe('nivel avanzado (paso 6)', () => {
+  describe('procedimientos que reciben procedimientos', () => {
+    test.each([
+      ['mapear([1, 2, 3], procedimiento(x) { regresa x * 2; })', '[2, 4, 6]'],
+      ['procedimiento doble(x) { regresa x * 2; } mapear([1, 2], doble);', '[2, 4]'],
+      ['mapear([], procedimiento(x) { regresa x; })', '[]'],
+      ['filtrar([1, 2, 3, 4], procedimiento(x) { regresa x mod 2 == 0; })', '[2, 4]'],
+      ['reducir([1, 2, 3], procedimiento(total, x) { regresa total + x; }, 10)', '16'],
+      ['reducir([], procedimiento(total, x) { regresa total + x; }, 0)', '0'],
+      ['alguno([1, 2], procedimiento(x) { regresa x > 1; })', 'verdadero'],
+      ['alguno([], procedimiento(x) { regresa verdadero; })', 'falso'],
+      ['todos([1, 2], procedimiento(x) { regresa x > 1; })', 'falso'],
+      ['todos([], procedimiento(x) { regresa falso; })', 'verdadero'],
+      ['buscar([1, 2, 3], procedimiento(x) { regresa x > 1; })', '2'],
+      ['buscar([1], procedimiento(x) { regresa x > 1; })', 'nulo'],
+      ['ordenar([3, 1, 2], procedimiento(a, b) { regresa a > b; })', '[3, 2, 1]'],
+      [
+        'ordenar(["pera", "kiwi", "uva"], procedimiento(a, b) { regresa longitud(a) < longitud(b); })',
+        '["uva", "pera", "kiwi"]',
+      ],
+    ])('%s → %s', (source, expected) => {
+      expect(value(source)).toBe(expected);
+    });
+
+    test('`ordenar` con comparador es estable', () => {
+      expect(
+        value(
+          'ordenar([[1, "a"], [0, "b"], [1, "c"], [0, "d"], [1, "e"]], procedimiento(a, b) { regresa a[0] < b[0]; })',
+        ),
+      ).toBe('[[0, "b"], [0, "d"], [1, "a"], [1, "c"], [1, "e"]]');
+    });
+
+    test('capturan variables y pueden cambiar las de afuera', () => {
+      expect(value('variable cuenta = 0; mapear([1, 2, 3], procedimiento(x) { cuenta++; regresa x; }); cuenta;')).toBe(
+        '3',
+      );
+    });
+
+    test('pueden anidarse', () => {
+      expect(
+        value(
+          'mapear([[1, 2], [3]], procedimiento(fila) { regresa mapear(fila, procedimiento(x) { regresa x * 10; }); })',
+        ),
+      ).toBe('[[10, 20], [30]]');
+    });
+
+    test('una variable del usuario puede ocultarlos', () => {
+      expect(value('variable mapear = 1; mapear;')).toBe('1');
+      expect(failure('mapear = 1;').code).toBe('NOMBRE_RESERVADO_POR_BIBLIOTECA');
+    });
+
+    test('los ayudantes internos no se ven desde el programa', () => {
+      expect(failure('revisar_lista("x", 1);').code).toBe('NOMBRE_DESCONOCIDO');
+      expect(failure('ordenar_natural([1]);').code).toBe('NOMBRE_DESCONOCIDO');
+    });
+
+    test.each([
+      ['mapear(5, procedimiento(x) { regresa x; })', 'TIPO_DE_ARGUMENTO', 'lista'],
+      ['mapear([1], 5)', 'TIPO_DE_ARGUMENTO', 'sin paréntesis'],
+      ['filtrar([1], procedimiento(x) { regresa x; })', 'TIPO_DE_ARGUMENTO', 'regresa'],
+      ['ordenar([1, 2], procedimiento(a, b) { regresa a - b; })', 'TIPO_DE_ARGUMENTO', 'va `a` antes'],
+      ['mapear([1], procedimiento(a, b) { regresa a; })', 'CANTIDAD_DE_ARGUMENTOS', '`mapear` llama'],
+    ])('%s → %s', (source, code, hint) => {
+      const error = failure(source);
+      expect(error.code).toBe(code);
+      expect((error.hint ?? '') + error.message).toContain(hint);
+      // El error se ubica en la llamada del programa, no en el código de la biblioteca.
+      expect(error.span?.start).toEqual({ line: 1, column: 1, offset: 0 });
+    });
+
+    test('un error dentro de `f` muestra la pila completa y su lugar en el programa', () => {
+      const error = failure('variable l = [1, 0];\nmapear(l, procedimiento(x) {\n  regresa 1 / x;\n});');
+      expect(error.code).toBe('DIVISIÓN_ENTRE_CERO');
+      expect(error.callStack).toEqual(['programa', 'mapear', 'f']);
+      expect(error.span?.start.line).toBe(3);
+    });
+
+    test('la pila no muestra los procedimientos internos de la biblioteca', () => {
+      const error = failure('ordenar([2, 1], procedimiento(a, b) { regresa a / (b - b) < 1; });');
+      expect(error.callStack).toEqual(['programa', 'ordenar', 'va_antes']);
+    });
+
+    test('las llamadas a `f` cuentan para el límite de llamadas', () => {
+      const program =
+        'variable f = procedimiento(n) { si (n == 0) { regresa 0; } regresa mapear([n - 1], f)[0]; }; f(50);';
+      expect(value(program)).toBe('0');
+      expect(run(program, { maxCallDepth: 40 }).errors[0]!.code).toBe('DEMASIADAS_LLAMADAS');
+    });
+  });
+
+  describe('pilas y colas', () => {
+    test('una pila: el último que entra es el primero que sale', () => {
+      expect(value('variable p = []; apilar(p, 1); apilar(p, 2); [tope(p), desapilar(p), desapilar(p), p];')).toBe(
+        '[2, 2, 1, []]',
+      );
+    });
+
+    test('una cola: el primero que entra es el primero que sale', () => {
+      expect(
+        value('variable c = []; encolar(c, 1); encolar(c, 2); [frente(c), desencolar(c), desencolar(c), c];'),
+      ).toBe('[1, 1, 2, []]');
+    });
+
+    test.each([
+      ['desapilar([])', 'PILA_VACÍA', 'No se puede `desapilar` de una pila vacía.'],
+      ['tope([])', 'PILA_VACÍA', 'Una pila vacía no tiene `tope`.'],
+      ['desencolar([])', 'COLA_VACÍA', 'No se puede `desencolar` de una cola vacía.'],
+      ['frente([])', 'COLA_VACÍA', 'Una cola vacía no tiene `frente`.'],
+      ['apilar(5, 1)', 'TIPO_DE_ARGUMENTO', '`apilar` espera una pila (una lista), pero recibió un número.'],
+    ])('%s → %s', (source, code, message) => {
+      const error = failure(source);
+      expect(error.code).toBe(code);
+      expect(error.message).toBe(message);
+    });
+  });
+
+  describe('costo por operación', () => {
+    const operations = (source: string) => run(source).operations;
+
+    test('la biblioteca cobra según la tabla de costos', () => {
+      const list = '[8, 7, 6, 5, 4, 3, 2, 1]';
+      // `ordenar` de 8 elementos cuesta 8 · 3 = 24; `primero` cuesta 1.
+      expect(operations(`ordenar(${list});`) - operations(`primero(${list});`)).toBe(23);
+      // `contiene` cuesta 8 y recibe un argumento más (1 operación).
+      expect(operations(`contiene(${list}, 1);`) - operations(`primero(${list});`)).toBe(8);
+    });
+
+    test('`mapear` cobra `n` más lo que cuesta cada llamada a `f`', () => {
+      const one = operations('mapear([1], procedimiento(x) { regresa x; });');
+      const three = operations('mapear([1, 2, 3], procedimiento(x) { regresa x; });');
+      // Dos elementos más en la lista literal, dos unidades más de costo y dos llamadas más a `f`, cuyo
+      // cuerpo cuesta 2 (leer `x` y regresar). La llamada en sí ocurre dentro de la biblioteca.
+      expect(three - one).toBe(2 + 2 + 2 * 2);
+    });
+
+    test('la cuenta es determinista', () => {
+      const program =
+        'ordenar(mapear(rango(1, 50), procedimiento(x) { regresa (x * 37) mod 11; }), procedimiento(a, b) { regresa a < b; });';
+      expect(operations(program)).toBe(operations(program));
+    });
+
+    test('el límite de operaciones también corta dentro de `f`', () => {
+      const result = run('mapear([1], procedimiento(x) { mientras (verdadero) { } });', { maxOperations: 1000 });
+      expect(result.errors[0]!.code).toBe('DEMASIADAS_OPERACIONES');
+      expect(result.errors[0]!.callStack).toEqual(['programa', 'mapear', 'f']);
+    });
+  });
+
+  test('un recorrido en profundidad recursivo sobre 5 000 nodos funciona con los límites por defecto', () => {
+    expect(
+      value(`
+        variable grafo = {};
+        para_cada i en rango(0, 4999) {
+          grafo[i] = [];
+          si (i > 0) {
+            agregar(grafo[i - 1], i);
+          }
+        }
+        variable visitados = {};
+        procedimiento visitar(nodo) {
+          visitados[nodo] = verdadero;
+          para_cada vecino en grafo[nodo] {
+            si (no tiene(visitados, vecino)) {
+              visitar(vecino);
+            }
+          }
+        }
+        visitar(0);
+        longitud(visitados);
+      `),
+    ).toBe('5000');
+  });
 });

@@ -1,33 +1,15 @@
-import { describeType, isDict, isList, repr, show, typeOf, WAIT_FOR_INPUT } from './values';
+import { describeType, isCallable, isDict, isList, repr, show, typeOf, WAIT_FOR_INPUT } from './values';
+import { COSTS } from './costs';
 import { equals } from './values';
 import type { DictValue, ListValue, NativeContext, NativeValue, Value } from './values';
 
 type NativeFn = (args: Value[], context: NativeContext) => Value | typeof WAIT_FOR_INPUT;
 
-const define = (name: string, arity: NativeValue['arity'], call: NativeFn, cost?: NativeValue['cost']): NativeValue =>
-  cost ? { kind: 'nativo', name, arity, call, cost } : { kind: 'nativo', name, arity, call };
-
-// ── costos (§10) ─────────────────────────────────────────────────────────────
-
-/** Tamaño de un texto, lista o diccionario; 1 para lo demás. */
-const sizeOf = (value: Value | undefined): number => {
-  if (typeof value === 'string') return value.length;
-  if (value !== undefined && isList(value)) return value.items.length;
-  if (value !== undefined && isDict(value)) return value.entries.size;
-  return 1;
+/** El costo de cada procedimiento vive en `costs.ts`, en una sola tabla. */
+const define = (name: string, arity: NativeValue['arity'], call: NativeFn): NativeValue => {
+  const cost = COSTS[name];
+  return cost ? { kind: 'nativo', name, arity, call, cost } : { kind: 'nativo', name, arity, call };
 };
-
-/** Cuesta tanto como el tamaño de su primer argumento (al menos 1). */
-const linear = (args: Value[]): number => Math.max(1, sizeOf(args[0]));
-
-/** `n · ⌈log₂ n⌉`, al menos 1: lo que cuesta ordenar `n` elementos. */
-const nLogN = (args: Value[]): number => {
-  const n = sizeOf(args[0]);
-  return Math.max(1, n * Math.ceil(Math.log2(Math.max(n, 1))));
-};
-
-/** Cuesta tantas casillas como crea. */
-const created = (count: (args: Value[]) => number) => (args: Value[]) => Math.max(1, count(args));
 
 const expectNumber = (name: string, value: Value, context: NativeContext, position = ''): number => {
   if (typeof value === 'number') return value;
@@ -157,9 +139,6 @@ const sliceBounds = (
   return [start, end];
 };
 
-const sliceLength = (args: Value[]): number =>
-  typeof args[1] === 'number' && typeof args[2] === 'number' ? Math.abs(args[2] - args[1]) : 1;
-
 /** Compara para `ordenar`: todos números o todos textos. */
 const sortableKind = (list: ListValue, context: NativeContext): 'número' | 'texto' => {
   const first = list.items[0];
@@ -174,6 +153,25 @@ const sortableKind = (list: ListValue, context: NativeContext): 'número' | 'tex
   }
   return kind;
 };
+
+/** Una pila o una cola es una lista; los mensajes usan su propio vocabulario. */
+const expectStructure = (name: string, kind: 'pila' | 'cola', value: Value, context: NativeContext): ListValue => {
+  if (isList(value)) return value;
+  throw context.fail(
+    'TIPO_DE_ARGUMENTO',
+    `\`${name}\` espera una ${kind} (una lista), pero recibió ${describeType(typeOf(value))}.`,
+    `Una ${kind} empieza como una lista vacía: \`variable ${kind} = [];\`.`,
+  );
+};
+
+const emptyStructure = (name: string, kind: 'pila' | 'cola', context: NativeContext) =>
+  context.fail(
+    kind === 'pila' ? 'PILA_VACÍA' : 'COLA_VACÍA',
+    name === 'tope' || name === 'frente'
+      ? `Una ${kind} vacía no tiene \`${name}\`.`
+      : `No se puede \`${name}\` de una ${kind} vacía.`,
+    `Revisa antes con \`longitud(${kind}) > 0\`.`,
+  );
 
 const expectDict = (name: string, value: Value, context: NativeContext): DictValue => {
   if (isDict(value)) return value;
@@ -397,113 +395,63 @@ const library: NativeValue[] = [
   }),
 
   // texto
-  define(
-    'mayúsculas',
-    1,
-    (args, context) => expectText('mayúsculas', args[0]!, context).toLocaleUpperCase('es'),
-    linear,
-  ),
-  define(
-    'minúsculas',
-    1,
-    (args, context) => expectText('minúsculas', args[0]!, context).toLocaleLowerCase('es'),
-    linear,
-  ),
-  define('recortar', 1, (args, context) => expectText('recortar', args[0]!, context).trim(), linear),
-  define(
-    'dividir',
-    2,
-    (args, context) => {
-      const text = expectText('dividir', args[0]!, context);
-      const separator = expectText('dividir', args[1]!, context, ' como separador');
-      if (separator === '') {
-        throw context.fail(
-          'SEPARADOR_VACÍO',
-          '`dividir` necesita un separador que no esté vacío.',
-          'Para separar un texto letra por letra usa `caracteres(t)`.',
-        );
-      }
-      return context.newList(text.split(separator));
-    },
-    linear,
-  ),
-  define(
-    'unir',
-    2,
-    (args, context) => {
-      const list = expectList('unir', args[0]!, context);
-      const separator = expectText('unir', args[1]!, context, ' como separador');
-      return list.items.map(show).join(separator);
-    },
-    linear,
-  ),
-  define(
-    'reemplazar',
-    3,
-    (args, context) => {
-      const text = expectText('reemplazar', args[0]!, context);
-      const search = expectText('reemplazar', args[1]!, context, ' para buscar');
-      const replacement = expectText('reemplazar', args[2]!, context, ' para poner');
-      if (search === '') {
-        throw context.fail('SEPARADOR_VACÍO', '`reemplazar` necesita un texto que buscar que no esté vacío.');
-      }
-      return text.replaceAll(search, replacement);
-    },
-    linear,
-  ),
-  define(
-    'contiene',
-    2,
-    (args, context) => {
-      const container = args[0]!;
-      if (isList(container)) return container.items.some(item => equals(item, args[1]!));
-      return expectTextOrList('contiene', container, context).includes(
-        expectText('contiene', args[1]!, context, ' para buscar'),
+  define('mayúsculas', 1, (args, context) => expectText('mayúsculas', args[0]!, context).toLocaleUpperCase('es')),
+  define('minúsculas', 1, (args, context) => expectText('minúsculas', args[0]!, context).toLocaleLowerCase('es')),
+  define('recortar', 1, (args, context) => expectText('recortar', args[0]!, context).trim()),
+  define('dividir', 2, (args, context) => {
+    const text = expectText('dividir', args[0]!, context);
+    const separator = expectText('dividir', args[1]!, context, ' como separador');
+    if (separator === '') {
+      throw context.fail(
+        'SEPARADOR_VACÍO',
+        '`dividir` necesita un separador que no esté vacío.',
+        'Para separar un texto letra por letra usa `caracteres(t)`.',
       );
-    },
-    linear,
+    }
+    return context.newList(text.split(separator));
+  }),
+  define('unir', 2, (args, context) => {
+    const list = expectList('unir', args[0]!, context);
+    const separator = expectText('unir', args[1]!, context, ' como separador');
+    return list.items.map(show).join(separator);
+  }),
+  define('reemplazar', 3, (args, context) => {
+    const text = expectText('reemplazar', args[0]!, context);
+    const search = expectText('reemplazar', args[1]!, context, ' para buscar');
+    const replacement = expectText('reemplazar', args[2]!, context, ' para poner');
+    if (search === '') {
+      throw context.fail('SEPARADOR_VACÍO', '`reemplazar` necesita un texto que buscar que no esté vacío.');
+    }
+    return text.replaceAll(search, replacement);
+  }),
+  define('contiene', 2, (args, context) => {
+    const container = args[0]!;
+    if (isList(container)) return container.items.some(item => equals(item, args[1]!));
+    return expectTextOrList('contiene', container, context).includes(
+      expectText('contiene', args[1]!, context, ' para buscar'),
+    );
+  }),
+  define('posición_de', 2, (args, context) => {
+    const container = args[0]!;
+    if (isList(container)) return container.items.findIndex(item => equals(item, args[1]!));
+    return expectTextOrList('posición_de', container, context).indexOf(
+      expectText('posición_de', args[1]!, context, ' para buscar'),
+    );
+  }),
+  define('empieza_con', 2, (args, context) =>
+    expectText('empieza_con', args[0]!, context).startsWith(
+      expectText('empieza_con', args[1]!, context, ' como inicio'),
+    ),
   ),
-  define(
-    'posición_de',
-    2,
-    (args, context) => {
-      const container = args[0]!;
-      if (isList(container)) return container.items.findIndex(item => equals(item, args[1]!));
-      return expectTextOrList('posición_de', container, context).indexOf(
-        expectText('posición_de', args[1]!, context, ' para buscar'),
-      );
-    },
-    linear,
+  define('termina_con', 2, (args, context) =>
+    expectText('termina_con', args[0]!, context).endsWith(expectText('termina_con', args[1]!, context, ' como final')),
   ),
-  define(
-    'empieza_con',
-    2,
-    (args, context) =>
-      expectText('empieza_con', args[0]!, context).startsWith(
-        expectText('empieza_con', args[1]!, context, ' como inicio'),
-      ),
-    args => Math.max(1, sizeOf(args[1])),
-  ),
-  define(
-    'termina_con',
-    2,
-    (args, context) =>
-      expectText('termina_con', args[0]!, context).endsWith(
-        expectText('termina_con', args[1]!, context, ' como final'),
-      ),
-    args => Math.max(1, sizeOf(args[1])),
-  ),
-  define(
-    'subtexto',
-    3,
-    (args, context) => {
-      const text = expectText('subtexto', args[0]!, context);
-      const [start, end] = sliceBounds('subtexto', args, text.length, false, context);
-      return text.slice(start, end);
-    },
-    created(args => sliceLength(args)),
-  ),
-  define('caracteres', 1, (args, context) => context.newList([...expectText('caracteres', args[0]!, context)]), linear),
+  define('subtexto', 3, (args, context) => {
+    const text = expectText('subtexto', args[0]!, context);
+    const [start, end] = sliceBounds('subtexto', args, text.length, false, context);
+    return text.slice(start, end);
+  }),
+  define('caracteres', 1, (args, context) => context.newList([...expectText('caracteres', args[0]!, context)])),
   define('código_de', 1, (args, context) => {
     const text = expectText('código_de', args[0]!, context);
     const characters = [...text];
@@ -525,32 +473,22 @@ const library: NativeValue[] = [
   }),
 
   // listas que cambian
-  define(
-    'insertar',
-    3,
-    (args, context) => {
-      const list = expectList('insertar', args[0]!, context);
-      const position = positionIn('insertar', args[1]!, list.items.length, true, context, true);
-      list.items.splice(position, 0, args[2]!);
-      return null;
-    },
-    linear,
-  ),
+  define('insertar', 3, (args, context) => {
+    const list = expectList('insertar', args[0]!, context);
+    const position = positionIn('insertar', args[1]!, list.items.length, true, context, true);
+    list.items.splice(position, 0, args[2]!);
+    return null;
+  }),
   define('quitar_último', 1, (args, context) => {
     const list = expectList('quitar_último', args[0]!, context);
     if (list.items.length === 0) throw emptyListError('quitar_último', context);
     return list.items.pop()!;
   }),
-  define(
-    'quitar_primero',
-    1,
-    (args, context) => {
-      const list = expectList('quitar_primero', args[0]!, context);
-      if (list.items.length === 0) throw emptyListError('quitar_primero', context);
-      return list.items.shift()!;
-    },
-    linear,
-  ),
+  define('quitar_primero', 1, (args, context) => {
+    const list = expectList('quitar_primero', args[0]!, context);
+    if (list.items.length === 0) throw emptyListError('quitar_primero', context);
+    return list.items.shift()!;
+  }),
   define('vaciar', 1, (args, context) => {
     const container = args[0]!;
     if (isDict(container)) container.entries.clear();
@@ -559,93 +497,80 @@ const library: NativeValue[] = [
   }),
 
   // listas nuevas
-  define(
-    'rebanar',
-    3,
-    (args, context) => {
-      const list = expectList('rebanar', args[0]!, context);
-      const [start, end] = sliceBounds('rebanar', args, list.items.length, true, context);
-      return context.newList(list.items.slice(start, end));
-    },
-    created(args => sliceLength(args)),
+  define('rebanar', 3, (args, context) => {
+    const list = expectList('rebanar', args[0]!, context);
+    const [start, end] = sliceBounds('rebanar', args, list.items.length, true, context);
+    return context.newList(list.items.slice(start, end));
+  }),
+  define('invertir', 1, (args, context) => {
+    const value = args[0]!;
+    if (typeof value === 'string') return [...value].reverse().join('');
+    if (isList(value)) return context.newList([...value.items].reverse());
+    throw context.fail(
+      'TIPO_DE_ARGUMENTO',
+      `\`invertir\` espera una lista o un texto, pero recibió ${describeType(typeOf(value))}.`,
+    );
+  }),
+  define('copiar', 1, (args, context) => {
+    const value = args[0]!;
+    if (isDict(value)) return context.newDict(new Map(value.entries));
+    return context.newList([...expectList('copiar', value, context).items]);
+  }),
+  define('sumar', 1, (args, context) =>
+    expectList('sumar', args[0]!, context).items.reduce<number>(
+      (total, item) => total + expectNumber('sumar', item, context, ' en cada elemento'),
+      0,
+    ),
   ),
-  define(
-    'invertir',
-    1,
-    (args, context) => {
-      const value = args[0]!;
-      if (typeof value === 'string') return [...value].reverse().join('');
-      if (isList(value)) return context.newList([...value.items].reverse());
+  define('lista_de', 2, (args, context) => {
+    const count = expectCount('lista_de', args[0]!, context, ' como cantidad');
+    return context.newList(Array.from({ length: count }, () => deepCopy(args[1]!, context)));
+  }),
+  define('matriz', 3, (args, context) => {
+    const rows = expectCount('matriz', args[0]!, context, ' como filas');
+    const columns = expectCount('matriz', args[1]!, context, ' como columnas');
+    if (rows * columns > MAX_RANGE) {
       throw context.fail(
         'TIPO_DE_ARGUMENTO',
-        `\`invertir\` espera una lista o un texto, pero recibió ${describeType(typeOf(value))}.`,
+        `\`matriz\` produciría ${rows * columns} casillas; el máximo es ${MAX_RANGE}.`,
       );
-    },
-    linear,
-  ),
-  define(
-    'ordenar',
-    1,
-    (args, context) => {
-      const list = expectList('ordenar', args[0]!, context);
-      const kind = sortableKind(list, context);
-      // `sort` de JavaScript es estable; los textos se comparan carácter por carácter, igual que `<`.
-      const items = [...list.items].sort((a, b) =>
-        kind === 'número' ? (a as number) - (b as number) : a! < b! ? -1 : a! > b! ? 1 : 0,
-      );
-      return context.newList(items);
-    },
-    nLogN,
-  ),
-  define(
-    'copiar',
-    1,
-    (args, context) => {
-      const value = args[0]!;
-      if (isDict(value)) return context.newDict(new Map(value.entries));
-      return context.newList([...expectList('copiar', value, context).items]);
-    },
-    linear,
-  ),
-  define(
-    'sumar',
-    1,
-    (args, context) =>
-      expectList('sumar', args[0]!, context).items.reduce<number>(
-        (total, item) => total + expectNumber('sumar', item, context, ' en cada elemento'),
-        0,
+    }
+    return context.newList(
+      Array.from({ length: rows }, () =>
+        context.newList(Array.from({ length: columns }, () => deepCopy(args[2]!, context))),
       ),
-    linear,
-  ),
-  define(
-    'lista_de',
-    2,
-    (args, context) => {
-      const count = expectCount('lista_de', args[0]!, context, ' como cantidad');
-      return context.newList(Array.from({ length: count }, () => deepCopy(args[1]!, context)));
-    },
-    created(args => (typeof args[0] === 'number' ? args[0] * sizeOf(args[1]) : 1)),
-  ),
-  define(
-    'matriz',
-    3,
-    (args, context) => {
-      const rows = expectCount('matriz', args[0]!, context, ' como filas');
-      const columns = expectCount('matriz', args[1]!, context, ' como columnas');
-      if (rows * columns > MAX_RANGE) {
-        throw context.fail(
-          'TIPO_DE_ARGUMENTO',
-          `\`matriz\` produciría ${rows * columns} casillas; el máximo es ${MAX_RANGE}.`,
-        );
-      }
-      return context.newList(
-        Array.from({ length: rows }, () =>
-          context.newList(Array.from({ length: columns }, () => deepCopy(args[2]!, context))),
-        ),
-      );
-    },
-    created(args => (typeof args[0] === 'number' && typeof args[1] === 'number' ? args[0] * args[1] : 1)),
-  ),
+    );
+  }),
+
+  // pilas y colas: listas con su propio vocabulario
+  define('apilar', 2, (args, context) => {
+    expectStructure('apilar', 'pila', args[0]!, context).items.push(args[1]!);
+    return null;
+  }),
+  define('desapilar', 1, (args, context) => {
+    const stack = expectStructure('desapilar', 'pila', args[0]!, context);
+    if (stack.items.length === 0) throw emptyStructure('desapilar', 'pila', context);
+    return stack.items.pop()!;
+  }),
+  define('tope', 1, (args, context) => {
+    const stack = expectStructure('tope', 'pila', args[0]!, context);
+    if (stack.items.length === 0) throw emptyStructure('tope', 'pila', context);
+    return stack.items[stack.items.length - 1]!;
+  }),
+  define('encolar', 2, (args, context) => {
+    expectStructure('encolar', 'cola', args[0]!, context).items.push(args[1]!);
+    return null;
+  }),
+  define('desencolar', 1, (args, context) => {
+    const queue = expectStructure('desencolar', 'cola', args[0]!, context);
+    if (queue.items.length === 0) throw emptyStructure('desencolar', 'cola', context);
+    return queue.items.shift()!;
+  }),
+  define('frente', 1, (args, context) => {
+    const queue = expectStructure('frente', 'cola', args[0]!, context);
+    if (queue.items.length === 0) throw emptyStructure('frente', 'cola', context);
+    return queue.items[0]!;
+  }),
 ];
 
 /** Constantes de la biblioteca. Una variable del usuario con el mismo nombre las oculta. */
@@ -667,3 +592,45 @@ export const natives: Record<string, NativeValue> = (() => {
   }
   return table;
 })();
+
+/**
+ * Nativos que solo puede usar la biblioteca escrita en Codexivo (`prelude.ts`): validan argumentos con los
+ * mismos mensajes que el resto de la biblioteca y ordenan sin comparador.
+ */
+export const internals: Record<string, NativeValue> = Object.fromEntries(
+  [
+    define('revisar_lista', 2, (args, context) => {
+      expectList(args[0] as string, args[1]!, context);
+      return null;
+    }),
+    define('revisar_procedimiento', 2, (args, context) => {
+      const value = args[1]!;
+      if (isCallable(value)) return null;
+      throw context.fail(
+        'TIPO_DE_ARGUMENTO',
+        `\`${args[0] as string}\` espera un procedimiento, pero recibió ${describeType(typeOf(value))} (${repr(value)}).`,
+        'Pasa el nombre del procedimiento sin paréntesis (`mapear(lista, doble)`), o escribe uno: `procedimiento(x) { regresa x * 2; }`.',
+      );
+    }),
+    define('revisar_logico', 2, (args, context) => {
+      const value = args[1]!;
+      if (typeof value === 'boolean') return value;
+      throw context.fail(
+        'TIPO_DE_ARGUMENTO',
+        `El procedimiento que recibió \`${args[0] as string}\` tiene que regresar \`verdadero\` o \`falso\`, pero regresó ${repr(value)}.`,
+        args[0] === 'ordenar'
+          ? 'El comparador de `ordenar(lista, va_antes)` responde «¿va `a` antes que `b`?»: `procedimiento(a, b) { regresa a < b; }`.'
+          : '¿Le falta un `regresa` con una comparación, como `regresa x > 0;`?',
+      );
+    }),
+    define('ordenar_natural', 1, (args, context) => {
+      const list = expectList('ordenar', args[0]!, context);
+      const kind = sortableKind(list, context);
+      // `sort` de JavaScript es estable; los textos se comparan carácter por carácter, igual que `<`.
+      const items = [...list.items].sort((a, b) =>
+        kind === 'número' ? (a as number) - (b as number) : a! < b! ? -1 : a! > b! ? 1 : 0,
+      );
+      return context.newList(items);
+    }),
+  ].map(native => [native.name, native]),
+);

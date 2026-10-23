@@ -74,23 +74,33 @@ export interface Chunk {
   params: string[];
   code: Instruction[];
   node: ast.Program | ast.FunctionLiteral;
+  /**
+   * Código de la biblioteca escrito en Codexivo (`prelude.ts`). Sus pasos no pausan, no emiten eventos ni
+   * cuentan operaciones: la llamada se cobra según la tabla de costos, y sus errores se ubican en la llamada.
+   */
+  hidden?: boolean;
+  /** Parámetros obligatorios, si son menos que `params` (los demás llegan como `nulo`). Solo en la biblioteca. */
+  minParams?: number;
 }
 
 /** Traduce el AST a instrucciones. El AST debe venir sin errores de sintaxis. */
 export const compile = (program: ast.Program): Chunk => {
-  const compiler = new Compiler({ name: 'programa', params: [], code: [], node: program });
+  const compiler = new Compiler({ name: 'programa', params: [], code: [], node: program }, false);
   compiler.statements(program.statements);
   compiler.emit({ op: 'halt' });
   return compiler.chunk;
 };
 
-const compileFunction = (node: ast.FunctionLiteral): Chunk => {
-  const compiler = new Compiler({
+/** Compila un procedimiento. `hidden` marca el código de la biblioteca (ver `Chunk.hidden`). */
+export const compileProcedure = (node: ast.FunctionLiteral, hidden = false): Chunk => {
+  const chunk: Chunk = {
     name: node.name ?? 'procedimiento',
     params: node.params.map(param => param.name),
     code: [],
     node,
-  });
+  };
+  if (hidden) chunk.hidden = true;
+  const compiler = new Compiler(chunk, hidden);
   // El cuerpo comparte alcance con los parámetros: así `variable x` dentro de `procedimiento(x)` es un error.
   compiler.statements(node.body.statements);
   compiler.emit({ op: 'const', value: null, node });
@@ -121,7 +131,10 @@ class Compiler {
   private scopeDepth = 0;
   private readonly loops: Loop[] = [];
 
-  constructor(readonly chunk: Chunk) {}
+  constructor(
+    readonly chunk: Chunk,
+    private readonly hidden: boolean,
+  ) {}
 
   emit(instruction: Instruction): number {
     this.chunk.code.push(instruction);
@@ -151,7 +164,7 @@ class Compiler {
   statements(statements: ast.Statement[]): void {
     for (const statement of statements) {
       if (statement.kind !== 'FunctionDeclaration') continue;
-      this.emit({ op: 'closure', chunk: compileFunction(statement.function), node: statement.function });
+      this.emit({ op: 'closure', chunk: compileProcedure(statement.function, this.hidden), node: statement.function });
       this.emit({
         op: 'declare',
         name: statement.name.name,
@@ -418,7 +431,7 @@ class Compiler {
         this.emit({ op: 'index', node });
         return;
       case 'FunctionLiteral':
-        this.emit({ op: 'closure', chunk: compileFunction(node), node });
+        this.emit({ op: 'closure', chunk: compileProcedure(node, this.hidden), node });
         return;
     }
   }

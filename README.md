@@ -138,8 +138,8 @@ notarizados.
 - [x] Ejecución paso a paso, eventos y fotografías del estado para visualización
 - [x] `imprimir`, `leer`, `leer_número`, comentarios, `nulo`
 - [x] Nivel principiante de la v1: `repetir … veces`, `++`/`--`, `mod`/`div`, operadores en palabras, `constante`
-- [ ] Nivel intermedio: procedimientos con nombre, `para_cada`, `romper`/`continuar`, diccionarios, más biblioteca
-- [ ] Nivel avanzado: procedimientos como valores en la biblioteca, pilas y colas
+- [x] Nivel intermedio: procedimientos con nombre, `para_cada`, `romper`/`continuar`, diccionarios, más biblioteca
+- [x] Nivel avanzado: procedimientos como valores en la biblioteca, pilas y colas
 - [ ] Modo mundo (Karel)
 - [ ] Sitio con documentación y sandbox: `codexivo.urielcuriel.dev`
 

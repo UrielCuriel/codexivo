@@ -426,7 +426,14 @@ inserción.
 ### 🔴 Procedimientos como valores
 
 `mapear(l, f)`, `filtrar(l, f)`, `reducir(l, f, inicial)`, `alguno(l, f)`, `todos(l, f)`,
-`buscar(l, f)` (el primero que cumple, o `nulo`).
+`buscar(l, f)` (el primero que cumple, o `nulo`), `ordenar(l, va_antes)`.
+
+> **✅ Decidido — el comparador de `ordenar` regresa un lógico.** `va_antes(a, b)` responde «¿va `a` antes que `b`?»
+> (`procedimiento(a, b) { regresa a < b; }`). Es la pregunta que uno se hace al ordenar a mano, no exige entender el
+> signo de una resta, y un número es un error. El orden es estable.
+>
+> Se implementan en Codexivo (ver `docs/arquitectura.md`), así una llamada a `f` se pausa, se traza y cuenta
+> operaciones como cualquier otra.
 
 ### 🔴 Estructuras de datos
 
@@ -506,7 +513,7 @@ procedimiento distancia(grafo, origen, destino) {
 - **Operaciones.** Cada operación básica (leer una variable, poner un valor, sumar, comparar, asignar, decidir, llamar)
   cuenta como una. Los procedimientos de la biblioteca
   cuentan según el trabajo que hacen (por ejemplo, `ordenar` sobre `n` elementos cuesta
-  `n · log₂ n`). La misma ejecución da siempre el mismo número, y los retos lo usan en lugar del
+  `n · ⌈log₂ n⌉`, y `contiene` cuesta `n`). La tabla vive en `src/runtime/costs.ts` y se documenta en `lenguaje.md`. La misma ejecución da siempre el mismo número, y los retos lo usan en lugar del
   tiempo.
 - **Límites configurables** con valores por defecto: operaciones (10 millones en el sandbox; cada
   reto define el suyo), profundidad de recursión (10 000) y tamaño de la salida (1 MB). Superarlos es
@@ -597,10 +604,10 @@ Todas aprobadas.
 4. ✅ **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
    operadores en palabras, `constante`, alcance por bloque, `1_000_000` y `PI`. `repetir` emite `decide` con la
    etiqueta `repetir` en cada vuelta y `declara` indica si el nombre es constante.
-5. **Nivel intermedio:** ✅ procedimientos con nombre, ✅ `para_cada`, ✅ `romper`/`continuar`, ✅ asignación por
+5. ✅ **Nivel intermedio:** ✅ procedimientos con nombre, ✅ `para_cada`, ✅ `romper`/`continuar`, ✅ asignación por
    índice (evento `modifica`), ✅ `rango` e `índices`, ✅ diccionarios, ✅ biblioteca de texto y listas (con
    `cost` registrado en cada procedimiento nativo; el cobro llega en el paso 6).
-6. **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
+6. ✅ **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
    biblioteca.
 7. **Modo mundo.**
 

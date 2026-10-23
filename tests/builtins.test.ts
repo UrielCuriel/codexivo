@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { natives, run } from '../src';
+import { COSTS } from '../src/runtime/costs';
 
 const value = (source: string): string => {
   const result = run(source);
@@ -324,7 +325,7 @@ describe('biblioteca estándar', () => {
   });
 
   test('cada procedimiento nuevo registra su costo en operaciones', () => {
-    expect(natives.ordenar!.cost!([{ kind: 'lista', id: 0, items: [3, 1, 2, 4] }])).toBe(8);
+    expect(COSTS.ordenar!([{ kind: 'lista', id: 0, items: [3, 1, 2, 4] }])).toBe(8);
     expect(natives.contiene!.cost!(['hola', 'o'])).toBe(4);
     expect(natives.copiar!.cost!([{ kind: 'lista', id: 0, items: [] }])).toBe(1);
     expect(natives.matriz!.cost!([2, 3, 0])).toBe(6);

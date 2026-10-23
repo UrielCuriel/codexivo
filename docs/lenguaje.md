@@ -243,6 +243,64 @@ calculadora.suma(1, 3);   // 4
 - `==` compara por valor sin importar el orden: `{ "a": 1, "b": 2 } == { "b": 2, "a": 1 }` es `verdadero`.
 - Al inicio de una sentencia, `{` abre un bloque; en cualquier otra posición, un diccionario.
 
+## Procedimientos como valores
+
+Un procedimiento es un valor como cualquier otro: se guarda en variables, en listas y diccionarios, y se le pasa a otros
+procedimientos. La biblioteca trae varios que reciben uno:
+
+```codexivo
+variable números = [3, 8, 1, 6];
+procedimiento es_par(n) {
+  regresa n mod 2 == 0;
+}
+
+mapear(números, procedimiento(n) { regresa n * 10; });       // [30, 80, 10, 60]
+filtrar(números, es_par);                                      // [8, 6]
+reducir(números, procedimiento(total, n) { regresa total + n; }, 0); // 18
+alguno(números, es_par);                                       // verdadero
+todos(números, es_par);                                        // falso
+buscar(números, procedimiento(n) { regresa n > 5; });          // 8
+ordenar(números, procedimiento(a, b) { regresa a > b; });      // [8, 6, 3, 1]
+```
+
+| Procedimiento                | Qué hace                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `mapear(lista, f)`           | Lista nueva con `f(x)` de cada elemento                                                 |
+| `filtrar(lista, f)`          | Lista nueva con los elementos para los que `f(x)` es `verdadero`                        |
+| `reducir(lista, f, inicial)` | Junta todo en un valor: empieza con `inicial` y en cada elemento hace `f(acumulado, x)` |
+| `alguno(lista, f)`           | `verdadero` si `f(x)` es `verdadero` para al menos un elemento                          |
+| `todos(lista, f)`            | `verdadero` si `f(x)` es `verdadero` para todos                                         |
+| `buscar(lista, f)`           | El primer elemento con `f(x)` `verdadero`, o `nulo`                                     |
+| `ordenar(lista, va_antes)`   | Lista nueva ordenada; `va_antes(a, b)` responde «¿va `a` antes que `b`?»                |
+
+- `f` de `filtrar`, `alguno`, `todos` y `buscar`, y el comparador de `ordenar`, tienen que regresar `verdadero` o `falso`.
+- `ordenar` es estable: los elementos que el comparador no distingue conservan su orden.
+- Un error dentro de `f` dice dónde está y desde dónde se llamó: `programa > mapear > f`.
+
+## Pilas y colas
+
+Son listas con un vocabulario propio, para que el algoritmo se lea como se explica:
+
+| Pila           | Cola            | Qué hace                               |
+| -------------- | --------------- | -------------------------------------- |
+| `apilar(p, x)` | `encolar(c, x)` | Agrega al final                        |
+| `desapilar(p)` | `desencolar(c)` | Quita y regresa el último / el primero |
+| `tope(p)`      | `frente(c)`     | Regresa, sin quitarlo, el que saldría  |
+
+```codexivo
+variable pendientes = [];
+encolar(pendientes, "lavar");
+encolar(pendientes, "secar");
+imprimir(desencolar(pendientes), frente(pendientes));
+
+variable pila = [];
+apilar(pila, 1);
+apilar(pila, 2);
+imprimir(desapilar(pila), tope(pila));
+```
+
+Sacar de una pila o cola vacía es un error: _"No se puede `desencolar` de una cola vacía."_
+
 ## Biblioteca
 
 Todo está disponible sin importar nada. Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
@@ -365,3 +423,18 @@ Pista: Revisa que el divisor no valga 0 antes de dividir.
 
 Para que un error nunca congele la página, la ejecución se detiene con un error de límite al superar 10 000 000 de
 operaciones, 10 000 llamadas anidadas o 1 000 000 de caracteres impresos. Los tres se pueden configurar.
+
+## Operaciones
+
+Cada operación básica (leer una variable, poner un valor, sumar, comparar, asignar, decidir, llamar) cuesta 1. Los
+procedimientos de la biblioteca cuestan según el trabajo que hacen, con `n` el tamaño de su primer argumento:
+
+| Costo          | Procedimientos                                                                                                                                                                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `n · ⌈log₂ n⌉` | `ordenar`                                                                                                                                                                                                                                                             |
+| `n`            | `contiene`, `posición_de`, `copiar`, `invertir`, `sumar`, `insertar`, `quitar`, `quitar_primero`, `desencolar`, `claves`, `valores`, `índices`, `máximo`, `mínimo`, `mapear`, `filtrar`, `reducir`, `alguno`, `todos`, `buscar`, y los de texto que recorren el texto |
+| lo que crean   | `rango`, `rebanar`, `subtexto`, `lista_de`, `matriz`                                                                                                                                                                                                                  |
+| 1              | todos los demás                                                                                                                                                                                                                                                       |
+
+Lo que hace el procedimiento que recibe `mapear` (y los demás) se cuenta aparte, como cualquier código. El mismo programa con
+la misma entrada siempre da el mismo número de operaciones, y los retos lo usan en lugar del tiempo.

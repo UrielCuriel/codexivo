@@ -87,6 +87,40 @@ describe('ejecución paso a paso', () => {
   });
 });
 
+describe('biblioteca escrita en Codexivo', () => {
+  test('step() se detiene dentro de `f`, pero no en el código de `mapear`', () => {
+    const machine = machineFor('variable r = mapear([1, 2], procedimiento(x) {\n  regresa x * 2;\n});\nr;');
+    const lines: number[] = [];
+    while (!machine.done) {
+      machine.step();
+      if (!machine.done) lines.push(machine.snapshot().span!.start.line);
+    }
+    // la declaración, una vez por cada elemento dentro de `f`, y la última expresión
+    expect(lines).toEqual([1, 2, 2, 4]);
+    expect(machine.result).toMatchObject({ kind: 'lista', items: [2, 4] });
+  });
+
+  test('snapshot() muestra el marco de la biblioteca sin sus variables', () => {
+    const machine = machineFor('mapear([1], procedimiento(x) {\n  regresa x;\n});', { breakpoints: [2] });
+    machine.run();
+    const frames = machine.snapshot().frames;
+    expect(frames.map(frame => frame.name)).toEqual(['programa', 'mapear', 'f']);
+    expect(frames[1]).toMatchObject({ library: true, scopes: [] });
+    expect(frames[2]!.scopes[0]).toMatchObject({ x: { repr: '1' } });
+  });
+
+  test('los eventos muestran las llamadas a `f`, no los pasos internos', () => {
+    const list = run('ordenar([2, 1], procedimiento(a, b) { regresa a < b; });', { trace: true }).events!;
+    expect(list.filter(event => event.type === 'llama').map(event => (event as { name: string }).name)).toEqual([
+      'ordenar',
+      'va_antes',
+    ]);
+    expect(list.filter(event => event.type === 'declara')).toEqual([]);
+    // la sentencia del programa y la del comparador; ninguna de `ordenar`
+    expect(list.filter(event => event.type === 'paso')).toHaveLength(2);
+  });
+});
+
 describe('eventos', () => {
   const events = (source: string, options = {}) => run(source, { trace: true, ...options }).events!;
   const of = <T extends MachineEvent['type']>(list: MachineEvent[], type: T) =>
