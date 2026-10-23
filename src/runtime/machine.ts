@@ -70,6 +70,16 @@ export type MachineEvent = EventBase &
     | { type: 'paso'; nodeId: number; nodeKind: ast.Statement['kind']; span: Span }
     | { type: 'declara'; name: string; constant: boolean; value: SerializedValue; nodeId: number; span: Span }
     | { type: 'asigna'; name: string; before: SerializedValue; after: SerializedValue; nodeId: number; span: Span }
+    /** Cambio de un elemento de una lista (`lista[i] = …`); `ref` identifica la lista. */
+    | {
+        type: 'modifica';
+        ref: number;
+        key: SerializedValue;
+        before: SerializedValue;
+        after: SerializedValue;
+        nodeId: number;
+        span: Span;
+      }
     | { type: 'decide'; label: DecisionLabel; value: boolean; nodeId: number; ownerId: number; span: Span }
     | {
         type: 'opera';
@@ -127,7 +137,17 @@ const DEFAULTS = {
   maxOutput: 1_000_000,
 };
 
-const NO_COUNT = new Set<Instruction['op']>(['step', 'enterScope', 'exitScope', 'jump', 'repeatStart', 'halt']);
+const NO_COUNT = new Set<Instruction['op']>([
+  'step',
+  'enterScope',
+  'exitScope',
+  'jump',
+  'dup',
+  'pop',
+  'repeatStart',
+  'forEachStart',
+  'halt',
+]);
 
 /**
  * Ejecuta un programa compilado. Tiene su propia pila de llamadas, así que la recursión no depende
@@ -337,7 +357,7 @@ export class Machine {
           throw this.runtimeError(
             'VARIABLE_REPETIDA',
             `La variable \`${instruction.name}\` ya existe en este bloque.`,
-            instruction.node.name,
+            instruction.target,
             `Para cambiar su valor escribe \`${instruction.name} = …\`, sin \`variable\`.`,
           );
         }
@@ -358,7 +378,7 @@ export class Machine {
       case 'store': {
         const value = this.stack.pop()!;
         const scope = frame.scope.lookup(instruction.name);
-        if (!scope) throw this.undeclaredAssignment(instruction.name, instruction.node.target);
+        if (!scope) throw this.undeclaredAssignment(instruction.name, instruction.target);
         if (scope.constants.has(instruction.name)) throw this.constantReassignment(instruction.name, instruction.node);
         const before = scope.variables.get(instruction.name)!;
         scope.variables.set(instruction.name, value);
@@ -374,6 +394,22 @@ export class Machine {
         }
         return false;
       }
+
+      case 'setIndex': {
+        const value = this.stack.pop()!;
+        const index = this.stack.pop()!;
+        const object = this.stack.pop()!;
+        this.setIndex(object, index, value, instruction.target, instruction.node);
+        return false;
+      }
+
+      case 'dup':
+        this.stack.push(...this.stack.slice(this.stack.length - instruction.count));
+        return false;
+
+      case 'pop':
+        this.stack.length -= instruction.count;
+        return false;
 
       case 'result': {
         const value = this.stack.pop()!;
@@ -471,6 +507,54 @@ export class Machine {
         this.emit({
           type: 'decide',
           label: 'repetir',
+          value: again,
+          nodeId: instruction.node.id,
+          ownerId: instruction.owner.id,
+          span: instruction.node.span,
+        });
+        if (!again) frame.pc = instruction.target;
+        return true;
+      }
+
+      case 'forEachStart': {
+        const iterable = this.stack[this.stack.length - 1]!;
+        if (!isList(iterable) && typeof iterable !== 'string') {
+          throw this.runtimeError(
+            'PARA_CADA_INVÁLIDO',
+            `\`para_cada\` recorre listas y textos, no ${describeType(typeOf(iterable))}.`,
+            instruction.node,
+            typeof iterable === 'number'
+              ? `Para contar, recorre un rango: \`rango(1, ${repr(iterable)})\`.`
+              : undefined,
+          );
+        }
+        this.stack.push(isList(iterable) ? iterable.items.length : iterable.length, 0);
+        return false;
+      }
+
+      case 'forEachNext': {
+        const position = this.stack[this.stack.length - 1] as number;
+        const length = this.stack[this.stack.length - 2] as number;
+        const iterable = this.stack[this.stack.length - 3] as ListValue | string;
+        if (isList(iterable) && iterable.items.length !== length) {
+          throw this.runtimeError(
+            'LISTA_MODIFICADA_AL_RECORRER',
+            `La lista cambió de tamaño mientras se recorría: tenía ${length} y ahora tiene ${iterable.items.length}.`,
+            instruction.node,
+            'Recorre una copia o junta los cambios en otra lista y aplícalos al terminar el `para_cada`.',
+          );
+        }
+        const again = position < length;
+        if (again) {
+          this.stack[this.stack.length - 1] = position + 1;
+          this.stack.push(isList(iterable) ? iterable.items[position]! : iterable[position]!);
+        } else {
+          this.stack.length -= 3;
+        }
+        this.currentNode = instruction.node;
+        this.emit({
+          type: 'decide',
+          label: 'para_cada',
           value: again,
           nodeId: instruction.node.id,
           ownerId: instruction.owner.id,
@@ -736,6 +820,50 @@ export class Machine {
         node.object,
       );
     }
+    const position = this.position(object, index, node);
+    return isList(object) ? object.items[position]! : object[position]!;
+  }
+
+  private setIndex(
+    object: Value,
+    index: Value,
+    value: Value,
+    target: ast.Index,
+    node: ast.Assignment | ast.Increment,
+  ): void {
+    if (typeof object === 'string') {
+      throw this.runtimeError(
+        'TEXTO_INMUTABLE',
+        'Un texto no se puede cambiar letra por letra.',
+        target,
+        'Construye un texto nuevo, por ejemplo uniendo partes con `+`.',
+      );
+    }
+    if (!isList(object)) {
+      throw this.runtimeError(
+        'ÍNDICE_NO_SOPORTADO',
+        `Solo se puede cambiar un elemento de una lista, no de ${describeType(typeOf(object))}.`,
+        target.object,
+      );
+    }
+    const position = this.position(object, index, target);
+    const before = object.items[position]!;
+    object.items[position] = value;
+    if (this.onEvent) {
+      this.emit({
+        type: 'modifica',
+        ref: object.id,
+        key: serialize(position),
+        before: serialize(before),
+        after: serialize(value),
+        nodeId: node.id,
+        span: node.span,
+      });
+    }
+  }
+
+  /** Posición real de `index` (los negativos cuentan desde el final); error si no es válida. */
+  private position(object: ListValue | string, index: Value, node: ast.Index): number {
     if (typeof index !== 'number' || !Number.isInteger(index)) {
       throw this.runtimeError(
         'ÍNDICE_INVÁLIDO',
@@ -754,11 +882,13 @@ export class Machine {
         `El índice ${index} está fuera de ${what}, que tiene ${length} ${length === 1 ? unit : unit === 'carácter' ? 'caracteres' : 'elementos'}.`,
         node.index,
         length === 0
-          ? `${what[0]!.toUpperCase()}${what.slice(1)} está vacía.`
+          ? isList(object)
+            ? 'La lista está vacía.'
+            : 'El texto está vacío.'
           : `Los índices válidos van de 0 a ${length - 1} (o de -1 a -${length} desde el final).`,
       );
     }
-    return isList(object) ? object.items[position]! : object[position]!;
+    return position;
   }
 
   // ── errores ────────────────────────────────────────────────────────────────

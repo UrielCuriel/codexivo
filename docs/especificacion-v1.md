@@ -40,24 +40,24 @@ bloquean nada en el editor.
 Probado contra `main` (`1ca0398`), cuyos 56 tests pasaban sin cubrir estos casos. La columna "Estado" dice qué ya resolvió
 la reescritura del núcleo y los pasos siguientes de §16.
 
-| Caso                             | Antes                                                                                                | v1                                        | Estado                             |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------- |
-| `1 < 2 y 5 < 4`                  | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso`                                   | ✅                                 |
-| `no 1 == 2`                      | `falso` (se agrupaba como `(no 1) == 2`)                                                             | `verdadero`                               | ✅                                 |
-| Varios `pero_si` seguidos        | Solo se conservaba el último                                                                         | Todas las ramas, en orden                 | ✅                                 |
-| `procedimiento suma(a, b) { … }` | Error de sintaxis                                                                                    | Declaración con nombre                    | Paso 5 (hoy da un error con pista) |
-| `// comentario`                  | Excepción de JavaScript (`value is null or undefined`)                                               | Comentario                                | ✅                                 |
-| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | ✅ (paso 4)                        |
-| `a[0] = 9`                       | Error de sintaxis                                                                                    | Asignación por índice                     | Paso 5                             |
-| `nulo`                           | "identificador no encontrado"                                                                        | Literal                                   | ✅                                 |
-| `imprimir(…)` / `leer()`         | No existían; el programa solo devolvía su última expresión                                           | Entrada y salida                          | ✅                                 |
-| `1 / 0`                          | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba)                                    | Error                                     | ✅                                 |
-| `[1, 2] == [1, 2]`               | `falso`                                                                                              | `verdadero`                               | ✅                                 |
-| `mientras (verdadero) {}`        | Bloqueaba el proceso                                                                                 | Error al superar el límite de operaciones | ✅                                 |
-| `f(20000)` recursivo             | `Maximum call stack size exceeded`                                                                   | Funciona (límite configurable)            | ✅                                 |
-| `hasta_que`                      | Se tokenizaba como `WHILE`                                                                           | Token propio `UNTIL`                      | ✅                                 |
-| Mensajes de error                | "en la linea"                                                                                        | "en la línea", con pista                  | ✅                                 |
-| Docs y README                    | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron                          | Alineados con esta spec                   | ✅ (y se prueban)                  |
+| Caso                             | Antes                                                                                                | v1                                        | Estado            |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- | ----------------- |
+| `1 < 2 y 5 < 4`                  | Error. `y`/`o` tenían **más** precedencia que las comparaciones y se agrupaba como `1 < (2 y 5) < 4` | `falso`                                   | ✅                |
+| `no 1 == 2`                      | `falso` (se agrupaba como `(no 1) == 2`)                                                             | `verdadero`                               | ✅                |
+| Varios `pero_si` seguidos        | Solo se conservaba el último                                                                         | Todas las ramas, en orden                 | ✅                |
+| `procedimiento suma(a, b) { … }` | Error de sintaxis                                                                                    | Declaración con nombre                    | ✅ (paso 5)       |
+| `// comentario`                  | Excepción de JavaScript (`value is null or undefined`)                                               | Comentario                                | ✅                |
+| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | ✅ (paso 4)       |
+| `a[0] = 9`                       | Error de sintaxis                                                                                    | Asignación por índice                     | ✅ (paso 5)       |
+| `nulo`                           | "identificador no encontrado"                                                                        | Literal                                   | ✅                |
+| `imprimir(…)` / `leer()`         | No existían; el programa solo devolvía su última expresión                                           | Entrada y salida                          | ✅                |
+| `1 / 0`                          | `Infinity` (el error `DIVISION_BY_ZERO` existía pero no se usaba)                                    | Error                                     | ✅                |
+| `[1, 2] == [1, 2]`               | `falso`                                                                                              | `verdadero`                               | ✅                |
+| `mientras (verdadero) {}`        | Bloqueaba el proceso                                                                                 | Error al superar el límite de operaciones | ✅                |
+| `f(20000)` recursivo             | `Maximum call stack size exceeded`                                                                   | Funciona (límite configurable)            | ✅                |
+| `hasta_que`                      | Se tokenizaba como `WHILE`                                                                           | Token propio `UNTIL`                      | ✅                |
+| Mensajes de error                | "en la linea"                                                                                        | "en la línea", con pista                  | ✅                |
+| Docs y README                    | Usaban `sino`, `n++`, `%` y procedimientos con nombre que nunca funcionaron                          | Alineados con esta spec                   | ✅ (y se prueban) |
 
 ## 2. Léxico
 
@@ -304,7 +304,8 @@ para (variable i = 0; i < 10; i++) {
 }
 ```
 
-- `romper` sale del bucle más cercano; `continuar` salta a la siguiente vuelta.
+- `romper` sale del bucle más cercano; `continuar` salta a la siguiente vuelta. Fuera de un bucle son un error de
+  sintaxis, también dentro de un procedimiento: no cruzan el límite de una llamada.
 - `repetir n veces` exige un número entero no negativo.
 - Modificar la longitud de una lista mientras se recorre con `para_cada` es un error.
 
@@ -322,7 +323,7 @@ mapear([1, 2, 3], doble); // [2, 4, 6]
 ```
 
 - Las declaraciones con nombre se pueden usar antes de aparecer en su bloque; eso permite la
-  recursión mutua.
+  recursión mutua. Por eso su nombre no se puede repetir en el bloque, ni con otro procedimiento ni con una variable.
 - Llamar con un número distinto de argumentos es un error. Hoy los faltantes se rellenan con `nulo`;
   en v1 no.
 - `regresa` sin valor regresa `nulo`, y un procedimiento que termina sin `regresa` también regresa `nulo`.
@@ -517,7 +518,8 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
 - Cada nodo del AST tiene un identificador estable y su **rango** en el código (inicio y fin, en
   línea, columna y desplazamiento).
 - Cada token conserva su rango, para la vista de tokens.
-- La máquina emite eventos: `paso` (inicio de una sentencia), `declara`, `asigna` (antes/después),
+- La máquina emite eventos: `paso` (inicio de una sentencia), `declara`, `asigna` (antes/después), `modifica` (un
+  elemento de una lista o diccionario, con su `ref`, la clave y el valor antes/después),
   `decide` (condición, valor y rama tomada), `opera` (operandos y resultado), `llama`/`regresa`,
   `imprime`/`lee`, `error` y `fin`. Cada uno lleva el número de operaciones y la profundidad de llamadas.
 - En cualquier pausa se puede pedir una fotografía (`snapshot`) con las llamadas activas y las variables de
@@ -586,8 +588,8 @@ Todas aprobadas.
 4. ✅ **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
    operadores en palabras, `constante`, alcance por bloque, `1_000_000` y `PI`. `repetir` emite `decide` con la
    etiqueta `repetir` en cada vuelta y `declara` indica si el nombre es constante.
-5. **Nivel intermedio:** procedimientos con nombre, `para_cada`, `romper`/`continuar`, asignación por
-   índice, diccionarios, biblioteca de texto y listas.
+5. **Nivel intermedio:** ✅ procedimientos con nombre, ✅ `para_cada`, ✅ `romper`/`continuar`, ✅ asignación por
+   índice (evento `modifica`), ✅ `rango` e `índices`, diccionarios, biblioteca de texto y listas.
 6. **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
    biblioteca.
 7. **Modo mundo.**

@@ -68,6 +68,30 @@ describe('biblioteca estándar', () => {
     });
   });
 
+  describe('rango e índices', () => {
+    test.each([
+      ['rango(1, 5)', '[1, 2, 3, 4, 5]'],
+      ['rango(0, 10, 5)', '[0, 5, 10]'],
+      ['rango(10, 1, -3)', '[10, 7, 4, 1]'],
+      ['rango(0, 1, 0.25)', '[0, 0.25, 0.5, 0.75, 1]'],
+      ['rango(5, 1)', '[]'],
+      ['rango(3, 3)', '[3]'],
+      ['índices([7, 8, 9])', '[0, 1, 2]'],
+      ['indices("ab")', '[0, 1]'],
+      ['índices([])', '[]'],
+    ])('%s → %s', (source, expected) => {
+      expect(value(source)).toBe(expected);
+    });
+
+    test('errores', () => {
+      expect(errorCode('rango(1, 3, 0)')).toBe('RANGO_PASO_CERO');
+      expect(errorCode('rango(1, "3")')).toBe('TIPO_DE_ARGUMENTO');
+      expect(errorCode('rango(1, 100000000)')).toBe('RANGO_DEMASIADO_GRANDE');
+      expect(errorCode('índices(5)')).toBe('TIPO_DE_ARGUMENTO');
+      expect(errorCode('rango(1)')).toBe('CANTIDAD_DE_ARGUMENTOS');
+    });
+  });
+
   describe('listas', () => {
     test('agregar cambia la lista', () => {
       expect(value('variable l = [1]; agregar(l, 2); l;')).toBe('[1, 2]');

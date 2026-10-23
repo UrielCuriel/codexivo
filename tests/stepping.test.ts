@@ -115,6 +115,32 @@ describe('eventos', () => {
     ]);
   });
 
+  test('cada vuelta de `para_cada` decide y declara la variable', () => {
+    const list = events('para_cada x en [1, 2] { }');
+    expect(of(list, 'decide').map(event => `${event.label}:${event.value}`)).toEqual([
+      'para_cada:true',
+      'para_cada:true',
+      'para_cada:false',
+    ]);
+    expect(of(list, 'declara').map(event => `${event.name}=${event.value.repr}`)).toEqual(['x=1', 'x=2']);
+  });
+
+  test('`modifica` describe el cambio de un elemento', () => {
+    const list = events('variable l = [1, 2]; l[1] += 3;');
+    const declared = of(list, 'declara')[0]!.value;
+    expect(of(list, 'modifica')[0]).toMatchObject({
+      key: { repr: '1' },
+      before: { repr: '2' },
+      after: { repr: '5' },
+    });
+    if (declared.type === 'lista') expect(of(list, 'modifica')[0]!.ref).toBe(declared.ref);
+  });
+
+  test('los procedimientos con nombre se declaran al entrar a su bloque', () => {
+    const list = events('variable x = 1; procedimiento f() { }');
+    expect(of(list, 'declara').map(event => event.name)).toEqual(['f', 'x']);
+  });
+
   test('`declara` indica si es constante', () => {
     const list = of(events('constante K = 1; variable x = 2;'), 'declara');
     expect(list.map(event => `${event.name}:${event.constant}`)).toEqual(['K:true', 'x:false']);

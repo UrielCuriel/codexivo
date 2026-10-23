@@ -23,14 +23,14 @@ imprimir("Hola,", nombre)
 
 ```
 variable  constante  procedimiento  regresa
-si  pero_si  si_no  mientras  hacer  hasta_que  para  repetir  veces
-verdadero  falso  nulo  y  o  no  mod  div
+si  pero_si  si_no
+mientras  hacer  hasta_que  para  para_cada  en  repetir  veces
+romper  continuar
+verdadero  falso  nulo
+y  o  no  mod  div
 es_igual_a  es_distinto_de  es_menor_que  es_mayor_que
 es_menor_o_igual_a  es_mayor_o_igual_a
 ```
-
-`para_cada`, `en`, `romper` y `continuar` también están reservadas: llegarán en el siguiente paso de la v1 y, mientras tanto,
-usarlas da un error que lo explica.
 
 ## Valores
 
@@ -141,28 +141,55 @@ para (variable j = 0; j < 3; j++) {
 repetir 3 veces {
   imprimir("¡hola!");
 }
+
+para_cada fruta en ["mango", "piña"] {
+  imprimir(fruta);
+}
+
+para_cada letra en "hola" {
+  imprimir(letra);
+}
+
+para_cada n en rango(1, 10) {
+  si (n mod 2 == 0) {
+    continuar;   // salta a la siguiente vuelta
+  }
+  si (n > 7) {
+    romper;      // sale del bucle
+  }
+  imprimir(n);
+}
 ```
 
 - `hacer … hasta_que` ejecuta el bloque al menos una vez y repite **hasta que** la condición sea verdadera.
 - La variable de un `para` solo existe dentro del bucle.
 - `repetir n veces` evalúa `n` una sola vez, al empezar. Tiene que ser un número entero, 0 o más; con 0 el bloque no se
   ejecuta. Lleva la cuenta por dentro, sin crear ninguna variable.
+- `para_cada x en …` recorre una lista o un texto. `x` es nueva en cada vuelta y solo existe dentro del cuerpo. Cambiar
+  elementos de la lista mientras se recorre está bien; agregar o quitar elementos es un error.
+- `romper` sale del bucle más cercano y `continuar` salta a su siguiente vuelta. Fuera de un bucle son un error, también
+  dentro de un procedimiento que se llama desde un bucle.
 
 ## Procedimientos
 
 ```codexivo
+procedimiento área(base, altura) {
+  regresa base * altura;
+}
+área(3, 4);
+
+// también como valor, guardado en una variable
 variable saludar = procedimiento(nombre) {
   regresa "Hola, " + nombre;
 };
 saludar("Uriel");
 ```
 
-- Se crean con `procedimiento(parámetros) { … }` y se guardan en variables.
+- Un procedimiento con nombre existe desde el inicio de su bloque: se puede llamar antes de la línea donde se declara, y
+  dos procedimientos pueden llamarse entre sí. Su nombre no se puede repetir en el mismo bloque.
 - Hay que llamarlos con exactamente tantos valores como parámetros.
 - Sin `regresa`, un procedimiento regresa `nulo`.
 - Recuerdan las variables de donde se crearon (closures) y pueden llamarse a sí mismos.
-
-Los procedimientos con nombre (`procedimiento saludar(nombre) { … }`) llegarán con la v1.
 
 ## Listas y textos
 
@@ -171,28 +198,38 @@ variable números = [10, 20, 30];
 números[0];    // 10
 números[-1];   // 30, desde el final
 "hola"[1];     // "o"
+
+números[0] = 15;
+números[-1] += 1;
+números[1]++;
+
+variable matriz = [[1, 2], [3, 4]];
+matriz[1][0] = 9;
 ```
 
-Los índices son enteros desde 0; un índice fuera de rango es un error que dice cuántos elementos hay.
+- Los índices son enteros desde 0; un índice fuera de rango es un error que dice cuántos elementos hay.
+- Los textos no se pueden cambiar letra por letra: `t[0] = "H"` es un error. Se construye un texto nuevo.
 
 ## Biblioteca
 
 Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
 
-| Procedimiento                     | Qué hace                                                                   |
-| --------------------------------- | -------------------------------------------------------------------------- |
-| `imprimir(a, b, …)`               | Escribe los valores separados por un espacio y termina la línea            |
-| `leer()`                          | Siguiente línea de entrada como texto, o `nulo` si ya no hay               |
-| `leer_número()`                   | Siguiente línea de entrada como número                                     |
-| `tipo(x)`                         | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"` o `"procedimiento"` |
-| `texto(x)`, `número(x)`           | Conversiones explícitas                                                    |
-| `longitud(x)`                     | Caracteres de un texto o elementos de una lista                            |
-| `absoluto(x)`                     | Valor absoluto                                                             |
-| `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                           |
-| `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                      |
-| `PI`                              | La constante 3.14159…; una variable tuya con el mismo nombre la oculta     |
-| `agregar(lista, x)`               | Agrega al final (cambia la lista)                                          |
-| `primero(lista)`, `último(lista)` | Primer y último elemento                                                   |
+| Procedimiento                     | Qué hace                                                                       |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| `imprimir(a, b, …)`               | Escribe los valores separados por un espacio y termina la línea                |
+| `leer()`                          | Siguiente línea de entrada como texto, o `nulo` si ya no hay                   |
+| `leer_número()`                   | Siguiente línea de entrada como número                                         |
+| `tipo(x)`                         | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"` o `"procedimiento"`     |
+| `texto(x)`, `número(x)`           | Conversiones explícitas                                                        |
+| `longitud(x)`                     | Caracteres de un texto o elementos de una lista                                |
+| `absoluto(x)`                     | Valor absoluto                                                                 |
+| `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                               |
+| `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                          |
+| `PI`                              | La constante 3.14159…; una variable tuya con el mismo nombre la oculta         |
+| `agregar(lista, x)`               | Agrega al final (cambia la lista)                                              |
+| `rango(a, b, paso?)`              | Lista de `a` a `b`, **incluyendo** `b`; con `paso` negativo cuenta hacia abajo |
+| `índices(lista)`                  | Las posiciones válidas: `rango(0, longitud(lista) - 1)`                        |
+| `primero(lista)`, `último(lista)` | Primer y último elemento                                                       |
 
 ## Errores
 

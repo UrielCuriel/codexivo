@@ -429,3 +429,156 @@ describe('nivel principiante (paso 4)', () => {
     });
   });
 });
+
+describe('nivel intermedio (paso 5)', () => {
+  describe('procedimientos con nombre', () => {
+    test('se declaran y se llaman', () => {
+      expect(value('procedimiento área(base, altura) { regresa base * altura; }\nárea(3, 4);')).toBe('12');
+    });
+
+    test('se pueden usar antes de su declaración (recursión mutua)', () => {
+      expect(
+        value(`
+          es_par(10);
+          procedimiento es_par(n) { si (n == 0) { regresa verdadero; } regresa es_impar(n - 1); }
+          procedimiento es_impar(n) { si (n == 0) { regresa falso; } regresa es_par(n - 1); }
+        `),
+      ).toBe('verdadero');
+    });
+
+    test('solo existen dentro de su bloque', () => {
+      expect(value('si (verdadero) { procedimiento f() { regresa 1; } } variable f = 2; f;')).toBe('2');
+      expect(failure('si (verdadero) { procedimiento f() { regresa 1; } } f();').code).toBe('NOMBRE_DESCONOCIDO');
+    });
+
+    test('capturan las variables de su bloque', () => {
+      expect(value('variable base = 10; procedimiento sumar(x) { regresa base + x; } base = 20; sumar(1);')).toBe('21');
+    });
+
+    test('se pueden pasar como valor', () => {
+      expect(value('procedimiento doble(x) { regresa x * 2; } variable f = doble; f(4);')).toBe('8');
+    });
+  });
+
+  describe('para_cada', () => {
+    test('recorre listas, textos y rangos', () => {
+      expect(value('variable t = 0; para_cada x en [1, 2, 3] { t += x; } t;')).toBe('6');
+      expect(value('variable s = ""; para_cada letra en "hola" { s = letra + s; } s;')).toBe('"aloh"');
+      expect(value('variable t = 0; para_cada i en rango(1, 10) { t += i; } t;')).toBe('55');
+      expect(value('variable c = 0; para_cada x en [] { c++; } c;')).toBe('0');
+    });
+
+    test('la variable es nueva en cada vuelta y solo existe dentro del cuerpo', () => {
+      expect(failure('para_cada x en [1] { } x;').code).toBe('NOMBRE_DESCONOCIDO');
+      expect(
+        value('variable fs = []; para_cada x en [1, 2] { agregar(fs, procedimiento() { regresa x; }); } fs[0]();'),
+      ).toBe('1');
+      expect(failure('para_cada x en [1] { variable x = 2; }').code).toBe('VARIABLE_REPETIDA');
+    });
+
+    test('cambiar los elementos sí se permite; cambiar la longitud no', () => {
+      expect(value('variable l = [1, 2]; para_cada x en l { l[0] = 5; } l;')).toBe('[5, 2]');
+      const error = failure('variable l = [1, 2]; para_cada x en l { agregar(l, x); }');
+      expect(error.code).toBe('LISTA_MODIFICADA_AL_RECORRER');
+      expect(error.hint).toContain('copia');
+    });
+
+    test('solo recorre listas y textos', () => {
+      const error = failure('para_cada x en 5 { }');
+      expect(error.code).toBe('PARA_CADA_INVÁLIDO');
+      expect(error.hint).toContain('rango(1, 5)');
+    });
+  });
+
+  describe('romper y continuar', () => {
+    test.each([
+      ['variable i = 0; mientras (verdadero) { i++; si (i == 5) { romper; } } i;', '5'],
+      ['variable c = 0; variable i = 0; mientras (i < 10) { i++; si (i mod 2 == 0) { continuar; } c++; } c;', '5'],
+      ['variable i = 0; hacer { i++; si (i == 3) { romper; } } hasta_que (i >= 10); i;', '3'],
+      [
+        'variable i = 0; variable c = 0; hacer { i++; si (i mod 2 == 0) { continuar; } c++; } hasta_que (i >= 10); c;',
+        '5',
+      ],
+      ['variable c = 0; para (variable i = 0; i < 10; i++) { si (i == 4) { romper; } c++; } c;', '4'],
+      ['variable c = 0; para (variable i = 0; i < 10; i++) { si (i mod 3 == 0) { continuar; } c++; } c;', '6'],
+      ['variable c = 0; repetir 10 veces { c++; si (c == 4) { romper; } } c;', '4'],
+      ['variable c = 0; variable v = 0; repetir 6 veces { v++; si (v mod 2 == 0) { continuar; } c++; } c;', '3'],
+      ['variable t = 0; para_cada x en [1, 2, 3, 4] { si (x == 3) { romper; } t += x; } t;', '3'],
+      ['variable t = 0; para_cada x en [1, 2, 3, 4] { si (x == 3) { continuar; } t += x; } t;', '7'],
+    ])('%s → %s', (source, expected) => {
+      expect(value(source)).toBe(expected);
+    });
+
+    test('solo afectan al bucle más cercano', () => {
+      expect(value('variable c = 0; repetir 3 veces { repetir 5 veces { c++; romper; } } c;')).toBe('3');
+      expect(
+        value(
+          'variable c = 0; para_cada x en [1, 2] { para_cada z en [1, 2, 3] { si (z == 2) { continuar; } c++; } } c;',
+        ),
+      ).toBe('4');
+    });
+
+    test('cierran los alcances y limpian la pila del bucle', () => {
+      // Si quedaran alcances abiertos, `x` seguiría existiendo; si quedaran valores ocultos, el programa
+      // regresaría otra cosa.
+      expect(failure('repetir 3 veces { variable x = 1; si (verdadero) { variable w = 2; romper; } } x;').code).toBe(
+        'NOMBRE_DESCONOCIDO',
+      );
+      expect(
+        value(
+          'variable f = procedimiento() { para_cada x en [1, 2] { repetir 2 veces { romper; } } regresa 7; }; f() + 1;',
+        ),
+      ).toBe('8');
+      expect(value('variable n = 0; repetir 1000 veces { para_cada x en [1, 2, 3] { romper; } n++; } n;')).toBe('1000');
+    });
+  });
+
+  describe('asignación por índice', () => {
+    test('cambia elementos de listas y matrices', () => {
+      expect(value('variable l = [1, 2, 3]; l[0] = 10; l[-1] += 5; l[1]++; l;')).toBe('[10, 3, 8]');
+      expect(value('variable m = [[1, 2], [3, 4]]; m[1][0] += 1; m;')).toBe('[[1, 2], [4, 4]]');
+    });
+
+    test('las listas se comparten', () => {
+      expect(value('variable a = [1]; variable b = a; b[0] = 2; a;')).toBe('[2]');
+    });
+
+    test('los textos son inmutables', () => {
+      const error = failure('variable t = "hola"; t[0] = "H";');
+      expect(error.code).toBe('TEXTO_INMUTABLE');
+      expect(error.hint).toContain('texto nuevo');
+    });
+
+    test.each([
+      ['variable l = [1]; l[3] = 2;', 'ÍNDICE_FUERA_DE_RANGO'],
+      ['variable l = [1]; l[0.5] = 2;', 'ÍNDICE_INVÁLIDO'],
+      ['variable n = 5; n[0] = 2;', 'ÍNDICE_NO_SOPORTADO'],
+      ['variable l = ["a"]; l[0] += 1;', 'TIPOS_MEZCLADOS'],
+    ])('%s → %s', (source, code) => {
+      expect(failure(source).code).toBe(code);
+    });
+  });
+
+  test('la búsqueda binaria de la §9 de la spec', () => {
+    expect(
+      value(`
+        procedimiento buscar_binaria(lista, objetivo) {
+          variable inicio = 0;
+          variable fin = longitud(lista) - 1;
+          mientras (inicio <= fin) {
+            variable medio = (inicio + fin) div 2;
+            si (lista[medio] es_igual_a objetivo) {
+              regresa medio;
+            } pero_si (lista[medio] es_menor_que objetivo) {
+              inicio = medio + 1;
+            } si_no {
+              fin = medio - 1;
+            }
+          }
+          regresa -1;
+        }
+        [buscar_binaria([1, 3, 5, 7, 9, 11], 7), buscar_binaria([1, 3, 5], 4)];
+      `),
+    ).toBe('[3, -1]');
+  });
+});

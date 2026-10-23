@@ -112,9 +112,12 @@ export interface VariableDeclaration extends BaseNode {
   value: Expression;
 }
 
+/** Lo que puede ir a la izquierda de `=`: una variable o un elemento (`lista[i]`). */
+export type AssignmentTarget = Identifier | Index;
+
 export interface Assignment extends BaseNode {
   kind: 'Assignment';
-  target: Identifier;
+  target: AssignmentTarget;
   operator: AssignmentOperator;
   value: Expression;
 }
@@ -122,8 +125,15 @@ export interface Assignment extends BaseNode {
 /** `i++` / `i--`: son sentencias, no expresiones. */
 export interface Increment extends BaseNode {
   kind: 'Increment';
-  target: Identifier;
+  target: AssignmentTarget;
   operator: IncrementOperator;
+}
+
+/** `procedimiento nombre(…) { … }`: se puede usar desde el inicio de su bloque. */
+export interface FunctionDeclaration extends BaseNode {
+  kind: 'FunctionDeclaration';
+  name: Identifier;
+  function: FunctionLiteral;
 }
 
 export interface ExpressionStatement extends BaseNode {
@@ -183,8 +193,25 @@ export interface Repeat extends BaseNode {
   body: Block;
 }
 
+/** `para_cada x en lista { … }`: recorre una lista o un texto. */
+export interface ForEach extends BaseNode {
+  kind: 'ForEach';
+  variable: Identifier;
+  iterable: Expression;
+  body: Block;
+}
+
+export interface Break extends BaseNode {
+  kind: 'Break';
+}
+
+export interface Continue extends BaseNode {
+  kind: 'Continue';
+}
+
 export type Statement =
   | VariableDeclaration
+  | FunctionDeclaration
   | Assignment
   | Increment
   | ExpressionStatement
@@ -194,7 +221,10 @@ export type Statement =
   | While
   | DoUntil
   | For
-  | Repeat;
+  | ForEach
+  | Repeat
+  | Break
+  | Continue;
 
 export interface Program extends BaseNode {
   kind: 'Program';
@@ -228,6 +258,10 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.target, node.value];
     case 'Increment':
       return [node.target];
+    case 'FunctionDeclaration':
+      return [node.name, node.function];
+    case 'ForEach':
+      return [node.variable, node.iterable, node.body];
     case 'ExpressionStatement':
       return [node.expression];
     case 'Return':

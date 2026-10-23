@@ -153,6 +153,59 @@ describe('parser', () => {
     expect((program.statements[1] as ast.For).update?.kind).toBe('Increment');
   });
 
+  describe('nivel intermedio (paso 5)', () => {
+    test('procedimiento con nombre', () => {
+      const { program, errors } = parse('procedimiento área(base, altura) {\n  regresa base * altura;\n}');
+      expect(errors).toEqual([]);
+      const declaration = program.statements[0] as ast.FunctionDeclaration;
+      expect(declaration.kind).toBe('FunctionDeclaration');
+      expect(declaration.name.name).toBe('área');
+      expect(declaration.function).toMatchObject({ kind: 'FunctionLiteral', name: 'área' });
+      expect(declaration.function.params.map(param => param.name)).toEqual(['base', 'altura']);
+      expect(declaration.span.end.line).toBe(3);
+    });
+
+    test('un procedimiento sin nombre sigue siendo una expresión', () => {
+      const { program, errors } = parse('procedimiento(x) { regresa x; };');
+      expect(errors).toEqual([]);
+      expect(program.statements[0]).toMatchObject({
+        kind: 'ExpressionStatement',
+        expression: { kind: 'FunctionLiteral' },
+      });
+    });
+
+    test('para_cada', () => {
+      const { program, errors } = parse('para_cada fruta en ["mango", "piña"] { imprimir(fruta); }');
+      expect(errors).toEqual([]);
+      const loop = program.statements[0] as ast.ForEach;
+      expect(loop.kind).toBe('ForEach');
+      expect(loop.variable.name).toBe('fruta');
+      expect(show(loop.iterable)).toBe('["mango", "piña"]');
+    });
+
+    test('romper y continuar dentro de los cinco bucles, también en un `si`', () => {
+      const { errors } = parse(`
+        mientras (verdadero) { romper; }
+        hacer { continuar; } hasta_que (verdadero);
+        para (variable i = 0; i < 3; i++) { si (i == 1) { continuar; } }
+        repetir 3 veces { si (verdadero) { romper; } }
+        para_cada x en [1] { continuar; }
+        mientras (verdadero) { procedimiento f() { regresa 1; } romper; }
+      `);
+      expect(errors).toEqual([]);
+    });
+
+    test.each([
+      ['lista[0] = 10', 'Index', '='],
+      ['matriz[1][2] += 1', 'Index', '+='],
+      ['lista[i]++', 'Index', '++'],
+    ])('asignación por índice: %s', (source, target, operator) => {
+      const { program, errors } = parse(source);
+      expect(errors).toEqual([]);
+      expect(program.statements[0]).toMatchObject({ target: { kind: target }, operator });
+    });
+  });
+
   describe('errores', () => {
     test.each([
       ['1 < x < 5', 'COMPARACIÓN_ENCADENADA'],
@@ -171,14 +224,27 @@ describe('parser', () => {
       ['x = i++', 'INCREMENTO_EN_EXPRESIÓN'],
       ['f(i++)', 'INCREMENTO_EN_EXPRESIÓN'],
       ['++i', 'INCREMENTO_EN_EXPRESIÓN'],
-      ['lista[0]++', 'INCREMENTO_EN_EXPRESIÓN'],
+      ['f(lista[0]++)', 'INCREMENTO_EN_EXPRESIÓN'],
+      ['f(x)++', 'ASIGNACIÓN_INVÁLIDA'],
       ['repetir veces { }', 'REPETIR_SIN_CANTIDAD'],
       ['repetir 3 { }', 'TOKEN_ESPERADO'],
       ['constante K', 'TOKEN_ESPERADO'],
       ['variable mod = 1', 'PALABRA_RESERVADA'],
       ['variable es_igual_a = 1', 'PALABRA_RESERVADA'],
       ['variable veces = 1', 'PALABRA_RESERVADA'],
-      ['romper', 'PALABRA_NO_DISPONIBLE'],
+      ['romper', 'ROMPER_FUERA_DE_BUCLE'],
+      ['continuar', 'CONTINUAR_FUERA_DE_BUCLE'],
+      ['si (verdadero) { romper; }', 'ROMPER_FUERA_DE_BUCLE'],
+      ['mientras (verdadero) { variable f = procedimiento() { romper; }; }', 'ROMPER_FUERA_DE_BUCLE'],
+      ['mientras (verdadero) { procedimiento f() { continuar; } }', 'CONTINUAR_FUERA_DE_BUCLE'],
+      ['para_cada (x en l) { }', 'TOKEN_ESPERADO'],
+      ['para_cada x l { }', 'TOKEN_ESPERADO'],
+      ['en', 'EN_SIN_PARA_CADA'],
+      ['procedimiento f() { } procedimiento f() { }', 'NOMBRE_REPETIDO'],
+      ['procedimiento f() { } variable f = 1;', 'NOMBRE_REPETIDO'],
+      ['variable f = 1; procedimiento f() { }', 'NOMBRE_REPETIDO'],
+      ['variable g = procedimiento f() { };', 'PROCEDIMIENTO_CON_NOMBRE'],
+      ['f(x) = 1', 'ASIGNACIÓN_INVÁLIDA'],
     ])('%s → %s', (source, code) => {
       expect(errorCodes(source)).toContain(code);
     });

@@ -43,6 +43,9 @@ const roundHalfAway = (value: number, decimals: number): number => {
   return (Math.sign(value) * Math.round(Math.abs(value) * factor)) / factor;
 };
 
+/** Más elementos que esto en un `rango` es casi siempre un error, y llenaría la memoria. */
+const MAX_RANGE = 10_000_000;
+
 const library: NativeValue[] = [
   // entrada y salida
   define('imprimir', [0, Infinity], (args, context) => {
@@ -104,6 +107,40 @@ const library: NativeValue[] = [
   define('agregar', 2, (args, context) => {
     expectList('agregar', args[0]!, context).items.push(args[1]!);
     return null;
+  }),
+  define('rango', [2, 3], (args, context) => {
+    const start = expectNumber('rango', args[0]!, context, ' como inicio');
+    const end = expectNumber('rango', args[1]!, context, ' como final');
+    const step = args.length > 2 ? expectNumber('rango', args[2]!, context, ' como paso') : 1;
+    if (step === 0) {
+      throw context.fail(
+        'RANGO_PASO_CERO',
+        'El paso de `rango` no puede ser 0: nunca llegaría al final.',
+        'Usa un paso positivo para contar hacia arriba o uno negativo para contar hacia abajo.',
+      );
+    }
+    // Se tolera un error de redondeo pequeño para que `rango(0, 1, 0.1)` incluya el 1.
+    const count = Math.floor((end - start) / step + 1e-9) + 1;
+    if (!Number.isFinite(count)) throw context.fail('TIPO_DE_ARGUMENTO', '`rango` necesita números finitos.');
+    if (count > MAX_RANGE) {
+      throw context.fail(
+        'RANGO_DEMASIADO_GRANDE',
+        `\`rango\` produciría ${count} números; el máximo es ${MAX_RANGE}.`,
+        'Revisa el inicio, el final y el paso.',
+      );
+    }
+    return context.newList(Array.from({ length: Math.max(0, count) }, (_, index) => start + index * step));
+  }),
+  define('índices', 1, (args, context) => {
+    const value = args[0]!;
+    if (typeof value !== 'string' && !isList(value)) {
+      throw context.fail(
+        'TIPO_DE_ARGUMENTO',
+        `\`índices\` espera una lista o un texto, pero recibió ${describeType(typeOf(value))}.`,
+      );
+    }
+    const length = typeof value === 'string' ? value.length : value.items.length;
+    return context.newList(Array.from({ length }, (_, index) => index));
   }),
   define('primero', 1, (args, context) => {
     const list = expectList('primero', args[0]!, context);
