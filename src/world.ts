@@ -392,49 +392,49 @@ const worldDoc = (description: string, code: string, result: string, question = 
 export const worldDocs: Readonly<Record<string, ProcedureDoc>> = {
   avanzar: worldDoc(
     'Avanza una casilla hacia donde mira el robot. Chocar con una pared es un error.',
-    'avanzar()\nmirando_al_norte()',
+    'avanzar();\nmirando_al_norte();',
     'verdadero',
   ),
-  girar_izquierda: worldDoc('Gira 90° a la izquierda.', 'girar_izquierda()\nmirando_al_oeste()', 'verdadero'),
+  girar_izquierda: worldDoc('Gira 90° a la izquierda.', 'girar_izquierda();\nmirando_al_oeste();', 'verdadero'),
   recoger_zumbador: worldDoc(
     'Toma un zumbador de la casilla y lo guarda en la mochila.',
-    'recoger_zumbador()\nhay_zumbador()',
+    'recoger_zumbador();\nhay_zumbador();',
     'verdadero',
   ),
   dejar_zumbador: worldDoc(
     'Deja un zumbador de la mochila en la casilla.',
-    'dejar_zumbador()\ntengo_zumbadores()',
+    'dejar_zumbador();\ntengo_zumbadores();',
     'falso',
   ),
   apagar: worldDoc(
     'Apaga el robot. Después ya no puede hacer ninguna acción.',
-    'apagar()\nfrente_libre()',
+    'apagar();\nfrente_libre();',
     'verdadero',
   ),
-  frente_libre: worldDoc('`verdadero` si no hay pared enfrente del robot.', 'frente_libre()', 'verdadero', true),
+  frente_libre: worldDoc('`verdadero` si no hay pared enfrente del robot.', 'frente_libre();', 'verdadero', true),
   izquierda_libre: worldDoc(
     '`verdadero` si no hay pared a la izquierda del robot.',
-    'izquierda_libre()',
+    'izquierda_libre();',
     'falso',
     true,
   ),
-  derecha_libre: worldDoc('`verdadero` si no hay pared a la derecha del robot.', 'derecha_libre()', 'falso', true),
+  derecha_libre: worldDoc('`verdadero` si no hay pared a la derecha del robot.', 'derecha_libre();', 'falso', true),
   hay_zumbador: worldDoc(
     '`verdadero` si hay al menos un zumbador en la casilla del robot.',
-    'hay_zumbador()',
+    'hay_zumbador();',
     'verdadero',
     true,
   ),
   tengo_zumbadores: worldDoc(
     '`verdadero` si hay al menos un zumbador en la mochila.',
-    'tengo_zumbadores()',
+    'tengo_zumbadores();',
     'verdadero',
     true,
   ),
-  mirando_al_norte: worldDoc('`verdadero` si el robot mira al norte.', 'mirando_al_norte()', 'verdadero', true),
-  mirando_al_este: worldDoc('`verdadero` si el robot mira al este.', 'mirando_al_este()', 'falso', true),
-  mirando_al_sur: worldDoc('`verdadero` si el robot mira al sur.', 'mirando_al_sur()', 'falso', true),
-  mirando_al_oeste: worldDoc('`verdadero` si el robot mira al oeste.', 'mirando_al_oeste()', 'falso', true),
+  mirando_al_norte: worldDoc('`verdadero` si el robot mira al norte.', 'mirando_al_norte();', 'verdadero', true),
+  mirando_al_este: worldDoc('`verdadero` si el robot mira al este.', 'mirando_al_este();', 'falso', true),
+  mirando_al_sur: worldDoc('`verdadero` si el robot mira al sur.', 'mirando_al_sur();', 'falso', true),
+  mirando_al_oeste: worldDoc('`verdadero` si el robot mira al oeste.', 'mirando_al_oeste();', 'falso', true),
 };
 
 // ── objetivos de un reto ─────────────────────────────────────────────────────

@@ -6,12 +6,12 @@ antes la [arquitectura](./arquitectura.md).
 ## Programa semilla
 
 ```codexivo
-variable saludo = "Codexivo"
+variable saludo = "Codexivo";
 variable arma_mensaje = procedimiento(nombre) {
-  variable prefijo = "Hola, "
-  regresa prefijo + nombre
-}
-arma_mensaje(saludo)
+  variable prefijo = "Hola, ";
+  regresa prefijo + nombre;
+};
+arma_mensaje(saludo);
 ```
 
 Guárdalo en `semilla.cdx` y ejecútalo con `bun run src/cli.ts semilla.cdx`, o pégalo en el REPL.

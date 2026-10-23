@@ -25,8 +25,8 @@ Principios, en orden de prioridad cuando chocan:
    produce siempre el mismo resultado y la misma cantidad de operaciones.
 
 > **✅ Decidido (#43) — regla de redacción.** Los ejemplos de nivel principiante no usan abreviaturas (`+=`, `++`) ni
-> símbolos que tengan una alternativa en palabras, y no llevan `;` al final de línea. Las abreviaturas se presentan
-> después, como atajos de algo que ya se entiende. Aplica al README, a `lenguaje.md`, al recetario, a la §9 y a los
+> símbolos que tengan una alternativa en palabras. Las abreviaturas se presentan después, como atajos de algo que ya se
+> entiende. Aplica al README, a `lenguaje.md`, al recetario, a la §9 y a los
 > mensajes de error que sugieren código.
 
 ### Niveles
@@ -101,13 +101,8 @@ variable canción_favorita = "Cielito lindo";
 
 ### 2.4 Punto y coma
 
-Separa sentencias. Solo hace falta para poner dos en la misma línea; al final de línea es opcional y los ejemplos no lo
-escriben (§0).
-
-Sin `;`, un salto de línea termina la expresión: una línea que empieza con `-`, `(` o `[` es otra sentencia, no la
-continuación de la anterior. Una expresión sigue en la línea siguiente solo si la línea termina en un operador
-(`total = a +`) o si está dentro de paréntesis, corchetes o llaves. Así `x = 1` seguido de `-2` en la otra línea no se
-convierte en silencio en `x = 1 - 2`.
+Separa sentencias. Es **opcional al final de línea**, como hoy; la documentación y el formateador del
+sandbox siempre lo escriben.
 
 ### 2.5 Palabras reservadas
 
@@ -297,35 +292,35 @@ Una forma por intención:
 ```codexivo
 // 🟢 repite un número fijo de veces (herencia directa de Karel)
 repetir 4 veces {
-  avanzar()
+  avanzar();
 }
 
 // 🟢 cuenta, incluyendo los dos extremos
 para i desde 1 hasta 10 {
-  suma = suma + i
+  suma = suma + i;
 }
 para i desde 10 hasta 0 con_paso -2 {
-  imprimir(i)
+  imprimir(i);
 }
 
 // 🟢 mientras la condición sea verdadera
 mientras (intentos es_menor_que 3) {
-  intentos = intentos + 1
+  intentos = intentos + 1;
 }
 
 // 🟢 al menos una vez, hasta que la condición sea verdadera
 hacer {
-  número = leer_número()
-} hasta_que (número es_mayor_que 0)
+  número = leer_número();
+} hasta_que (número es_mayor_que 0);
 
 // 🟡 recorrer una lista o un texto
 para_cada fruta en ["mango", "piña"] {
-  imprimir(fruta)
+  imprimir(fruta);
 }
 
 // 🟡 recorrer un diccionario
 para_cada clave, valor en persona {
-  imprimir(clave, valor)
+  imprimir(clave, valor);
 }
 ```
 
@@ -355,7 +350,7 @@ para_cada clave, valor en persona {
 
 ```codexivo
 para (variable i = 0; i < 10; i++) {
-  imprimir(i)
+  imprimir(i);
 }
 ```
 
@@ -534,13 +529,13 @@ diccionarios y `.`.
 // 🟢 FizzBuzz
 para n desde 1 hasta 15 {
   si (n mod 15 es_igual_a 0) {
-    imprimir("FizzBuzz")
+    imprimir("FizzBuzz");
   } pero_si (n mod 3 es_igual_a 0) {
-    imprimir("Fizz")
+    imprimir("Fizz");
   } pero_si (n mod 5 es_igual_a 0) {
-    imprimir("Buzz")
+    imprimir("Buzz");
   } si_no {
-    imprimir(n)
+    imprimir(n);
   }
 }
 ```
@@ -548,42 +543,42 @@ para n desde 1 hasta 15 {
 ```codexivo
 // 🟡 Búsqueda binaria
 procedimiento buscar_binaria(lista, objetivo) {
-  variable inicio = 0
-  variable fin = longitud(lista) - 1
+  variable inicio = 0;
+  variable fin = longitud(lista) - 1;
   mientras (inicio es_menor_o_igual_a fin) {
-    variable medio = (inicio + fin) div 2
+    variable medio = (inicio + fin) div 2;
     si (lista[medio] es_igual_a objetivo) {
-      regresa medio
+      regresa medio;
     } pero_si (lista[medio] es_menor_que objetivo) {
-      inicio = medio + 1
+      inicio = medio + 1;
     } si_no {
-      fin = medio - 1
+      fin = medio - 1;
     }
   }
-  regresa -1
+  regresa -1;
 }
 ```
 
 ```codexivo
 // 🔴 Recorrido en anchura: distancia mínima en un grafo
 procedimiento distancia(grafo, origen, destino) {
-  variable visitados = { }
-  variable cola = [[origen, 0]]
-  visitados[origen] = verdadero
+  variable visitados = { };
+  variable cola = [[origen, 0]];
+  visitados[origen] = verdadero;
 
   mientras (longitud(cola) > 0) {
-    variable actual = desencolar(cola)
+    variable actual = desencolar(cola);
     si (actual[0] == destino) {
-      regresa actual[1]
+      regresa actual[1];
     }
     para_cada vecino en grafo[actual[0]] {
       si (no tiene(visitados, vecino)) {
-        visitados[vecino] = verdadero
-        encolar(cola, [vecino, actual[1] + 1])
+        visitados[vecino] = verdadero;
+        encolar(cola, [vecino, actual[1] + 1]);
       }
     }
   }
-  regresa -1
+  regresa -1;
 }
 ```
 
