@@ -381,14 +381,15 @@ Todo está disponible sin importar nada. Los nombres con acento también se acep
 
 ### Entrada, salida y tipos
 
-| Procedimiento           | Qué hace                                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| `imprimir(a, b, …)`     | Escribe los valores separados por un espacio y termina la línea                                          |
-| `leer()`                | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                             |
-| `leer_número()`         | Siguiente línea de entrada como número                                                                   |
-| `tipo(x)`               | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"`, `"dominio"` o `"procedimiento"` |
-| `texto(x)`, `número(x)` | Conversiones explícitas                                                                                  |
-| `longitud(x)`           | Caracteres de un texto, elementos de una lista o claves de un diccionario                                |
+| Procedimiento                  | Qué hace                                                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `imprimir(a, b, …)`            | Escribe los valores separados por un espacio y termina la línea                                          |
+| `leer()`                       | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                             |
+| `leer_número()`                | Siguiente línea de entrada como número                                                                   |
+| `tipo(x)`                      | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"`, `"dominio"` o `"procedimiento"` |
+| `texto(x)`, `número(x)`        | Conversiones explícitas                                                                                  |
+| `longitud(x)`                  | Caracteres de un texto, elementos de una lista o claves de un diccionario                                |
+| `afirmar(condición, mensaje?)` | Detiene el programa si la condición es falsa (ver [Errores](#errores))                                   |
 
 ### Matemáticas
 
@@ -492,6 +493,19 @@ Cada error dice de qué tipo es (léxico, sintaxis, ejecución o límite), qué 
 Error de ejecución en la línea 2, columna 5: No se puede dividir entre cero.
 Pista: Revisa que el divisor no valga 0 antes de dividir.
 ```
+
+Con `afirmar` se escribe lo que se espera que sea cierto. Si no lo es, el programa se detiene en esa línea, antes de que el
+error llegue más lejos:
+
+```codexivo
+variable precio = 120
+variable descuento = 20
+variable total = precio - descuento
+afirmar(total es_menor_que precio, "el descuento tenía que bajar el precio")
+imprimir("Total:", total)
+```
+
+Un error detiene el programa: no hay forma de atraparlo y seguir, porque lo que se busca es verlo.
 
 ## Puente hacia otros lenguajes
 

@@ -1,6 +1,6 @@
 {
   "name": "codexivo-linux-arm64",
-  "version": "0.2.3",
+  "version": "1.0.0",
   "description": "Ejecutable nativo de Codexivo para linux-arm64.",
   "os": [
     "linux"

@@ -227,6 +227,7 @@ const library: ProcedureEntry[] = [
 const CATEGORIES: ProcedureCategory[] = [
   'entrada y salida',
   'tipos',
+  'verificación',
   'matemáticas',
   'texto',
   'listas',

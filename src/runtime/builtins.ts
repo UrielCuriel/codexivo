@@ -358,6 +358,50 @@ const library: NativeValue[] = [
     },
   ),
 
+  // verificación
+  define(
+    'afirmar',
+    [1, 2],
+    {
+      level: 'principiante',
+      category: 'verificación',
+      params: [
+        { name: 'condición', type: 'lógico' },
+        { name: 'mensaje', type: 'texto', optional: true },
+      ],
+      returns: 'nulo',
+      description:
+        'Detiene el programa con un error si la condición es falsa. Sirve para escribir lo que esperas que sea cierto y comprobarlo.',
+      examples: [
+        { code: 'variable total = 2 + 2\nafirmar(total es_igual_a 4, "la suma está mal")\ntotal', result: '4' },
+      ],
+    },
+    (args, context) => {
+      const condition = args[0]!;
+      if (typeof condition !== 'boolean') {
+        throw context.fail(
+          'TIPO_DE_ARGUMENTO',
+          `\`afirmar\` espera una condición \`verdadero\` o \`falso\`, pero recibió ${describeType(typeOf(condition))} (${repr(condition)}).`,
+          '¿Quisiste comparar? Por ejemplo: `afirmar(x es_mayor_que 0)`.',
+        );
+      }
+      const message = args[1];
+      if (message !== undefined && typeof message !== 'string') {
+        throw context.fail(
+          'TIPO_DE_ARGUMENTO',
+          `El mensaje de \`afirmar\` tiene que ser un texto, pero es ${describeType(typeOf(message))}.`,
+          'Escribe el mensaje entre comillas: `afirmar(x es_mayor_que 0, "x tenía que ser positivo")`.',
+        );
+      }
+      if (condition) return null;
+      throw context.fail(
+        'AFIRMACIÓN_FALLIDA',
+        message ? `La afirmación no se cumplió: ${message}` : 'La afirmación no se cumplió.',
+        'Lo que afirmaste que era cierto no lo es en este punto. Revisa los valores de las variables justo antes de esta línea.',
+      );
+    },
+  ),
+
   // matemáticas
   define(
     'absoluto',

@@ -1,7 +1,7 @@
 # Codexivo v1 — Especificación del lenguaje
 
-> **Estado:** aprobada. Se implementa por pasos (§16). Lo que ya funciona está en
-> [`lenguaje.md`](./lenguaje.md), y todos sus ejemplos se prueban automáticamente.
+> **Estado:** implementada en la versión 1.0.0 (§16). Lo que funciona está en [`lenguaje.md`](./lenguaje.md), y todos sus
+> ejemplos se prueban automáticamente.
 >
 > Las secciones marcadas con **✅ Decidido** fueron decisiones abiertas que ya se resolvieron.
 
@@ -429,24 +429,26 @@ calculadora.suma(1, 3); // 4
 
 ## 7. Errores
 
-Cada error es un objeto, no solo un texto:
+Cada error es un objeto, no solo un texto. Los campos de la API van en inglés, como el resto (`kind`, `span`); todo lo que
+lee quien aprende va en español:
 
 ```ts
 {
-  tipo: "léxico" | "sintaxis" | "ejecución" | "límite",
-  código: "DIVISIÓN_ENTRE_CERO",
-  mensaje: "No se puede dividir entre cero.",
-  pista: "Revisa que `divisor` no valga 0 antes de dividir.",
-  inicio: { línea: 4, columna: 12 },
-  fin: { línea: 4, columna: 23 },
-  pila: ["programa", "promedio(lista)"]
+  kind: "léxico" | "sintaxis" | "ejecución" | "límite",
+  code: "DIVISIÓN_ENTRE_CERO",
+  message: "No se puede dividir entre cero.",
+  hint: "Revisa que `divisor` no valga 0 antes de dividir.",
+  span: { start: { line: 4, column: 12, offset: 80 }, end: { line: 4, column: 23, offset: 91 } },
+  callStack: ["programa", "promedio"]
 }
 ```
 
+Cada `code` tiene una explicación larga en el catálogo (`catalog.errors`).
+
 - Los mensajes dicen **qué pasó** y la pista **qué revisar**, en español correcto y con acentos.
 - El parser se recupera y reporta varios errores, pero el sandbox destaca el primero.
-- `afirmar(condición, mensaje)` detiene el programa si la condición es falsa. Es la herramienta más
-  directa para practicar verificación.
+- `afirmar(condición, mensaje)` detiene el programa con `AFIRMACIÓN_FALLIDA` si la condición es falsa; el mensaje
+  es opcional. Es la herramienta más directa para practicar verificación.
 - Sin `intentar`/`capturar` en v1: un error detiene el programa, y eso es lo que queremos que se vea.
 
 ## 8. Biblioteca estándar
@@ -655,13 +657,16 @@ estáticos y `según`/`caso`. Se pueden reconsiderar después, siempre con el pr
 
 Codexivo no tiene usuarios todavía, así que v1 se permite romper compatibilidad:
 
-- condiciones estrictas (si se aprueba §4.5);
+- condiciones estrictas (§4.5);
 - error al llamar con un número distinto de argumentos;
 - error al redeclarar o al asignar sin declarar;
 - `agregar` pasa a modificar la lista (antes regresaba una nueva);
 - un procedimiento sin `regresa` regresa `nulo` (antes regresaba el valor de su última expresión);
 - `1 / 0` pasa a ser error;
-- `ARREGLO` pasa a llamarse `lista` en mensajes y en `tipo()`.
+- `ARREGLO` pasa a llamarse `lista` en mensajes y en `tipo()`;
+- palabras reservadas nuevas (§2.5): `constante`, `dominio`, `repetir`, `veces`, `desde`, `hasta`, `con_paso`,
+  `para_cada`, `en`, `romper`, `continuar`, `mod`, `div` y las comparaciones en palabras ya no sirven como nombres;
+- sin `;`, el salto de línea termina la expresión (§2.4): una expresión partida antes de un operador es un error.
 
 ## 15. Decisiones
 
