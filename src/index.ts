@@ -59,3 +59,7 @@ export type {
 export { catalog } from './catalog';
 export type { Catalog, KeywordGroup, OperatorEntry, ProcedureEntry, ConstantEntry, ErrorEntry } from './catalog';
 export type { ProcedureDoc, ProcedureExample, ProcedureLevel, ProcedureCategory } from './runtime/values';
+
+export { flowGraph } from './flow';
+export type { FlowGraph, FlowNode, FlowEdge, FlowNodeKind, FlowEdgeKind, FlowEdgeLabel, FlowOptions } from './flow';
+export { printExpression, printStatement } from './printer';

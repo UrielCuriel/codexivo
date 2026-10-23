@@ -139,6 +139,28 @@ biblioteca en Markdown.
 - `prepare(código, opciones)` analiza el código y regresa una `Machine` lista para ejecutar paso a paso.
 - `Session` comparte variables entre ejecuciones; la usa el REPL.
 
+## Diagrama de flujo (`src/flow.ts`, `src/printer.ts`)
+
+`flowGraph(programa | procedimiento, opciones)` regresa un grafo serializable. La lógica que decide qué nodos y aristas
+existen vive aquí, probada; el sitio solo calcula coordenadas (con ELK o dagre) y dibuja.
+
+- **Nodos:** `inicio`, `fin`, `proceso`, `decisión` (`si`, `pero_si`, condiciones de bucles, `hasta_que`, `repetir`,
+  `para_cada`), `llamada`, `entrada` (`leer`), `salida` (`imprimir`) y `retorno`. Cada uno trae los `astIds` y `spans` de
+  los nodos del AST que representa, un texto corto (`suma += i`, `i <= 10`) y un `rank` sugerido: la distancia más larga
+  desde el inicio sin contar las vueltas.
+- **Aristas:** `kind` (`normal`, `vuelta`, `romper`, `continuar`, `regresa`) y, al salir de una decisión, `label` (`sí`/`no`
+  en condiciones, `repetir`/`salir` en `repetir` y `para_cada`). Un `si` sin `si_no` lleva por el `no` a la sentencia
+  siguiente.
+- **Opciones:** `group` junta sentencias simples consecutivas; `expandProcedures` agrega en `procedures` el grafo de cada
+  procedimiento con nombre y marca sus llamadas con `procedure`; `maxLabelLength` recorta las etiquetas.
+
+**Resaltar el nodo activo:** cada `nodeId` de los eventos `paso` y `decide` (y el `ownerId` de `decide`) está en los
+`astIds` de un nodo del grafo, así el sitio sabe qué nodo iluminar y, con el valor de la decisión, qué arista se tomó. Una
+prueba lo comprueba ejecutando programas con cada estructura de control.
+
+`printExpression` y `printStatement` convierten nodos del AST en texto de Codexivo con los paréntesis justos; sirven para
+cualquier otra vista.
+
 ## Para estudiar el código
 
 1. `bun run repl` y escribe programas pequeños.
