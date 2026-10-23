@@ -41,9 +41,10 @@ es_menor_o_igual_a  es_mayor_o_igual_a
 | lógico        | `verdadero`, `falso`                                                          |
 | nulo          | `nulo`                                                                        |
 | lista         | `[1, "a", verdadero]`                                                         |
+| diccionario   | `{ "nombre": "Ana", "edad": 16 }`                                             |
 | procedimiento | `procedimiento(x) { regresa x * 2; }`                                         |
 
-Las listas se comparten: si dos variables apuntan a la misma lista, un cambio se ve desde las dos.
+Las listas y los diccionarios se comparten: si dos variables apuntan a la misma lista, un cambio se ve desde las dos.
 
 ## Variables
 
@@ -210,26 +211,62 @@ matriz[1][0] = 9;
 - Los índices son enteros desde 0; un índice fuera de rango es un error que dice cuántos elementos hay.
 - Los textos no se pueden cambiar letra por letra: `t[0] = "H"` es un error. Se construye un texto nuevo.
 
+## Diccionarios
+
+```codexivo
+variable persona = { "nombre": "Ana", "edad": 16 };
+persona["nombre"];        // "Ana"
+persona.edad;             // 16, lo mismo que persona["edad"]
+persona.ciudad = "León";  // agrega la clave
+persona.edad += 1;
+
+para_cada clave, valor en persona {
+  imprimir(clave, valor);
+}
+
+si (tiene(persona, "correo")) {
+  imprimir(persona.correo);
+}
+
+variable calculadora = {
+  "suma": procedimiento(a, b) { regresa a + b; },
+};
+calculadora.suma(1, 3);   // 4
+```
+
+- Las claves son textos o números (`1` y `"1"` son claves distintas) y van entre comillas: `{ nombre: "Ana" }` es un
+  error. Para usar el valor de una variable como clave, escríbela entre paréntesis: `{ (clave): 1 }`.
+- `d.campo` funciona con claves que son nombres válidos; para las demás, `d["clave con espacios"]`.
+- Leer una clave que no existe es un error; pregunta antes con `tiene(d, clave)`.
+- Se recorren en el orden en que se agregaron las claves: `para_cada clave en d` da solo las claves y
+  `para_cada clave, valor en d`, las dos. Agregar o quitar claves mientras se recorre es un error.
+- `==` compara por valor sin importar el orden: `{ "a": 1, "b": 2 } == { "b": 2, "a": 1 }` es `verdadero`.
+- Al inicio de una sentencia, `{` abre un bloque; en cualquier otra posición, un diccionario.
+
 ## Biblioteca
 
 Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
 
-| Procedimiento                     | Qué hace                                                                       |
-| --------------------------------- | ------------------------------------------------------------------------------ |
-| `imprimir(a, b, …)`               | Escribe los valores separados por un espacio y termina la línea                |
-| `leer()`                          | Siguiente línea de entrada como texto, o `nulo` si ya no hay                   |
-| `leer_número()`                   | Siguiente línea de entrada como número                                         |
-| `tipo(x)`                         | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"` o `"procedimiento"`     |
-| `texto(x)`, `número(x)`           | Conversiones explícitas                                                        |
-| `longitud(x)`                     | Caracteres de un texto o elementos de una lista                                |
-| `absoluto(x)`                     | Valor absoluto                                                                 |
-| `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                               |
-| `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                          |
-| `PI`                              | La constante 3.14159…; una variable tuya con el mismo nombre la oculta         |
-| `agregar(lista, x)`               | Agrega al final (cambia la lista)                                              |
-| `rango(a, b, paso?)`              | Lista de `a` a `b`, **incluyendo** `b`; con `paso` negativo cuenta hacia abajo |
-| `índices(lista)`                  | Las posiciones válidas: `rango(0, longitud(lista) - 1)`                        |
-| `primero(lista)`, `último(lista)` | Primer y último elemento                                                       |
+| Procedimiento                     | Qué hace                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------- |
+| `imprimir(a, b, …)`               | Escribe los valores separados por un espacio y termina la línea                             |
+| `leer()`                          | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                |
+| `leer_número()`                   | Siguiente línea de entrada como número                                                      |
+| `tipo(x)`                         | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"` o `"procedimiento"` |
+| `texto(x)`, `número(x)`           | Conversiones explícitas                                                                     |
+| `longitud(x)`                     | Caracteres de un texto, elementos de una lista o claves de un diccionario                   |
+| `absoluto(x)`                     | Valor absoluto                                                                              |
+| `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                                            |
+| `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                                       |
+| `PI`                              | La constante 3.14159…; una variable tuya con el mismo nombre la oculta                      |
+| `agregar(lista, x)`               | Agrega al final (cambia la lista)                                                           |
+| `rango(a, b, paso?)`              | Lista de `a` a `b`, **incluyendo** `b`; con `paso` negativo cuenta hacia abajo              |
+| `índices(lista)`                  | Las posiciones válidas: `rango(0, longitud(lista) - 1)`                                     |
+| `quitar(lista, i)`                | Quita el elemento en la posición `i` y lo regresa (cambia la lista)                         |
+| `quitar(d, clave)`                | Quita la clave y regresa su valor (cambia el diccionario)                                   |
+| `claves(d)`, `valores(d)`         | Listas nuevas con las claves o los valores, en orden de inserción                           |
+| `tiene(d, clave)`                 | `verdadero` si el diccionario tiene esa clave                                               |
+| `primero(lista)`, `último(lista)` | Primer y último elemento                                                                    |
 
 ## Errores
 

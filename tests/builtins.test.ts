@@ -68,6 +68,34 @@ describe('biblioteca estándar', () => {
     });
   });
 
+  describe('diccionarios', () => {
+    test.each([
+      ['claves({ "a": 1, 2: "b" })', '["a", 2]'],
+      ['valores({ "a": 1, 2: "b" })', '[1, "b"]'],
+      ['tiene({ "a": 1 }, "a")', 'verdadero'],
+      ['tiene({ "1": 1 }, 1)', 'falso'],
+      ['longitud({ "a": 1, "b": 2 })', '2'],
+      ['tipo({})', '"diccionario"'],
+      ['texto({ "a": [1] })', '"{\\"a\\": [1]}"'],
+    ])('%s → %s', (source, expected) => {
+      expect(value(source)).toBe(expected);
+    });
+
+    test('quitar decide por tipo y regresa lo que quitó', () => {
+      expect(value('variable d = { "a": 1, "b": 2 }; [quitar(d, "a"), d];')).toBe('[1, {"b": 2}]');
+      expect(value('variable l = [1, 2, 3]; [quitar(l, 0), quitar(l, -1), l];')).toBe('[1, 3, [2]]');
+    });
+
+    test('errores', () => {
+      expect(errorCode('claves([1])')).toBe('TIPO_DE_ARGUMENTO');
+      expect(errorCode('tiene({}, [1])')).toBe('CLAVE_INVÁLIDA');
+      expect(errorCode('quitar({}, "x")')).toBe('CLAVE_INEXISTENTE');
+      expect(errorCode('quitar([1], 5)')).toBe('ÍNDICE_FUERA_DE_RANGO');
+      expect(errorCode('quitar([1], "a")')).toBe('ÍNDICE_INVÁLIDO');
+      expect(errorCode('quitar("abc", 0)')).toBe('TIPO_DE_ARGUMENTO');
+    });
+  });
+
   describe('rango e índices', () => {
     test.each([
       ['rango(1, 5)', '[1, 2, 3, 4, 5]'],

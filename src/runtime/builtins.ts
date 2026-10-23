@@ -1,5 +1,5 @@
-import { describeType, isList, repr, show, typeOf, WAIT_FOR_INPUT } from './values';
-import type { NativeContext, NativeValue, Value } from './values';
+import { describeType, isDict, isList, repr, show, typeOf, WAIT_FOR_INPUT } from './values';
+import type { DictValue, NativeContext, NativeValue, Value } from './values';
 
 type NativeFn = (args: Value[], context: NativeContext) => Value | typeof WAIT_FOR_INPUT;
 
@@ -21,6 +21,22 @@ const expectNumber = (name: string, value: Value, context: NativeContext, positi
 const expectList = (name: string, value: Value, context: NativeContext) => {
   if (isList(value)) return value;
   throw context.fail('TIPO_DE_ARGUMENTO', `\`${name}\` espera una lista, pero recibió ${describeType(typeOf(value))}.`);
+};
+
+const expectDict = (name: string, value: Value, context: NativeContext): DictValue => {
+  if (isDict(value)) return value;
+  throw context.fail(
+    'TIPO_DE_ARGUMENTO',
+    `\`${name}\` espera un diccionario, pero recibió ${describeType(typeOf(value))}.`,
+  );
+};
+
+const expectKey = (name: string, value: Value, context: NativeContext): string | number => {
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  throw context.fail(
+    'CLAVE_INVÁLIDA',
+    `\`${name}\` espera una clave de texto o número, pero recibió ${describeType(typeOf(value))}.`,
+  );
 };
 
 const numbersOf = (name: string, args: Value[], context: NativeContext): number[] => {
@@ -81,9 +97,10 @@ const library: NativeValue[] = [
     const value = args[0]!;
     if (typeof value === 'string') return [...value].length;
     if (isList(value)) return value.items.length;
+    if (isDict(value)) return value.entries.size;
     throw context.fail(
       'TIPO_DE_ARGUMENTO',
-      `\`longitud\` espera un texto o una lista, pero recibió ${describeType(typeOf(value))}.`,
+      `\`longitud\` espera un texto, una lista o un diccionario, pero recibió ${describeType(typeOf(value))}.`,
     );
   }),
 
@@ -142,6 +159,44 @@ const library: NativeValue[] = [
     const length = typeof value === 'string' ? value.length : value.items.length;
     return context.newList(Array.from({ length }, (_, index) => index));
   }),
+  define('quitar', 2, (args, context) => {
+    const container = args[0]!;
+    if (isDict(container)) {
+      const key = expectKey('quitar', args[1]!, context);
+      if (!container.entries.has(key)) {
+        throw context.fail(
+          'CLAVE_INEXISTENTE',
+          `\`quitar\` no encontró la clave ${repr(key)} en el diccionario.`,
+          `Usa \`tiene(d, ${repr(key)})\` para preguntar antes de quitarla.`,
+        );
+      }
+      const value = container.entries.get(key)!;
+      container.entries.delete(key);
+      return value;
+    }
+    if (!isList(container)) {
+      throw context.fail(
+        'TIPO_DE_ARGUMENTO',
+        `\`quitar\` espera una lista o un diccionario, pero recibió ${describeType(typeOf(container))}.`,
+      );
+    }
+    const index = args[1]!;
+    if (typeof index !== 'number' || !Number.isInteger(index)) {
+      throw context.fail('ÍNDICE_INVÁLIDO', `El índice tiene que ser un número entero, pero es ${repr(index)}.`);
+    }
+    const length = container.items.length;
+    const position = index < 0 ? length + index : index;
+    if (position < 0 || position >= length) {
+      throw context.fail(
+        'ÍNDICE_FUERA_DE_RANGO',
+        `El índice ${index} está fuera de la lista, que tiene ${length} ${length === 1 ? 'elemento' : 'elementos'}.`,
+        length === 0
+          ? 'La lista está vacía.'
+          : `Los índices válidos van de 0 a ${length - 1} (o de -1 a -${length} desde el final).`,
+      );
+    }
+    return container.items.splice(position, 1)[0]!;
+  }),
   define('primero', 1, (args, context) => {
     const list = expectList('primero', args[0]!, context);
     if (list.items.length === 0) throw context.fail('LISTA_VACÍA', '`primero` no puede tomar nada de una lista vacía.');
@@ -152,6 +207,15 @@ const library: NativeValue[] = [
     if (list.items.length === 0) throw context.fail('LISTA_VACÍA', '`último` no puede tomar nada de una lista vacía.');
     return list.items[list.items.length - 1]!;
   }),
+
+  // diccionarios
+  define('claves', 1, (args, context) => context.newList([...expectDict('claves', args[0]!, context).entries.keys()])),
+  define('valores', 1, (args, context) =>
+    context.newList([...expectDict('valores', args[0]!, context).entries.values()]),
+  ),
+  define('tiene', 2, (args, context) =>
+    expectDict('tiene', args[0]!, context).entries.has(expectKey('tiene', args[1]!, context)),
+  ),
 ];
 
 /** Constantes de la biblioteca. Una variable del usuario con el mismo nombre las oculta. */

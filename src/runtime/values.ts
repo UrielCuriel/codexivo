@@ -6,12 +6,22 @@ import type { Chunk } from './compiler';
  * listas y procedimientos son objetos con un `id` para poder dibujar cuándo dos variables
  * comparten el mismo valor.
  */
-export type Value = number | string | boolean | null | ListValue | ProcedureValue | NativeValue;
+export type Value = number | string | boolean | null | ListValue | DictValue | ProcedureValue | NativeValue;
 
 export interface ListValue {
   kind: 'lista';
   id: number;
   items: Value[];
+}
+
+/** Clave de un diccionario: un texto o un número. */
+export type DictKey = string | number;
+
+/** Diccionario: conserva el orden en que se agregaron las claves. */
+export interface DictValue {
+  kind: 'diccionario';
+  id: number;
+  entries: Map<DictKey, Value>;
 }
 
 export interface ProcedureValue {
@@ -28,6 +38,7 @@ export interface NativeContext {
   /** Siguiente línea de entrada, `null` si ya no hay, o `WAIT_FOR_INPUT` si hay que pedirla. */
   readLine(): string | null | typeof WAIT_FOR_INPUT;
   newList(items: Value[]): ListValue;
+  newDict(entries: Map<DictKey, Value>): DictValue;
   /** Error de ejecución ubicado en la llamada actual. */
   fail(code: string, message: string, hint?: string): CodexivoError;
 }
@@ -42,7 +53,7 @@ export interface NativeValue {
   call(args: Value[], context: NativeContext): Value | typeof WAIT_FOR_INPUT;
 }
 
-export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'procedimiento';
+export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'diccionario' | 'procedimiento';
 
 export const typeOf = (value: Value): TypeName => {
   if (value === null) return 'nulo';
@@ -54,7 +65,7 @@ export const typeOf = (value: Value): TypeName => {
     case 'boolean':
       return 'lógico';
     default:
-      return value.kind === 'lista' ? 'lista' : 'procedimiento';
+      return value.kind === 'lista' || value.kind === 'diccionario' ? value.kind : 'procedimiento';
   }
 };
 
@@ -73,6 +84,9 @@ export const describeType = (type: TypeName): string => {
 export const isList = (value: Value): value is ListValue =>
   typeof value === 'object' && value !== null && value.kind === 'lista';
 
+export const isDict = (value: Value): value is DictValue =>
+  typeof value === 'object' && value !== null && value.kind === 'diccionario';
+
 export const isCallable = (value: Value): value is ProcedureValue | NativeValue =>
   typeof value === 'object' && value !== null && (value.kind === 'procedimiento' || value.kind === 'nativo');
 
@@ -84,7 +98,7 @@ const formatNumber = (value: number): string => {
 };
 
 /** Representación como se escribiría en código: los textos van entre comillas. */
-export const repr = (value: Value, seen: Set<ListValue> = new Set()): string => {
+export const repr = (value: Value, seen: Set<ListValue | DictValue> = new Set()): string => {
   if (value === null) return 'nulo';
   switch (typeof value) {
     case 'number':
@@ -94,12 +108,15 @@ export const repr = (value: Value, seen: Set<ListValue> = new Set()): string => 
     case 'boolean':
       return value ? 'verdadero' : 'falso';
   }
-  if (value.kind === 'lista') {
-    if (seen.has(value)) return '[…]';
+  if (value.kind === 'lista' || value.kind === 'diccionario') {
+    if (seen.has(value)) return value.kind === 'lista' ? '[…]' : '{…}';
     seen.add(value);
-    const inner = value.items.map(item => repr(item, seen)).join(', ');
+    const inner =
+      value.kind === 'lista'
+        ? value.items.map(item => repr(item, seen))
+        : [...value.entries].map(([key, item]) => `${repr(key)}: ${repr(item, seen)}`);
     seen.delete(value);
-    return `[${inner}]`;
+    return value.kind === 'lista' ? `[${inner.join(', ')}]` : `{${inner.join(', ')}}`;
   }
   return value.name ? `procedimiento ${value.name}` : 'procedimiento';
 };
@@ -107,18 +124,31 @@ export const repr = (value: Value, seen: Set<ListValue> = new Set()): string => 
 /** Como lo muestra `imprimir`: los textos sin comillas. */
 export const show = (value: Value): string => (typeof value === 'string' ? value : repr(value));
 
-/** Igualdad por valor: dos listas son iguales si tienen los mismos elementos en el mismo orden. */
-export const equals = (a: Value, b: Value, seen: Array<[ListValue, ListValue]> = []): boolean => {
+type Container = ListValue | DictValue;
+
+/**
+ * Igualdad por valor: dos listas son iguales si tienen los mismos elementos en el mismo orden, y dos
+ * diccionarios si tienen las mismas claves con los mismos valores, en cualquier orden.
+ */
+export const equals = (a: Value, b: Value, seen: Array<[Container, Container]> = []): boolean => {
   if (a === b) return true;
-  if (isList(a) && isList(b)) {
-    if (a.items.length !== b.items.length) return false;
-    if (seen.some(([x, y]) => x === a && y === b)) return true;
-    seen.push([a, b]);
-    const result = a.items.every((item, index) => equals(item, b.items[index]!, seen));
-    seen.pop();
-    return result;
+  const bothLists = isList(a) && isList(b);
+  const bothDicts = isDict(a) && isDict(b);
+  if (!bothLists && !bothDicts) return false;
+  if (seen.some(([x, y]) => x === a && y === b)) return true;
+  seen.push([a as Container, b as Container]);
+  let result: boolean;
+  if (bothLists) {
+    const [x, y] = [a as ListValue, b as ListValue];
+    result = x.items.length === y.items.length && x.items.every((item, index) => equals(item, y.items[index]!, seen));
+  } else {
+    const [x, y] = [a as DictValue, b as DictValue];
+    result =
+      x.entries.size === y.entries.size &&
+      [...x.entries].every(([key, item]) => y.entries.has(key) && equals(item, y.entries.get(key)!, seen));
   }
-  return false;
+  seen.pop();
+  return result;
 };
 
 /**

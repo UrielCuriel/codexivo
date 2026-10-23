@@ -12,6 +12,8 @@ export type Instruction =
   | { op: 'step'; node: ast.Statement }
   | { op: 'const'; value: Value; node: ast.Node }
   | { op: 'list'; count: number; node: ast.ListLiteral }
+  /** Saca `count` pares clave–valor de la pila y crea un diccionario. */
+  | { op: 'dict'; count: number; node: ast.DictLiteral }
   | { op: 'load'; name: string; node: ast.Identifier; forUpdate?: boolean }
   /**
    * Saca un valor de la pila y crea la variable (o constante) `target` en el alcance actual. `node` es la
@@ -20,7 +22,7 @@ export type Instruction =
   | { op: 'declare'; name: string; constant: boolean; target: ast.Identifier; node: ast.Node }
   /** Saca un valor de la pila y lo guarda en una variable existente. */
   | { op: 'store'; name: string; target: ast.Identifier; node: ast.Assignment | ast.Increment }
-  /** Saca valor, índice y lista (en ese orden) y cambia el elemento. */
+  /** Saca valor, índice (o clave) y lista (o diccionario), en ese orden, y cambia el elemento. */
   | { op: 'setIndex'; target: ast.Index; node: ast.Assignment | ast.Increment }
   /** Copia los `count` valores de la cima de la pila. */
   | { op: 'dup'; count: number }
@@ -48,9 +50,15 @@ export type Instruction =
   | { op: 'repeatStart'; node: ast.Expression; owner: ast.Repeat }
   /** Si al contador le quedan vueltas, lo reduce y sigue; si no, lo saca de la pila y salta a `target`. */
   | { op: 'repeatNext'; target: number; node: ast.Expression; owner: ast.Repeat }
-  /** Revisa que lo que se recorre sea una lista o un texto y agrega su longitud y la posición 0 a la pila. */
+  /**
+   * Revisa lo que se recorre y deja tres valores ocultos en la pila: lo recorrido, su longitud (o, en un
+   * diccionario, la lista de sus claves al empezar) y la posición 0.
+   */
   | { op: 'forEachStart'; node: ast.Expression; owner: ast.ForEach }
-  /** Si quedan elementos, pone el siguiente en la pila; si no, saca los valores ocultos y salta a `target`. */
+  /**
+   * Si quedan elementos, pone el siguiente en la pila (en un diccionario, la clave; o el valor y luego la
+   * clave si hay dos variables); si no, saca los valores ocultos y salta a `target`.
+   */
   | { op: 'forEachNext'; target: number; node: ast.Expression; owner: ast.ForEach }
   /** Cortocircuito: revisa el lado izquierdo de `y`/`o`; si ya decide el resultado, lo deja y salta. */
   | { op: 'shortCircuit'; target: number; node: ast.Logical }
@@ -303,13 +311,9 @@ class Compiler {
         const loop = this.loop(3, () => {
           // La variable del bucle es nueva en cada vuelta y comparte alcance con el cuerpo.
           this.enterScope();
-          this.emit({
-            op: 'declare',
-            name: node.variable.name,
-            constant: false,
-            target: node.variable,
-            node: node.variable,
-          });
+          for (const variable of [node.variable, ...(node.value ? [node.value] : [])]) {
+            this.emit({ op: 'declare', name: variable.name, constant: false, target: variable, node: variable });
+          }
           this.statements(node.body.statements);
           this.exitScope();
         });
@@ -375,6 +379,13 @@ class Compiler {
       case 'ListLiteral':
         for (const element of node.elements) this.expression(element);
         this.emit({ op: 'list', count: node.elements.length, node });
+        return;
+      case 'DictLiteral':
+        for (const entry of node.entries) {
+          this.expression(entry.key);
+          this.expression(entry.value);
+        }
+        this.emit({ op: 'dict', count: node.entries.length, node });
         return;
       case 'Identifier':
         this.emit({ op: 'load', name: node.name, node });

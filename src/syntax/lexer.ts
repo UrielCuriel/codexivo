@@ -37,6 +37,8 @@ const ONE_CHAR_OPERATORS: Readonly<Record<string, TokenType>> = {
   '<': TokenType.LT,
   '>': TokenType.GT,
   ',': TokenType.COMMA,
+  ':': TokenType.COLON,
+  '.': TokenType.DOT,
   ';': TokenType.SEMICOLON,
   '(': TokenType.LPAREN,
   ')': TokenType.RPAREN,
@@ -45,6 +47,15 @@ const ONE_CHAR_OPERATORS: Readonly<Record<string, TokenType>> = {
   '[': TokenType.LBRACKET,
   ']': TokenType.RBRACKET,
 };
+
+const VALUE_ENDS = new Set([
+  TokenType.IDENT,
+  TokenType.NUMBER,
+  TokenType.STRING,
+  TokenType.RPAREN,
+  TokenType.RBRACKET,
+  TokenType.RBRACE,
+]);
 
 const ESCAPES: Readonly<Record<string, string>> = {
   n: '\n',
@@ -134,7 +145,10 @@ export const tokenize = (source: string): LexResult => {
     }
 
     // números
-    if (DIGIT.test(character) || (character === '.' && DIGIT.test(peek(1)))) {
+    // Después de un valor, `.` es acceso a un campo (`d.1` es un error claro, no `d` seguido de `.1`).
+    const last = tokens[tokens.length - 1];
+    const afterValue = last !== undefined && VALUE_ENDS.has(last.type) && last.span.end.offset === offset;
+    if (DIGIT.test(character) || (character === '.' && DIGIT.test(peek(1)) && !afterValue)) {
       // `_` separa grupos de dígitos (`1_000_000`); se revisa que esté bien puesto al final.
       const digits = () => {
         while (DIGIT.test(peek()) || peek() === '_') advance();

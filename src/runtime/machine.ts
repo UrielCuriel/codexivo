@@ -4,8 +4,8 @@ import type * as ast from '../syntax/ast';
 import type { Span } from '../syntax/token';
 import { constants as libraryConstants, natives as defaultNatives } from './builtins';
 import type { Chunk, DecisionLabel, Instruction } from './compiler';
-import { describeType, equals, isCallable, isList, repr, Scope, typeOf, WAIT_FOR_INPUT } from './values';
-import type { ListValue, NativeContext, NativeValue, ProcedureValue, Value } from './values';
+import { describeType, equals, isCallable, isDict, isList, repr, Scope, typeOf, WAIT_FOR_INPUT } from './values';
+import type { DictKey, DictValue, ListValue, NativeContext, NativeValue, ProcedureValue, Value } from './values';
 import { suggestName } from './suggest';
 
 export type MachineStatus = 'lista' | 'pausada' | 'esperando_entrada' | 'terminada' | 'error';
@@ -41,7 +41,11 @@ export type SerializedValue =
   | { type: 'lógico'; value: boolean; repr: string }
   | { type: 'nulo'; value: null; repr: string }
   | { type: 'lista'; ref: number; length: number; repr: string }
+  | { type: 'diccionario'; ref: number; size: number; repr: string }
   | { type: 'procedimiento'; name?: string; repr: string };
+
+/** Contenido de una lista o de un diccionario en `Snapshot.heap`. */
+export type HeapEntry = SerializedValue[] | { entries: Array<{ key: SerializedValue; value: SerializedValue }> };
 
 export const serialize = (value: Value): SerializedValue => {
   const text = repr(value);
@@ -55,6 +59,7 @@ export const serialize = (value: Value): SerializedValue => {
       return { type: 'lógico', value, repr: text };
   }
   if (value.kind === 'lista') return { type: 'lista', ref: value.id, length: value.items.length, repr: text };
+  if (value.kind === 'diccionario') return { type: 'diccionario', ref: value.id, size: value.entries.size, repr: text };
   return { type: 'procedimiento', name: value.name, repr: text };
 };
 
@@ -113,7 +118,7 @@ export interface Snapshot {
   /** Llamadas activas, del programa principal a la más reciente. */
   frames: FrameSnapshot[];
   /** Contenido de las listas que aparecen en `frames`, por `ref`. */
-  heap: Record<number, SerializedValue[]>;
+  heap: Record<number, HeapEntry>;
   output: string;
 }
 
@@ -222,11 +227,18 @@ export class Machine {
   }
 
   snapshot(): Snapshot {
-    const heap: Record<number, SerializedValue[]> = {};
+    const heap: Record<number, HeapEntry> = {};
     const collect = (value: Value) => {
-      if (!isList(value) || heap[value.id]) return;
-      heap[value.id] = value.items.map(serialize);
-      value.items.forEach(collect);
+      if ((!isList(value) && !isDict(value)) || heap[value.id]) return;
+      if (isList(value)) {
+        heap[value.id] = value.items.map(serialize);
+        value.items.forEach(collect);
+      } else {
+        heap[value.id] = {
+          entries: [...value.entries].map(([key, item]) => ({ key: serialize(key), value: serialize(item) })),
+        };
+        value.entries.forEach(collect);
+      }
     };
     const frames = this.frames.map(frame => {
       const scopes: Array<Record<string, SerializedValue>> = [];
@@ -333,6 +345,16 @@ export class Machine {
       case 'list': {
         const items = this.stack.splice(this.stack.length - instruction.count, instruction.count);
         this.stack.push(this.newList(items));
+        return false;
+      }
+
+      case 'dict': {
+        const values = this.stack.splice(this.stack.length - instruction.count * 2, instruction.count * 2);
+        const entries = new Map<DictKey, Value>();
+        instruction.node.entries.forEach((entry, index) => {
+          entries.set(this.dictKey(values[index * 2]!, entry.key), values[index * 2 + 1]!);
+        });
+        this.stack.push(this.newDict(entries));
         return false;
       }
 
@@ -518,10 +540,27 @@ export class Machine {
 
       case 'forEachStart': {
         const iterable = this.stack[this.stack.length - 1]!;
+        const { owner } = instruction;
+        if (isDict(iterable)) {
+          // Las claves se copian al empezar; así se nota si el diccionario cambia durante el recorrido.
+          const keys: ListValue = { kind: 'lista', id: 0, items: [...iterable.entries.keys()] };
+          this.stack.push(keys, 0);
+          return false;
+        }
+        if (owner.value) {
+          throw this.runtimeError(
+            'PARA_CADA_INVÁLIDO',
+            `\`para_cada ${owner.variable.name}, ${owner.value.name}\` recorre un diccionario, no ${describeType(typeOf(iterable))}.`,
+            instruction.node,
+            isList(iterable) || typeof iterable === 'string'
+              ? `Para una lista o un texto usa una sola variable: \`para_cada ${owner.value.name} en …\`.`
+              : undefined,
+          );
+        }
         if (!isList(iterable) && typeof iterable !== 'string') {
           throw this.runtimeError(
             'PARA_CADA_INVÁLIDO',
-            `\`para_cada\` recorre listas y textos, no ${describeType(typeOf(iterable))}.`,
+            `\`para_cada\` recorre listas, textos y diccionarios, no ${describeType(typeOf(iterable))}.`,
             instruction.node,
             typeof iterable === 'number'
               ? `Para contar, recorre un rango: \`rango(1, ${repr(iterable)})\`.`
@@ -534,8 +573,9 @@ export class Machine {
 
       case 'forEachNext': {
         const position = this.stack[this.stack.length - 1] as number;
-        const length = this.stack[this.stack.length - 2] as number;
-        const iterable = this.stack[this.stack.length - 3] as ListValue | string;
+        const state = this.stack[this.stack.length - 2] as number | ListValue;
+        const iterable = this.stack[this.stack.length - 3] as ListValue | DictValue | string;
+        const length = typeof state === 'number' ? state : state.items.length;
         if (isList(iterable) && iterable.items.length !== length) {
           throw this.runtimeError(
             'LISTA_MODIFICADA_AL_RECORRER',
@@ -544,10 +584,28 @@ export class Machine {
             'Recorre una copia o junta los cambios en otra lista y aplícalos al terminar el `para_cada`.',
           );
         }
+        if (
+          isDict(iterable) &&
+          (iterable.entries.size !== length ||
+            (position < length && !iterable.entries.has((state as ListValue).items[position] as DictKey)))
+        ) {
+          throw this.runtimeError(
+            'DICCIONARIO_MODIFICADO_AL_RECORRER',
+            'Se agregaron o quitaron claves del diccionario mientras se recorría.',
+            instruction.node,
+            'Recorre `claves(d)`, que es una lista nueva, o junta los cambios y aplícalos al terminar.',
+          );
+        }
         const again = position < length;
         if (again) {
           this.stack[this.stack.length - 1] = position + 1;
-          this.stack.push(isList(iterable) ? iterable.items[position]! : iterable[position]!);
+          if (isDict(iterable)) {
+            const key = (state as ListValue).items[position] as DictKey;
+            if (instruction.owner.value) this.stack.push(iterable.entries.get(key)!);
+            this.stack.push(key);
+          } else {
+            this.stack.push(isList(iterable) ? iterable.items[position]! : iterable[position]!);
+          }
         } else {
           this.stack.length -= 3;
         }
@@ -696,12 +754,27 @@ export class Machine {
         return null;
       },
       newList: items => this.newList(items),
+      newDict: entries => this.newDict(entries),
       fail: (code, message, hint) => this.runtimeError(code, message, node, hint),
     };
   }
 
   private newList(items: Value[]): ListValue {
     return { kind: 'lista', id: this.nextId++, items };
+  }
+
+  private newDict(entries: Map<DictKey, Value>): DictValue {
+    return { kind: 'diccionario', id: this.nextId++, entries };
+  }
+
+  /** Revisa que `key` sirva como clave de un diccionario. */
+  private dictKey(key: Value, node: { span: Span }): DictKey {
+    if (typeof key === 'string' || typeof key === 'number') return key;
+    throw this.runtimeError(
+      'CLAVE_INVÁLIDA',
+      `Las claves de un diccionario son textos o números, no ${describeType(typeOf(key))}.`,
+      node,
+    );
   }
 
   // ── operadores ─────────────────────────────────────────────────────────────
@@ -813,10 +886,17 @@ export class Machine {
   }
 
   private index(object: Value, index: Value, node: ast.Index): Value {
-    if (!isList(object) && typeof object !== 'string') {
+    if (isDict(object)) {
+      const key = this.dictKey(index, node.index);
+      if (!object.entries.has(key)) throw this.missingKey(key, node);
+      return object.entries.get(key)!;
+    }
+    if (node.dot || (!isList(object) && typeof object !== 'string')) {
       throw this.runtimeError(
         'ÍNDICE_NO_SOPORTADO',
-        `Solo se puede usar \`[ ]\` con listas y textos, no con ${describeType(typeOf(object))}.`,
+        node.dot
+          ? `Solo los diccionarios tienen campos con \`.\`, no ${describeType(typeOf(object))}.`
+          : `Solo se puede usar \`[ ]\` con listas, textos y diccionarios, no con ${describeType(typeOf(object))}.`,
         node.object,
       );
     }
@@ -839,27 +919,60 @@ export class Machine {
         'Construye un texto nuevo, por ejemplo uniendo partes con `+`.',
       );
     }
+    if (target.dot && !isDict(object)) {
+      throw this.runtimeError(
+        'ÍNDICE_NO_SOPORTADO',
+        `Solo los diccionarios tienen campos con \`.\`, no ${describeType(typeOf(object))}.`,
+        target.object,
+      );
+    }
+    if (isDict(object)) {
+      const key = this.dictKey(index, target.index);
+      const before = object.entries.has(key) ? object.entries.get(key)! : null;
+      object.entries.set(key, value);
+      this.emitModification(object, key, before, value, node);
+      return;
+    }
     if (!isList(object)) {
       throw this.runtimeError(
         'ÍNDICE_NO_SOPORTADO',
-        `Solo se puede cambiar un elemento de una lista, no de ${describeType(typeOf(object))}.`,
+        `Solo se puede cambiar un elemento de una lista o de un diccionario, no de ${describeType(typeOf(object))}.`,
         target.object,
       );
     }
     const position = this.position(object, index, target);
     const before = object.items[position]!;
     object.items[position] = value;
-    if (this.onEvent) {
-      this.emit({
-        type: 'modifica',
-        ref: object.id,
-        key: serialize(position),
-        before: serialize(before),
-        after: serialize(value),
-        nodeId: node.id,
-        span: node.span,
-      });
-    }
+    this.emitModification(object, position, before, value, node);
+  }
+
+  private emitModification(
+    object: ListValue | DictValue,
+    key: DictKey,
+    before: Value,
+    after: Value,
+    node: ast.Node,
+  ): void {
+    if (!this.onEvent) return;
+    this.emit({
+      type: 'modifica',
+      ref: object.id,
+      key: serialize(key),
+      before: serialize(before),
+      after: serialize(after),
+      nodeId: node.id,
+      span: node.span,
+    });
+  }
+
+  private missingKey(key: DictKey, node: ast.Index): CodexivoError {
+    const written = node.dot ? `\`${key}\`` : repr(key);
+    return this.runtimeError(
+      'CLAVE_INEXISTENTE',
+      `El diccionario no tiene la clave ${written}.`,
+      node.index,
+      `Usa \`tiene(d, ${repr(key)})\` para preguntar antes de leerla.`,
+    );
   }
 
   /** Posición real de `index` (los negativos cuentan desde el final); error si no es válida. */
@@ -869,7 +982,11 @@ export class Machine {
         'ÍNDICE_INVÁLIDO',
         `El índice tiene que ser un número entero, pero es ${repr(index)}.`,
         node.index,
-        typeof index === 'number' ? 'Redondea el índice con `redondear(…)`.' : undefined,
+        typeof index === 'number'
+          ? 'Redondea el índice con `redondear(…)`.'
+          : typeof index === 'string'
+            ? 'Las claves de texto son para diccionarios; una lista se recorre con posiciones 0, 1, 2…'
+            : undefined,
       );
     }
     const length = isList(object) ? object.items.length : object.length;
@@ -1028,7 +1145,16 @@ const splitLines = (text: string): string[] => text.replace(/\r\n/g, '\n').repla
 const formatCount = (count: number): string => count.toLocaleString('es-MX').replace(/,/g, ' ');
 
 const describeCallee = (node: ast.Call): string => {
-  if (node.callee.kind === 'Identifier') return node.callee.name;
+  const { callee } = node;
+  if (callee.kind === 'Identifier') return callee.name;
+  if (
+    callee.kind === 'Index' &&
+    callee.dot &&
+    callee.object.kind === 'Identifier' &&
+    callee.index.kind === 'StringLiteral'
+  ) {
+    return `${callee.object.name}.${callee.index.value}`;
+  }
   return 'esto';
 };
 
@@ -1040,6 +1166,8 @@ const conditionHint = (value: Value): string | undefined => {
       return '¿Quisiste comparar? Por ejemplo: `texto != ""`.';
     case 'lista':
       return '¿Quisiste decir `longitud(lista) > 0`?';
+    case 'diccionario':
+      return '¿Quisiste decir `longitud(d) > 0` o `tiene(d, clave)`?';
     case 'nulo':
       return '¿Quisiste decir `x != nulo`?';
     default:

@@ -582,3 +582,91 @@ describe('nivel intermedio (paso 5)', () => {
     ).toBe('[3, -1]');
   });
 });
+
+describe('diccionarios', () => {
+  test('se crean, se leen y se cambian', () => {
+    expect(value('variable p = { "nombre": "Ana", "edad": 16 }; [p["nombre"], p.edad];')).toBe('["Ana", 16]');
+    expect(value('variable p = { "edad": 16 }; p.edad += 1; p.ciudad = "León"; p["n"] = 1; p;')).toBe(
+      '{"edad": 17, "ciudad": "León", "n": 1}',
+    );
+    expect(value('variable d = { 1: "uno" }; d[1];')).toBe('"uno"');
+    expect(value('variable k = "x"; variable d = { (k): 1 }; d.x;')).toBe('1');
+  });
+
+  test('conservan el orden de inserción', () => {
+    expect(value('variable d = { "b": 1 }; d.a = 2; d.b = 3; claves(d);')).toBe('["b", "a"]');
+  });
+
+  test('las claves de texto y de número son distintas', () => {
+    expect(value('variable d = { 1: "número", "1": "texto" }; [d[1], d["1"], longitud(d)];')).toBe(
+      '["número", "texto", 2]',
+    );
+  });
+
+  test('se comparten como las listas', () => {
+    expect(value('variable a = {}; variable b = a; b.x = 1; a;')).toBe('{"x": 1}');
+  });
+
+  test('igualdad por valor, sin importar el orden', () => {
+    expect(
+      value('{ "a": 1, "b": [2] } == { "b": [2], "a": 1 } y {} == {};'.replace(/^/, 'variable r = ') + ' r;'),
+    ).toBe('verdadero');
+    expect(value('variable r = { "a": 1 } != { "a": 2 }; r;')).toBe('verdadero');
+    expect(value('variable r = { "a": 1 } == { "a": 1, "b": 2 }; r;')).toBe('falso');
+  });
+
+  test('un diccionario de procedimientos se llama con punto', () => {
+    expect(
+      value('variable calculadora = { "suma": procedimiento(a, b) { regresa a + b; } }; calculadora.suma(1, 3);'),
+    ).toBe('4');
+  });
+
+  test('leer una clave que no existe es un error con pista', () => {
+    const error = failure('variable p = { "a": 1 }; p.b;');
+    expect(error.code).toBe('CLAVE_INEXISTENTE');
+    expect(error.hint).toContain('tiene(d, "b")');
+    expect(failure('variable p = {}; p["x"] += 1;').code).toBe('CLAVE_INEXISTENTE');
+  });
+
+  test.each([
+    ['variable d = { [1]: 2 };', 'CLAVE_INVÁLIDA'],
+    ['variable d = {}; d[verdadero] = 1;', 'CLAVE_INVÁLIDA'],
+    ['variable l = [1]; l.x;', 'ÍNDICE_NO_SOPORTADO'],
+    ['variable l = [1]; l.x = 2;', 'ÍNDICE_NO_SOPORTADO'],
+    ['variable n = 5; n.x;', 'ÍNDICE_NO_SOPORTADO'],
+  ])('%s → %s', (source, code) => {
+    expect(failure(source).code).toBe(code);
+  });
+
+  describe('para_cada', () => {
+    test('con una variable recorre las claves', () => {
+      expect(value('variable d = { "a": 1, "b": 2 }; variable s = ""; para_cada k en d { s = s + k; } s;')).toBe(
+        '"ab"',
+      );
+    });
+
+    test('con dos variables recorre claves y valores', () => {
+      expect(
+        value('variable d = { "a": 1, "b": 2 }; variable s = ""; para_cada k, v en d { s = s + k + texto(v); } s;'),
+      ).toBe('"a1b2"');
+    });
+
+    test('cambiar valores se permite; agregar o quitar claves no', () => {
+      expect(value('variable d = { "a": 1 }; para_cada k en d { d[k] = 5; } d;')).toBe('{"a": 5}');
+      expect(failure('variable d = { "a": 1 }; para_cada k en d { d.z = 1; }').code).toBe(
+        'DICCIONARIO_MODIFICADO_AL_RECORRER',
+      );
+      expect(failure('variable d = { "a": 1, "b": 2 }; para_cada k en d { quitar(d, "b"); d.c = 3; }').code).toBe(
+        'DICCIONARIO_MODIFICADO_AL_RECORRER',
+      );
+    });
+
+    test('dos variables solo con diccionarios', () => {
+      const error = failure('para_cada i, x en [1] { }');
+      expect(error.code).toBe('PARA_CADA_INVÁLIDO');
+      expect(error.hint).toContain('para_cada x en');
+    });
+  });
+
+  test.todo('el recorrido en anchura de la §9 de la spec (necesita `encolar` y `desencolar`, #29)');
+});

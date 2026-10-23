@@ -222,6 +222,10 @@ persona.ciudad = "León"; // agrega la clave
 - Leer una clave que no existe es un error con la pista _"usa `tiene(d, clave)` para preguntar
   antes"_.
 - Al inicio de una sentencia, `{` abre un bloque; en cualquier otra posición, un diccionario.
+- Las claves de un literal van entre comillas (`{ nombre: "Ana" }` es un error con pista); una clave calculada va
+  entre paréntesis: `{ (clave): valor }`. Una clave literal repetida es un error de sintaxis.
+- `1` y `"1"` son claves distintas. `para_cada clave en d` recorre las claves; agregar o quitar claves durante el
+  recorrido es un error.
 
 ## 5. Sentencias
 
@@ -524,7 +528,8 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
   `imprime`/`lee`, `error` y `fin`. Cada uno lleva el número de operaciones y la profundidad de llamadas.
 - En cualquier pausa se puede pedir una fotografía (`snapshot`) con las llamadas activas y las variables de
   cada alcance. Listas y diccionarios tienen un identificador de referencia, para dibujar cuándo dos
-  variables comparten el mismo valor.
+  variables comparten el mismo valor. `heap` guarda, por referencia, los elementos de cada lista y los pares
+  `{ key, value }` de cada diccionario.
 - El diagrama de flujo se genera desde el AST; la máquina de estados se anima desde los eventos.
   Ninguno de los dos inventa información que el intérprete no produjo.
 
@@ -589,7 +594,7 @@ Todas aprobadas.
    operadores en palabras, `constante`, alcance por bloque, `1_000_000` y `PI`. `repetir` emite `decide` con la
    etiqueta `repetir` en cada vuelta y `declara` indica si el nombre es constante.
 5. **Nivel intermedio:** ✅ procedimientos con nombre, ✅ `para_cada`, ✅ `romper`/`continuar`, ✅ asignación por
-   índice (evento `modifica`), ✅ `rango` e `índices`, diccionarios, biblioteca de texto y listas.
+   índice (evento `modifica`), ✅ `rango` e `índices`, ✅ diccionarios, biblioteca de texto y listas.
 6. **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
    biblioteca.
 7. **Modo mundo.**

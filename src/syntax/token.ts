@@ -71,6 +71,8 @@ export enum TokenType {
 
   // delimitadores
   COMMA = 'COMMA',
+  COLON = 'COLON',
+  DOT = 'DOT',
   SEMICOLON = 'SEMICOLON',
   LPAREN = 'LPAREN',
   RPAREN = 'RPAREN',
@@ -152,6 +154,8 @@ const SYMBOLS: Partial<Record<TokenType, string>> = {
   [TokenType.LTE]: '<=',
   [TokenType.GTE]: '>=',
   [TokenType.COMMA]: ',',
+  [TokenType.COLON]: ':',
+  [TokenType.DOT]: '.',
   [TokenType.SEMICOLON]: ';',
   [TokenType.LPAREN]: '(',
   [TokenType.RPAREN]: ')',

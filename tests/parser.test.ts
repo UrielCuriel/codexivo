@@ -17,6 +17,8 @@ const show = (node: ast.Expression): string => {
       return node.name;
     case 'ListLiteral':
       return `[${node.elements.map(show).join(', ')}]`;
+    case 'DictLiteral':
+      return `{${node.entries.map(entry => `${show(entry.key)}: ${show(entry.value)}`).join(', ')}}`;
     case 'Unary':
       return `(${node.operator} ${show(node.operand)})`;
     case 'Binary':
@@ -25,7 +27,9 @@ const show = (node: ast.Expression): string => {
     case 'Call':
       return `${show(node.callee)}(${node.args.map(show).join(', ')})`;
     case 'Index':
-      return `${show(node.object)}[${show(node.index)}]`;
+      return node.dot && node.index.kind === 'StringLiteral'
+        ? `${show(node.object)}.${node.index.value}`
+        : `${show(node.object)}[${show(node.index)}]`;
     case 'FunctionLiteral':
       return `procedimiento(${node.params.map(param => param.name).join(', ')})`;
   }
@@ -203,6 +207,63 @@ describe('parser', () => {
       const { program, errors } = parse(source);
       expect(errors).toEqual([]);
       expect(program.statements[0]).toMatchObject({ target: { kind: target }, operator });
+    });
+  });
+
+  describe('diccionarios', () => {
+    test.each([
+      ['variable d = { "a": 1, "b": [2] };', '{"a": 1, "b": [2]}'],
+      ['variable d = { };', '{}'],
+      ['variable d = { 1: "uno", "dos": 2, };', '{1: "uno", "dos": 2}'],
+      ['variable d = { (k): 1 };', '{k: 1}'],
+      ['variable d = f({ "a": { "b": 1 } });', 'f({"a": {"b": 1}})'],
+      ['variable d = [{ "a": 1 }];', '[{"a": 1}]'],
+    ])('literal en posición de expresión: %s', (source, expected) => {
+      const { program, errors } = parse(source);
+      expect(errors).toEqual([]);
+      expect(show((program.statements[0] as ast.VariableDeclaration).value)).toBe(expected);
+    });
+
+    test('al inicio de una sentencia `{` sigue siendo un bloque', () => {
+      const { program, errors } = parse('{ variable x = 1; }\nsi (verdadero) { }');
+      expect(errors).toEqual([]);
+      expect(program.statements.map(statement => statement.kind)).toEqual(['Block', 'If']);
+    });
+
+    test.each([
+      ['persona.edad', 'persona.edad'],
+      ['a.b.c', 'a.b.c'],
+      ['calculadora.suma(1, 3)', 'calculadora.suma(1, 3)'],
+      ['d.lista[0] + 1', '(d.lista[0] + 1)'],
+    ])('acceso con punto: %s', (source, expected) => {
+      expect(expression(source)).toBe(expected);
+    });
+
+    test('`d.campo` es un índice con el texto del campo', () => {
+      const { program } = parse('persona.ciudad = "León";');
+      expect(program.statements[0]).toMatchObject({
+        kind: 'Assignment',
+        target: { kind: 'Index', dot: true, index: { kind: 'StringLiteral', value: 'ciudad' } },
+      });
+    });
+
+    test('para_cada con dos variables', () => {
+      const { program, errors } = parse('para_cada clave, valor en persona { }');
+      expect(errors).toEqual([]);
+      expect(program.statements[0]).toMatchObject({ variable: { name: 'clave' }, value: { name: 'valor' } });
+    });
+
+    test.each([
+      ['variable d = { nombre: "Ana" };', 'CLAVE_SIN_COMILLAS'],
+      ['variable d = { "a": 1, "a": 2 };', 'CLAVE_REPETIDA'],
+      ['variable d = { "a" 1 };', 'TOKEN_ESPERADO'],
+      ['variable d = { "a": 1 "b": 2 };', 'TOKEN_ESPERADO'],
+      ['{ "a": 1 }', 'DICCIONARIO_COMO_SENTENCIA'],
+      ['d.si', 'CAMPO_ESPERADO'],
+      ['d.1', 'CAMPO_ESPERADO'],
+      ['para_cada k, k en d { }', 'PARÁMETRO_REPETIDO'],
+    ])('%s → %s', (source, code) => {
+      expect(errorCodes(source)).toEqual([code]);
     });
   });
 

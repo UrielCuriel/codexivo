@@ -23,7 +23,17 @@ export type {
   SerializedValue,
   Snapshot,
   FrameSnapshot,
+  HeapEntry,
 } from './runtime/machine';
 export { natives } from './runtime/builtins';
 export { repr, show, typeOf, equals, Scope, WAIT_FOR_INPUT } from './runtime/values';
-export type { Value, ListValue, ProcedureValue, NativeValue, NativeContext, TypeName } from './runtime/values';
+export type {
+  Value,
+  ListValue,
+  DictValue,
+  DictKey,
+  ProcedureValue,
+  NativeValue,
+  NativeContext,
+  TypeName,
+} from './runtime/values';

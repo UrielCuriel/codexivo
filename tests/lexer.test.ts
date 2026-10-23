@@ -174,6 +174,20 @@ describe('lexer', () => {
       expect(errors[0]!.hint).toContain('entre dos dígitos');
     });
 
+    test('`:` y `.` para los diccionarios; `.5` sigue siendo un número', () => {
+      expect(types('{ "a": 1 } d.campo .5').slice(0, -1)).toEqual([
+        TokenType.LBRACE,
+        TokenType.STRING,
+        TokenType.COLON,
+        TokenType.NUMBER,
+        TokenType.RBRACE,
+        TokenType.IDENT,
+        TokenType.DOT,
+        TokenType.IDENT,
+        TokenType.NUMBER,
+      ]);
+    });
+
     test('`_1` es un nombre, no un número', () => {
       expect(types('_1')[0]).toBe(TokenType.IDENT);
     });

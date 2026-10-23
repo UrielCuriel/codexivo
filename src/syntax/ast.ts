@@ -78,6 +78,20 @@ export interface Index extends BaseNode {
   kind: 'Index';
   object: Expression;
   index: Expression;
+  /** `true` si se escribió `d.campo`; entonces `index` es el texto `"campo"`. */
+  dot?: boolean;
+}
+
+export interface DictEntry {
+  /** Rango de `clave: valor`. */
+  span: Span;
+  key: Expression;
+  value: Expression;
+}
+
+export interface DictLiteral extends BaseNode {
+  kind: 'DictLiteral';
+  entries: DictEntry[];
 }
 
 export interface FunctionLiteral extends BaseNode {
@@ -94,6 +108,7 @@ export type Expression =
   | BooleanLiteral
   | NullLiteral
   | ListLiteral
+  | DictLiteral
   | Identifier
   | Unary
   | Binary
@@ -197,6 +212,8 @@ export interface Repeat extends BaseNode {
 export interface ForEach extends BaseNode {
   kind: 'ForEach';
   variable: Identifier;
+  /** Segunda variable de `para_cada clave, valor en diccionario`. */
+  value?: Identifier;
   iterable: Expression;
   body: Block;
 }
@@ -241,6 +258,8 @@ export const childrenOf = (node: Node): Node[] => {
       return node.statements;
     case 'ListLiteral':
       return node.elements;
+    case 'DictLiteral':
+      return node.entries.flatMap(entry => [entry.key, entry.value]);
     case 'Unary':
       return [node.operand];
     case 'Binary':
@@ -261,7 +280,7 @@ export const childrenOf = (node: Node): Node[] => {
     case 'FunctionDeclaration':
       return [node.name, node.function];
     case 'ForEach':
-      return [node.variable, node.iterable, node.body];
+      return [node.variable, ...(node.value ? [node.value] : []), node.iterable, node.body];
     case 'ExpressionStatement':
       return [node.expression];
     case 'Return':

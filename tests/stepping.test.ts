@@ -46,7 +46,8 @@ describe('ejecución paso a paso', () => {
     });
     const list = global!.scopes[0]!.lista!;
     expect(list.type).toBe('lista');
-    if (list.type === 'lista') expect(snapshot.heap[list.ref]?.map(item => item.repr)).toEqual(['1', '2']);
+    const items = list.type === 'lista' ? snapshot.heap[list.ref] : undefined;
+    expect(Array.isArray(items) && items.map(item => item.repr)).toEqual(['1', '2']);
     machine.run();
     expect(machine.result).toBe(42);
   });
@@ -139,6 +140,24 @@ describe('eventos', () => {
   test('los procedimientos con nombre se declaran al entrar a su bloque', () => {
     const list = events('variable x = 1; procedimiento f() { }');
     expect(of(list, 'declara').map(event => event.name)).toEqual(['f', 'x']);
+  });
+
+  test('`modifica` también describe claves de diccionario, incluso nuevas', () => {
+    const [event] = of(events('variable d = {}; d.x = 1;'), 'modifica');
+    expect(event).toMatchObject({ key: { repr: '"x"' }, before: { repr: 'nulo' }, after: { repr: '1' } });
+  });
+
+  test('snapshot() incluye los diccionarios por referencia', () => {
+    const machine = machineFor('variable d = { "a": [1] };\nd;', { breakpoints: [2] });
+    machine.run();
+    const snapshot = machine.snapshot();
+    const d = snapshot.frames[0]!.scopes[0]!.d!;
+    expect(d).toMatchObject({ type: 'diccionario', size: 1, repr: '{"a": [1]}' });
+    if (d.type !== 'diccionario') return;
+    const entry = snapshot.heap[d.ref];
+    expect(entry).toMatchObject({ entries: [{ key: { repr: '"a"' }, value: { type: 'lista' } }] });
+    const list = !Array.isArray(entry) && entry?.entries[0]!.value;
+    if (list && list.type === 'lista') expect(snapshot.heap[list.ref]).toMatchObject([{ repr: '1' }]);
   });
 
   test('`declara` indica si es constante', () => {

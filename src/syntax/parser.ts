@@ -54,6 +54,7 @@ const INFIX_PRECEDENCE: Partial<Record<TokenType, Precedence>> = {
   [TokenType.CARET]: Precedence.POWER,
   [TokenType.LPAREN]: Precedence.CALL,
   [TokenType.LBRACKET]: Precedence.CALL,
+  [TokenType.DOT]: Precedence.CALL,
 };
 
 const BINARY_OPERATORS: Partial<Record<TokenType, ast.BinaryOperator>> = {
@@ -313,6 +314,17 @@ class Parser {
         if (this.peek().type === TokenType.IDENT) return this.endCompoundStatement(this.parseFunctionDeclaration());
         return this.endSimpleStatement(this.parseSimpleStatement());
       case TokenType.LBRACE:
+        if (
+          (this.peek().type === TokenType.STRING || this.peek().type === TokenType.NUMBER) &&
+          this.peek(2).type === TokenType.COLON
+        ) {
+          this.error(
+            'DICCIONARIO_COMO_SENTENCIA',
+            'Al inicio de una sentencia, `{` abre un bloque, no un diccionario.',
+            token.span,
+            'Guarda el diccionario en una variable: `variable d = { "clave": valor };`.',
+          );
+        }
         return this.endCompoundStatement(this.parseBlock('para abrir el bloque'));
       case TokenType.ELSE:
       case TokenType.ELSEIF:
@@ -583,10 +595,26 @@ class Parser {
       this.error('TOKEN_ESPERADO', '`para_cada` no lleva paréntesis.', this.current.span, form);
     }
     const variable = this.parseBindingName('después de `para_cada`');
-    this.expect(TokenType.IN, `después de \`para_cada ${variable.name}\``, form);
+    let value: ast.Identifier | undefined;
+    if (this.match(TokenType.COMMA)) {
+      value = this.parseBindingName(`después de \`para_cada ${variable.name},\``);
+      if (value.name === variable.name) {
+        this.error('PARÁMETRO_REPETIDO', `La variable \`${value.name}\` está repetida.`, value.span);
+      }
+    }
+    const names = value ? `${variable.name}, ${value.name}` : variable.name;
+    this.expect(TokenType.IN, `después de \`para_cada ${names}\``, form);
     const iterable = this.parseExpression();
     const body = this.parseLoopBody('después de `para_cada … en …`');
-    return { kind: 'ForEach', id: this.id(), variable, iterable, body, span: this.spanFrom(keyword.span.start) };
+    return {
+      kind: 'ForEach',
+      id: this.id(),
+      variable,
+      value,
+      iterable,
+      body,
+      span: this.spanFrom(keyword.span.start),
+    };
   }
 
   /** El cuerpo de un bucle: ahí sí se puede usar `romper` y `continuar`. */
@@ -669,6 +697,8 @@ class Parser {
       }
       case TokenType.LBRACKET:
         return this.parseList();
+      case TokenType.LBRACE:
+        return this.parseDict();
       case TokenType.MINUS: {
         this.advance();
         const operand = this.parseExpression(Precedence.UNARY);
@@ -762,6 +792,29 @@ class Parser {
         this.expect(TokenType.RBRACKET, 'para cerrar el índice');
         return { kind: 'Index', id: this.id(), object: left, index, span: this.spanFrom(start) };
       }
+      case TokenType.DOT: {
+        this.advance();
+        const property = this.current;
+        if (property.type !== TokenType.IDENT) {
+          this.failSilentlyOnIllegal();
+          // Una palabra reservada como `si` no debe empezar otra sentencia al recuperarse del error.
+          if (property.type !== TokenType.EOF) this.advance();
+          this.error(
+            'CAMPO_ESPERADO',
+            `Después de \`.\` va el nombre de un campo, pero se encontró ${describeToken(property)}.`,
+            property.span,
+            'Con `.` solo se usan claves que son nombres válidos; para las demás escribe `d["clave"]`.',
+          );
+        }
+        this.advance();
+        const index: ast.StringLiteral = {
+          kind: 'StringLiteral',
+          id: this.id(),
+          value: property.lexeme,
+          span: property.span,
+        };
+        return { kind: 'Index', id: this.id(), object: left, index, dot: true, span: this.spanFrom(start) };
+      }
       case TokenType.AND:
       case TokenType.OR: {
         this.advance();
@@ -793,6 +846,45 @@ class Parser {
     const start = this.advance().span.start;
     const elements = this.parseList_(TokenType.RBRACKET, 'para cerrar la lista');
     return { kind: 'ListLiteral', id: this.id(), elements, span: this.spanFrom(start) };
+  }
+
+  private parseDict(): ast.DictLiteral {
+    const open = this.advance();
+    const entries: ast.DictEntry[] = [];
+    const literalKeys = new Set<string | number>();
+    while (!this.check(TokenType.RBRACE)) {
+      const entryStart = this.current.span.start;
+      if (this.check(TokenType.IDENT) && this.peek().type === TokenType.COLON) {
+        this.error(
+          'CLAVE_SIN_COMILLAS',
+          `La clave \`${this.current.lexeme}\` necesita comillas.`,
+          this.current.span,
+          `Escribe \`"${this.current.lexeme}": …\`. Si querías usar el valor de una variable como clave, ponla entre paréntesis: \`(${this.current.lexeme}): …\`.`,
+        );
+      }
+      const key = this.parseExpression();
+      this.expect(TokenType.COLON, 'después de la clave', 'Cada elemento de un diccionario se escribe `clave: valor`.');
+      const value = this.parseExpression();
+      if (key.kind === 'StringLiteral' || key.kind === 'NumberLiteral') {
+        if (literalKeys.has(key.value)) {
+          this.error('CLAVE_REPETIDA', `La clave ${describeKey(key.value)} está repetida.`, key.span);
+        }
+        literalKeys.add(key.value);
+        if (value.kind === 'FunctionLiteral' && !value.name && key.kind === 'StringLiteral') value.name = key.value;
+      }
+      entries.push({ key, value, span: this.spanFrom(entryStart) });
+      if (!this.match(TokenType.COMMA)) break;
+    }
+    if (!this.check(TokenType.RBRACE)) {
+      this.failSilentlyOnIllegal();
+      this.error(
+        'TOKEN_ESPERADO',
+        `Se esperaba \`,\` o \`}\` en el diccionario que empieza en la línea ${open.span.start.line}, pero se encontró ${describeToken(this.current)}.`,
+        this.current.span,
+      );
+    }
+    this.advance();
+    return { kind: 'DictLiteral', id: this.id(), entries, span: this.spanFrom(open.span.start) };
   }
 
   /** Expresiones separadas por comas hasta `closing`. Se permite una coma final. */
@@ -844,3 +936,5 @@ class Parser {
     return { kind: 'FunctionLiteral', id: this.id(), name, params, body, span: this.spanFrom(start) };
   }
 }
+
+const describeKey = (key: string | number): string => (typeof key === 'string' ? JSON.stringify(key) : String(key));
