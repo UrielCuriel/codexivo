@@ -22,7 +22,7 @@ imprimir("Hola,", nombre)
 ## Palabras reservadas
 
 ```
-variable  constante  procedimiento  regresa
+variable  constante  procedimiento  regresa  dominio
 si  pero_si  si_no
 mientras  hacer  hasta_que  para  para_cada  en  repetir  veces
 romper  continuar
@@ -243,6 +243,48 @@ calculadora.suma(1, 3);   // 4
 - `==` compara por valor sin importar el orden: `{ "a": 1, "b": 2 } == { "b": 2, "a": 1 }` es `verdadero`.
 - Al inicio de una sentencia, `{` abre un bloque; en cualquier otra posición, un diccionario.
 
+## Dominios
+
+Un `dominio` es un espacio de nombres: agrupa procedimientos, variables y constantes bajo un nombre, y desde fuera se usan
+con `.`. No es un módulo ni hay que importarlo: se declara en el mismo programa.
+
+```codexivo
+dominio calculadora {
+  constante PRECISIÓN = 2;
+  variable operaciones = 0;
+
+  procedimiento suma(a, b) {
+    operaciones++;
+    regresa redondear(a + b, PRECISIÓN);
+  }
+
+  procedimiento promedio(a, b) {
+    regresa suma(a, b) / 2;   // dentro del dominio, sin prefijo
+  }
+}
+
+calculadora.suma(1, 3);         // 4
+calculadora.promedio(2, 3);     // 2.5
+calculadora.operaciones;        // 2
+
+dominio geometría {
+  dominio círculo {
+    procedimiento área(r) {
+      regresa PI * r ^ 2;
+    }
+  }
+}
+geometría.círculo.área(1);
+```
+
+- Dentro de un dominio solo van declaraciones: `variable`, `constante`, `procedimiento` y otros `dominio`. Un `si` o un
+  `imprimir` van dentro de un procedimiento del dominio o fuera de él.
+- Dentro, los miembros se usan sin prefijo y ven lo que está fuera del dominio. Fuera, se usan con `.`:
+  `calculadora.suma`. Sin el prefijo no existen.
+- Desde fuera solo se pueden cambiar los miembros declarados con `variable` (`calculadora.operaciones = 0`). Las
+  constantes, los procedimientos y los dominios que contiene quedan fijos, y no se pueden agregar miembros nuevos.
+- El nombre del dominio no se puede reasignar. `tipo(calculadora)` es `"dominio"`.
+
 ## Procedimientos como valores
 
 Un procedimiento es un valor como cualquier otro: se guarda en variables, en listas y diccionarios, y se le pasa a otros
@@ -307,14 +349,14 @@ Todo está disponible sin importar nada. Los nombres con acento también se acep
 
 ### Entrada, salida y tipos
 
-| Procedimiento           | Qué hace                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------- |
-| `imprimir(a, b, …)`     | Escribe los valores separados por un espacio y termina la línea                             |
-| `leer()`                | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                |
-| `leer_número()`         | Siguiente línea de entrada como número                                                      |
-| `tipo(x)`               | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"` o `"procedimiento"` |
-| `texto(x)`, `número(x)` | Conversiones explícitas                                                                     |
-| `longitud(x)`           | Caracteres de un texto, elementos de una lista o claves de un diccionario                   |
+| Procedimiento           | Qué hace                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `imprimir(a, b, …)`     | Escribe los valores separados por un espacio y termina la línea                                          |
+| `leer()`                | Siguiente línea de entrada como texto, o `nulo` si ya no hay                                             |
+| `leer_número()`         | Siguiente línea de entrada como número                                                                   |
+| `tipo(x)`               | `"número"`, `"texto"`, `"lógico"`, `"nulo"`, `"lista"`, `"diccionario"`, `"dominio"` o `"procedimiento"` |
+| `texto(x)`, `número(x)` | Conversiones explícitas                                                                                  |
+| `longitud(x)`           | Caracteres de un texto, elementos de una lista o claves de un diccionario                                |
 
 ### Matemáticas
 

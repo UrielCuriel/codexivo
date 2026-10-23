@@ -7,8 +7,28 @@ import { constants as libraryConstants, internals, natives as defaultNatives } f
 import { COSTS } from './costs';
 import { libraryProcedures } from './prelude';
 import type { Chunk, DecisionLabel, Instruction } from './compiler';
-import { describeType, equals, isCallable, isDict, isList, repr, Scope, typeOf, WAIT_FOR_INPUT } from './values';
-import type { DictKey, DictValue, ListValue, NativeContext, NativeValue, ProcedureValue, Value } from './values';
+import {
+  describeType,
+  equals,
+  isCallable,
+  isDict,
+  isDomain,
+  isList,
+  repr,
+  Scope,
+  typeOf,
+  WAIT_FOR_INPUT,
+} from './values';
+import type {
+  DictKey,
+  DictValue,
+  DomainValue,
+  ListValue,
+  NativeContext,
+  NativeValue,
+  ProcedureValue,
+  Value,
+} from './values';
 import { suggestName } from './suggest';
 
 export type MachineStatus = 'lista' | 'pausada' | 'esperando_entrada' | 'terminada' | 'error';
@@ -52,10 +72,15 @@ export type SerializedValue =
   | { type: 'nulo'; value: null; repr: string }
   | { type: 'lista'; ref: number; length: number; repr: string }
   | { type: 'diccionario'; ref: number; size: number; repr: string }
+  | { type: 'dominio'; ref: number; name: string; repr: string }
   | { type: 'procedimiento'; name?: string; repr: string };
 
 /** Contenido de una lista o de un diccionario en `Snapshot.heap`. */
-export type HeapEntry = SerializedValue[] | { entries: Array<{ key: SerializedValue; value: SerializedValue }> };
+export type HeapEntry =
+  | SerializedValue[]
+  | { entries: Array<{ key: SerializedValue; value: SerializedValue }> }
+  /** Un dominio: sus miembros en orden de declaración, y cuáles se pueden cambiar desde fuera. */
+  | { domain: string; members: Array<{ name: string; value: SerializedValue; writable: boolean }> };
 
 export const serialize = (value: Value): SerializedValue => {
   const text = repr(value);
@@ -70,6 +95,7 @@ export const serialize = (value: Value): SerializedValue => {
   }
   if (value.kind === 'lista') return { type: 'lista', ref: value.id, length: value.items.length, repr: text };
   if (value.kind === 'diccionario') return { type: 'diccionario', ref: value.id, size: value.entries.size, repr: text };
+  if (value.kind === 'dominio') return { type: 'dominio', ref: value.id, name: value.name, repr: text };
   return { type: 'procedimiento', name: value.name, repr: text };
 };
 
@@ -267,8 +293,18 @@ export class Machine {
   snapshot(): Snapshot {
     const heap: Record<number, HeapEntry> = {};
     const collect = (value: Value) => {
-      if ((!isList(value) && !isDict(value)) || heap[value.id]) return;
-      if (isList(value)) {
+      if ((!isList(value) && !isDict(value) && !isDomain(value)) || heap[value.id]) return;
+      if (isDomain(value)) {
+        heap[value.id] = {
+          domain: value.name,
+          members: [...value.scope.variables].map(([name, member]) => ({
+            name,
+            value: serialize(member),
+            writable: value.writable.has(name),
+          })),
+        };
+        value.scope.variables.forEach(collect);
+      } else if (isList(value)) {
         heap[value.id] = value.items.map(serialize);
         value.items.forEach(collect);
       } else {
@@ -455,7 +491,17 @@ export class Machine {
         const value = this.stack.pop()!;
         const scope = frame.scope.lookup(instruction.name);
         if (!scope) throw this.undeclaredAssignment(instruction.name, instruction.target);
-        if (scope.constants.has(instruction.name)) throw this.constantReassignment(instruction.name, instruction.node);
+        if (scope.constants.has(instruction.name)) {
+          if (isDomain(scope.variables.get(instruction.name)!)) {
+            throw this.runtimeError(
+              'CONSTANTE_REASIGNADA',
+              `\`${instruction.name}\` es un dominio; su nombre no se puede usar para otra cosa.`,
+              instruction.node,
+              `Para cambiar un miembro escribe \`${instruction.name}.miembro = …\`; para otro valor, usa otro nombre.`,
+            );
+          }
+          throw this.constantReassignment(instruction.name, instruction.node);
+        }
         const before = scope.variables.get(instruction.name)!;
         scope.variables.set(instruction.name, value);
         if (this.onEvent) {
@@ -703,8 +749,40 @@ export class Machine {
       }
 
       case 'enterScope':
+      case 'domainStart':
         frame.scope = new Scope(frame.scope);
         return false;
+
+      case 'domainEnd': {
+        const domain: DomainValue = {
+          kind: 'dominio',
+          id: this.nextId++,
+          name: instruction.name,
+          scope: frame.scope,
+          writable: new Set(instruction.writable),
+        };
+        frame.scope = frame.scope.parent ?? frame.scope;
+        if (frame.scope.variables.has(instruction.name) && !this.options.allowRedeclare) {
+          throw this.runtimeError(
+            'VARIABLE_REPETIDA',
+            `Ya existe algo llamado \`${instruction.name}\` en este bloque.`,
+            instruction.node.name,
+            'Cada dominio necesita un nombre propio en su bloque.',
+          );
+        }
+        // El nombre de un dominio no se reasigna: siempre se refiere al mismo espacio de nombres.
+        frame.scope.variables.set(instruction.name, domain);
+        frame.scope.constants.add(instruction.name);
+        this.emit({
+          type: 'declara',
+          name: instruction.name,
+          constant: true,
+          value: serialize(domain),
+          nodeId: instruction.node.id,
+          span: instruction.node.span,
+        });
+        return false;
+      }
 
       case 'exitScope':
         frame.scope = frame.scope.parent ?? frame.scope;
@@ -977,6 +1055,7 @@ export class Machine {
   }
 
   private index(object: Value, index: Value, node: ast.Index): Value {
+    if (isDomain(object)) return object.scope.variables.get(this.member(object, index, node))!;
     if (isDict(object)) {
       const key = this.dictKey(index, node.index);
       if (!object.entries.has(key)) throw this.missingKey(key, node);
@@ -986,7 +1065,7 @@ export class Machine {
       throw this.runtimeError(
         'ÍNDICE_NO_SOPORTADO',
         node.dot
-          ? `Solo los diccionarios tienen campos con \`.\`, no ${describeType(typeOf(object))}.`
+          ? `Solo los diccionarios y los dominios tienen campos con \`.\`, no ${describeType(typeOf(object))}.`
           : `Solo se puede usar \`[ ]\` con listas, textos y diccionarios, no con ${describeType(typeOf(object))}.`,
         node.object,
       );
@@ -1010,10 +1089,34 @@ export class Machine {
         'Construye un texto nuevo, por ejemplo uniendo partes con `+`.',
       );
     }
+    if (isDomain(object)) {
+      const name = this.member(object, index, target);
+      if (!object.writable.has(name)) {
+        throw this.runtimeError(
+          'MIEMBRO_DE_SOLO_LECTURA',
+          `\`${object.name}.${name}\` no se puede cambiar desde fuera del dominio.`,
+          target,
+          'Desde fuera de un dominio solo se cambian sus miembros declarados con `variable`; las constantes, los procedimientos y los dominios que contiene quedan fijos.',
+        );
+      }
+      const before = object.scope.variables.get(name)!;
+      object.scope.variables.set(name, value);
+      if (this.onEvent) {
+        this.emit({
+          type: 'asigna',
+          name: `${object.name}.${name}`,
+          before: serialize(before),
+          after: serialize(value),
+          nodeId: node.id,
+          span: node.span,
+        });
+      }
+      return;
+    }
     if (target.dot && !isDict(object)) {
       throw this.runtimeError(
         'ÍNDICE_NO_SOPORTADO',
-        `Solo los diccionarios tienen campos con \`.\`, no ${describeType(typeOf(object))}.`,
+        `Solo los diccionarios y los dominios tienen campos con \`.\`, no ${describeType(typeOf(object))}.`,
         target.object,
       );
     }
@@ -1054,6 +1157,33 @@ export class Machine {
       nodeId: node.id,
       span: node.span,
     });
+  }
+
+  /** El miembro de un dominio al que se refiere `dominio.miembro`; error si no existe o si se usó `[ ]`. */
+  private member(domain: DomainValue, index: Value, node: ast.Index): string {
+    if (!node.dot) {
+      throw this.runtimeError(
+        'ÍNDICE_NO_SOPORTADO',
+        `Los miembros del dominio \`${domain.name}\` se usan con \`.\`, no con \`[ ]\`.`,
+        node,
+        typeof index === 'string' && /^[\p{L}_][\p{L}\d_]*$/u.test(index)
+          ? `Escribe \`${domain.name}.${index}\`.`
+          : `Por ejemplo: \`${domain.name}.miembro\`.`,
+      );
+    }
+    const name = index as string;
+    if (!domain.scope.variables.has(name)) {
+      const suggestion = suggestName(name, [...domain.scope.variables.keys()]);
+      throw this.runtimeError(
+        'MIEMBRO_INEXISTENTE',
+        `El dominio \`${domain.name}\` no tiene nada llamado \`${name}\`.`,
+        node.index,
+        suggestion
+          ? `¿Quisiste decir \`${domain.name}.${suggestion}\`?`
+          : 'Los miembros de un dominio se declaran dentro de sus llaves; desde fuera no se pueden agregar.',
+      );
+    }
+    return name;
   }
 
   private missingKey(key: DictKey, node: ast.Index): CodexivoError {

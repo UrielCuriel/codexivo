@@ -870,3 +870,102 @@ describe('nivel avanzado (paso 6)', () => {
     ).toBe('5000');
   });
 });
+
+describe('dominios', () => {
+  test('el ejemplo de #19', () => {
+    expect(
+      value(`
+        dominio calculadora {
+          variable suma = procedimiento(a, b) {
+            variable total = a + b;
+            regresa total;
+          };
+        }
+        variable sumado = calculadora.suma(1, 3);
+        sumado;
+      `),
+    ).toBe('4');
+  });
+
+  test('los miembros se usan sin prefijo dentro y con punto fuera', () => {
+    expect(
+      value(`
+        dominio c {
+          constante FACTOR = 2;
+          procedimiento doble(x) { regresa x * FACTOR; }
+          procedimiento cuádruple(x) { regresa doble(doble(x)); }
+        }
+        [c.cuádruple(3), c.FACTOR];
+      `),
+    ).toBe('[12, 2]');
+  });
+
+  test('pueden contener otros dominios', () => {
+    expect(
+      value(
+        'dominio geometría { dominio círculo { procedimiento área(r) { regresa 3 * r ^ 2; } } }\ngeometría.círculo.área(2);',
+      ),
+    ).toBe('12');
+  });
+
+  test('sus procedimientos ven lo de afuera y guardan su estado en el dominio', () => {
+    expect(value('variable base = 10; dominio c { procedimiento sumar(x) { regresa base + x; } } c.sumar(1);')).toBe(
+      '11',
+    );
+    expect(
+      value(
+        'dominio contador { variable n = 0; procedimiento contar() { n++; regresa n; } } contador.contar(); contador.contar();',
+      ),
+    ).toBe('2');
+  });
+
+  test('desde fuera solo se cambian sus variables', () => {
+    expect(value('dominio c { variable n = 1; procedimiento leer_n() { regresa n; } } c.n += 4; c.leer_n();')).toBe(
+      '5',
+    );
+    const constant = failure('dominio c { constante K = 1; } c.K = 2;');
+    expect(constant.code).toBe('MIEMBRO_DE_SOLO_LECTURA');
+    expect(constant.hint).toContain('`variable`');
+    expect(failure('dominio c { procedimiento f() { } } c.f = 1;').code).toBe('MIEMBRO_DE_SOLO_LECTURA');
+    expect(failure('dominio c { dominio d { } } c.d = 1;').code).toBe('MIEMBRO_DE_SOLO_LECTURA');
+  });
+
+  test('no se le pueden agregar miembros', () => {
+    const error = failure('dominio c { } c.nuevo = 1;');
+    expect(error.code).toBe('MIEMBRO_INEXISTENTE');
+    expect(error.hint).toContain('no se pueden agregar');
+  });
+
+  test('un miembro mal escrito sugiere el correcto', () => {
+    const error = failure('dominio c { variable total = 1; } c.totl;');
+    expect(error.code).toBe('MIEMBRO_INEXISTENTE');
+    expect(error.hint).toBe('¿Quisiste decir `c.total`?');
+  });
+
+  test('se usa con punto, no con corchetes', () => {
+    const error = failure('dominio c { variable a = 1; } c["a"];');
+    expect(error.code).toBe('ÍNDICE_NO_SOPORTADO');
+    expect(error.hint).toBe('Escribe `c.a`.');
+  });
+
+  test('es un valor con referencia', () => {
+    expect(value('dominio c { } [tipo(c), texto(c)];')).toBe('["dominio", "dominio c"]');
+    expect(value('dominio c { variable x = 1; } variable d = c; d.x = 5; [c.x, c == d];')).toBe('[5, verdadero]');
+  });
+
+  test('su nombre no se reasigna ni se repite', () => {
+    const error = failure('dominio c { } c = 1;');
+    expect(error.code).toBe('CONSTANTE_REASIGNADA');
+    expect(error.message).toContain('es un dominio');
+    expect(failure('dominio c { } dominio c { }').code).toBe('VARIABLE_REPETIDA');
+  });
+
+  test('lo declarado dentro no existe fuera sin el prefijo', () => {
+    expect(failure('dominio c { variable x = 1; } x;').code).toBe('NOMBRE_DESCONOCIDO');
+  });
+
+  test('no es un diccionario', () => {
+    expect(failure('dominio c { variable x = 1; } para_cada m en c { }').code).toBe('PARA_CADA_INVÁLIDO');
+    expect(run('dominio c { } longitud(c);').errors[0]!.code).toBe('TIPO_DE_ARGUMENTO');
+  });
+});

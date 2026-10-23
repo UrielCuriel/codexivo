@@ -64,6 +64,10 @@ export type Instruction =
   | { op: 'shortCircuit'; target: number; node: ast.Logical }
   /** Revisa que el lado derecho de `y`/`o` sea lógico. */
   | { op: 'checkLogical'; node: ast.Logical }
+  /** Abre el alcance de un `dominio`: ahí se declaran sus miembros. */
+  | { op: 'domainStart' }
+  /** Cierra el alcance del dominio, lo convierte en un valor y lo declara (como constante) afuera. */
+  | { op: 'domainEnd'; name: string; writable: string[]; node: ast.Domain }
   | { op: 'enterScope' }
   | { op: 'exitScope' }
   | { op: 'halt' };
@@ -211,6 +215,20 @@ class Compiler {
         return;
       case 'Block':
         this.block(node);
+        return;
+      case 'Domain':
+        this.emit({ op: 'domainStart' });
+        this.scopeDepth += 1;
+        this.statements(node.body.statements);
+        this.scopeDepth -= 1;
+        this.emit({
+          op: 'domainEnd',
+          name: node.name.name,
+          writable: node.body.statements.flatMap(member =>
+            member.kind === 'VariableDeclaration' && !member.constant ? [member.name.name] : [],
+          ),
+          node,
+        });
         return;
       case 'Break':
       case 'Continue': {

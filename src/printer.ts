@@ -107,6 +107,8 @@ export const printStatement = (node: ast.Statement): string => {
       return printExpression(node.expression);
     case 'Return':
       return node.value ? `regresa ${printExpression(node.value)}` : 'regresa';
+    case 'Domain':
+      return `dominio ${node.name.name}`;
     case 'Break':
       return 'romper';
     case 'Continue':

@@ -60,6 +60,7 @@ export interface Catalog {
 const KEYWORD_GROUPS: Readonly<Record<string, KeywordGroup>> = {
   [TokenType.LET]: 'declaración',
   [TokenType.CONST]: 'declaración',
+  [TokenType.DOMAIN]: 'declaración',
   [TokenType.FUNCTION]: 'declaración',
   [TokenType.RETURN]: 'declaración',
   [TokenType.IF]: 'control',

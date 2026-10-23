@@ -7,7 +7,8 @@ import type { Chunk } from './compiler';
  * listas y procedimientos son objetos con un `id` para poder dibujar cuándo dos variables
  * comparten el mismo valor.
  */
-export type Value = number | string | boolean | null | ListValue | DictValue | ProcedureValue | NativeValue;
+export type Value =
+  number | string | boolean | null | ListValue | DictValue | DomainValue | ProcedureValue | NativeValue;
 
 export interface ListValue {
   kind: 'lista';
@@ -23,6 +24,18 @@ export interface DictValue {
   kind: 'diccionario';
   id: number;
   entries: Map<DictKey, Value>;
+}
+
+/**
+ * Un `dominio`: un espacio de nombres. Sus miembros son las variables de `scope`; desde fuera se usan con `.` y
+ * solo se pueden cambiar los que se declararon con `variable` (`writable`).
+ */
+export interface DomainValue {
+  kind: 'dominio';
+  id: number;
+  name: string;
+  scope: Scope;
+  writable: ReadonlySet<string>;
 }
 
 export interface ProcedureValue {
@@ -101,7 +114,7 @@ export interface NativeValue {
   cost?: (args: Value[]) => number;
 }
 
-export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'diccionario' | 'procedimiento';
+export type TypeName = 'número' | 'texto' | 'lógico' | 'nulo' | 'lista' | 'diccionario' | 'dominio' | 'procedimiento';
 
 export const typeOf = (value: Value): TypeName => {
   if (value === null) return 'nulo';
@@ -113,7 +126,9 @@ export const typeOf = (value: Value): TypeName => {
     case 'boolean':
       return 'lógico';
     default:
-      return value.kind === 'lista' || value.kind === 'diccionario' ? value.kind : 'procedimiento';
+      return value.kind === 'lista' || value.kind === 'diccionario' || value.kind === 'dominio'
+        ? value.kind
+        : 'procedimiento';
   }
 };
 
@@ -131,6 +146,9 @@ export const describeType = (type: TypeName): string => {
 
 export const isList = (value: Value): value is ListValue =>
   typeof value === 'object' && value !== null && value.kind === 'lista';
+
+export const isDomain = (value: Value): value is DomainValue =>
+  typeof value === 'object' && value !== null && value.kind === 'dominio';
 
 export const isDict = (value: Value): value is DictValue =>
   typeof value === 'object' && value !== null && value.kind === 'diccionario';
@@ -156,6 +174,7 @@ export const repr = (value: Value, seen: Set<ListValue | DictValue> = new Set())
     case 'boolean':
       return value ? 'verdadero' : 'falso';
   }
+  if (value.kind === 'dominio') return `dominio ${value.name}`;
   if (value.kind === 'lista' || value.kind === 'diccionario') {
     if (seen.has(value)) return value.kind === 'lista' ? '[…]' : '{…}';
     seen.add(value);

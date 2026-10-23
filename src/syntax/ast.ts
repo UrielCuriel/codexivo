@@ -218,6 +218,16 @@ export interface ForEach extends BaseNode {
   body: Block;
 }
 
+/**
+ * `dominio nombre { … }`: un espacio de nombres. Agrupa declaraciones (variables, constantes, procedimientos y
+ * otros dominios) que se usan desde fuera con `nombre.miembro`. No es un módulo: no hay `importar`.
+ */
+export interface Domain extends BaseNode {
+  kind: 'Domain';
+  name: Identifier;
+  body: Block;
+}
+
 export interface Break extends BaseNode {
   kind: 'Break';
 }
@@ -241,7 +251,8 @@ export type Statement =
   | ForEach
   | Repeat
   | Break
-  | Continue;
+  | Continue
+  | Domain;
 
 export interface Program extends BaseNode {
   kind: 'Program';
@@ -294,6 +305,8 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.condition, node.body];
     case 'DoUntil':
       return [node.body, node.condition];
+    case 'Domain':
+      return [node.name, node.body];
     case 'Repeat':
       return [node.count, node.body];
     case 'For':

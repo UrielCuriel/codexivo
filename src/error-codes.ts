@@ -83,6 +83,11 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
     explanation:
       'Al inicio de una sentencia, `{` abre un bloque. Un diccionario tiene que estar en una expresión: guárdalo en una variable (`variable d = { "a": 1 };`) o pásalo a un procedimiento.',
   },
+  DOMINIO_SOLO_DECLARACIONES: {
+    kind: 'sintaxis',
+    explanation:
+      'Un `dominio` es un espacio de nombres: solo agrupa declaraciones (`variable`, `constante`, `procedimiento` y otros `dominio`). El código que hace algo, como un `si` o un `imprimir`, va dentro de un procedimiento del dominio o fuera de él.',
+  },
   EN_SIN_PARA_CADA: {
     kind: 'sintaxis',
     explanation: '`en` es parte de `para_cada elemento en lista { … }` y no se puede usar sola ni como nombre.',
@@ -240,6 +245,16 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
     kind: 'ejecución',
     explanation:
       'El procedimiento necesita al menos un elemento y la lista está vacía. Revisa antes con `longitud(lista) > 0`.',
+  },
+  MIEMBRO_DE_SOLO_LECTURA: {
+    kind: 'ejecución',
+    explanation:
+      'Desde fuera de un dominio solo se pueden cambiar sus miembros declarados con `variable`. Sus constantes, sus procedimientos y los dominios que contiene quedan fijos, para que `calculadora.suma` siempre sea el mismo procedimiento.',
+  },
+  MIEMBRO_INEXISTENTE: {
+    kind: 'ejecución',
+    explanation:
+      'El dominio no tiene un miembro con ese nombre. Puede estar mal escrito; los miembros se declaran dentro de las llaves del dominio y desde fuera no se pueden agregar.',
   },
   MOCHILA_VACÍA: {
     kind: 'ejecución',

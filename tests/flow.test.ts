@@ -201,6 +201,14 @@ describe('diagrama de flujo', () => {
     ]);
   });
 
+  test('un dominio es un paso de proceso y sus procedimientos se nombran con su ruta', () => {
+    const graph = graphOf('dominio c {\n  variable n = 0;\n  procedimiento f() { imprimir(n); }\n}\nc.f();', {
+      expandProcedures: true,
+    });
+    expect(kinds(graph)).toEqual(['inicio:inicio', 'proceso:dominio c', 'llamada:c.f()', 'fin:fin']);
+    expect(graph.procedures!.map(procedure => procedure.name)).toEqual(['c.f']);
+  });
+
   test('las etiquetas largas se pueden recortar', () => {
     const graph = graphOf('variable mensaje = "un texto bastante largo";', { maxLabelLength: 12 });
     expect(graph.nodes[1]!.label).toBe('variable me…');
@@ -222,6 +230,7 @@ describe('el diagrama cubre la ejecución', () => {
     'variable t = 0;\nrepetir 3 veces { t += 1; }\npara_cada x en [1, 2] { t += x; }',
     'procedimiento f(n) {\n  si (n == 0) { regresa 0; }\n  regresa f(n - 1);\n}\nimprimir(f(3));',
     'variable d = { "a": 1 };\npara_cada k, v en d { imprimir(k, v); }\n{ variable z = 1; }',
+    'dominio c {\n  variable n = 0;\n  dominio d { constante K = 1; }\n  procedimiento f() { regresa n + d.K; }\n}\nimprimir(c.f());',
   ];
 
   test.each(programs)('todo `nodeId` de `paso` y `decide` está en el grafo: %s', source => {

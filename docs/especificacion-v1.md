@@ -102,7 +102,7 @@ sandbox siempre lo escriben.
 ### 2.5 Palabras reservadas
 
 ```
-variable  constante  procedimiento  regresa
+variable  constante  procedimiento  regresa  dominio
 si  pero_si  si_no
 mientras  hacer  hasta_que  para  para_cada  en  repetir  veces
 romper  continuar
@@ -128,6 +128,7 @@ teclados lo facilitan. La documentación y los mensajes usan siempre la forma ca
 | `"nulo"`          | `nulo`                                        |
 | `"lista"`         | `[1, "a", verdadero]`                         |
 | `"diccionario"`   | `{ "a": 1 }`                                  |
+| `"dominio"`       | `dominio calculadora { … }` (§5.6)            |
 | `"procedimiento"` | Procedimientos del usuario y de la biblioteca |
 
 - **Valor contra referencia.** Números, textos, lógicos y `nulo` se copian. Las listas y los
@@ -334,6 +335,36 @@ mapear([1, 2, 3], doble); // [2, 4, 6]
   El valor de la última expresión **no** se regresa solo: devolver un valor siempre se dice con `regresa`.
 - Los procedimientos capturan las variables de donde se crearon (closures).
 - La profundidad de recursión solo la limita la configuración (por defecto 10 000), no JavaScript.
+
+### 5.6 Dominios
+
+> **✅ Decidido (#19) — `dominio` es un espacio de nombres**, no un objeto ni un módulo. Agrupa declaraciones bajo un
+> nombre; no hay `importar` ni archivos.
+
+```codexivo
+dominio calculadora {
+  variable operaciones = 0;
+  procedimiento suma(a, b) {
+    operaciones++;
+    regresa a + b;
+  }
+}
+calculadora.suma(1, 3); // 4
+```
+
+- **Contenido:** solo declaraciones (`variable`, `constante`, `procedimiento` y otros `dominio`). Cualquier otra
+  sentencia es el error de sintaxis `DOMINIO_SOLO_DECLARACIONES`. Las declaraciones se ejecutan en orden al llegar al
+  dominio, y los procedimientos con nombre existen desde el inicio, como en cualquier bloque.
+- **Alcance:** dentro del dominio sus miembros se usan sin prefijo y se ve lo que está fuera. Fuera se usan con `.`
+  (`geometría.círculo.área(1)`); con `[ ]` es un error. Un miembro que no existe es `MIEMBRO_INEXISTENTE`, con
+  sugerencia si se parece a otro.
+- **Asignar desde fuera:** solo a los miembros declarados con `variable`. Las constantes, los procedimientos y los
+  dominios internos son `MIEMBRO_DE_SOLO_LECTURA`, y agregar un miembro nuevo es `MIEMBRO_INEXISTENTE`: así
+  `calculadora.suma` siempre es el mismo procedimiento.
+- **Anidados:** un dominio puede contener otros.
+- **Valor:** el nombre del dominio es constante. El dominio es un valor de tipo `"dominio"` con referencia: el sandbox
+  lo muestra en la memoria con sus miembros (`snapshot().heap`), y cambiar un miembro emite `asigna` con su ruta
+  (`calculadora.operaciones`). No es un diccionario: no se recorre con `para_cada` ni tiene `longitud`.
 
 ## 6. Entrada y salida
 
@@ -569,6 +600,8 @@ El formato del mundo (versión 1), los eventos `robot` y los objetivos de un ret
 
 Módulos e `importar`, clases y métodos, `intentar`/`capturar`, asincronía, archivos, red, tipos
 estáticos y `según`/`caso`. Se pueden reconsiderar después, siempre con el principio 1 como filtro.
+
+`dominio` (§5.6) no es un módulo: agrupa nombres dentro del mismo programa, sin archivos ni `importar`.
 
 ## 14. Cambios que rompen programas existentes
 

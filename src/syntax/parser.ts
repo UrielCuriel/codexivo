@@ -90,6 +90,7 @@ const INCREMENT_OPERATORS: Partial<Record<TokenType, ast.IncrementOperator>> = {
 
 const STATEMENT_KEYWORDS = new Set([
   TokenType.LET,
+  TokenType.DOMAIN,
   TokenType.CONST,
   TokenType.REPEAT,
   TokenType.FOR_EACH,
@@ -102,6 +103,37 @@ const STATEMENT_KEYWORDS = new Set([
   TokenType.DO,
   TokenType.FOR,
 ]);
+
+/** Lo único que puede ir dentro de un `dominio`. */
+const DOMAIN_MEMBERS = new Set<ast.Statement['kind']>(['VariableDeclaration', 'FunctionDeclaration', 'Domain']);
+
+/** Cómo empieza una sentencia, para nombrarla en un mensaje. */
+const printStart = (statement: ast.Statement): string | undefined => {
+  switch (statement.kind) {
+    case 'If':
+      return 'si';
+    case 'While':
+      return 'mientras';
+    case 'DoUntil':
+      return 'hacer';
+    case 'For':
+      return 'para';
+    case 'ForEach':
+      return 'para_cada';
+    case 'Repeat':
+      return 'repetir';
+    case 'Return':
+      return 'regresa';
+    case 'Break':
+      return 'romper';
+    case 'Continue':
+      return 'continuar';
+    case 'Block':
+      return '{';
+    default:
+      return undefined;
+  }
+};
 
 const KEYWORD_LIKE_TYPOS: Readonly<Record<string, string>> = {
   sino: 'En Codexivo se escribe `si_no`, con guion bajo.',
@@ -305,6 +337,8 @@ class Parser {
         return this.endCompoundStatement(this.parseRepeat());
       case TokenType.FOR_EACH:
         return this.endCompoundStatement(this.parseForEach());
+      case TokenType.DOMAIN:
+        return this.endCompoundStatement(this.parseDomain());
       case TokenType.BREAK:
       case TokenType.CONTINUE:
         return this.endSimpleStatement(this.parseLoopJump());
@@ -407,6 +441,8 @@ class Parser {
     if (token.type !== TokenType.IDENT) {
       this.failSilentlyOnIllegal();
       if (token.lexeme && /^[a-z_]+$/.test(token.lexeme) && token.type !== TokenType.EOF) {
+        // Se salta la palabra para que, al recuperarse, no empiece otra sentencia (`variable dominio = 1`).
+        this.advance();
         this.error(
           'PALABRA_RESERVADA',
           `\`${token.lexeme}\` es una palabra reservada y no se puede usar como nombre.`,
@@ -588,6 +624,49 @@ class Parser {
     return { kind: 'Repeat', id: this.id(), count, body, span: this.spanFrom(keyword.span.start) };
   }
 
+  private parseDomain(): ast.Domain {
+    const keyword = this.advance();
+    const name = this.parseBindingName('después de `dominio`');
+    const open = this.expect(
+      TokenType.LBRACE,
+      `después de \`dominio ${name.name}\``,
+      'Lo que agrupa un dominio va entre llaves: `dominio calculadora { … }`.',
+    );
+    // Un dominio no está dentro de ningún bucle, aunque se escriba dentro de uno.
+    const loopDepth = this.loopDepth;
+    this.loopDepth = 0;
+    let statements: ast.Statement[];
+    try {
+      statements = this.parseStatements(TokenType.RBRACE);
+    } finally {
+      this.loopDepth = loopDepth;
+    }
+    if (!this.check(TokenType.RBRACE)) {
+      this.error(
+        'BLOQUE_SIN_CERRAR',
+        `Falta \`}\` para cerrar el dominio que empieza en la línea ${open.span.start.line}.`,
+        open.span,
+      );
+    }
+    this.advance();
+    for (const statement of statements) {
+      if (DOMAIN_MEMBERS.has(statement.kind) || this.errors.length >= MAX_ERRORS) continue;
+      this.errors.push(
+        new CodexivoError({
+          kind: 'sintaxis',
+          code: 'DOMINIO_SOLO_DECLARACIONES',
+          message: printStart(statement)
+            ? `Un dominio solo agrupa declaraciones, y \`${printStart(statement)}\` no es una.`
+            : 'Un dominio solo agrupa declaraciones, y esta sentencia no es una.',
+          hint: 'Dentro de `dominio` van `variable`, `constante`, `procedimiento` u otro `dominio`. Lo demás va en un procedimiento o fuera del dominio.',
+          span: statement.span,
+        }),
+      );
+    }
+    const body: ast.Block = { kind: 'Block', id: this.id(), statements, span: this.spanFrom(open.span.start) };
+    return { kind: 'Domain', id: this.id(), name, body, span: this.spanFrom(keyword.span.start) };
+  }
+
   private parseForEach(): ast.ForEach {
     const keyword = this.advance();
     const form = 'La forma completa es `para_cada fruta en frutas { … }`, sin paréntesis.';
@@ -740,6 +819,7 @@ class Parser {
       case TokenType.DO:
       case TokenType.LET:
       case TokenType.CONST:
+      case TokenType.DOMAIN:
       case TokenType.REPEAT:
       case TokenType.FOR_EACH:
       case TokenType.BREAK:

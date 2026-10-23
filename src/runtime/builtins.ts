@@ -289,7 +289,7 @@ const library: NativeValue[] = [
       params: [{ name: 'x', type: 'cualquiera' }],
       returns: 'texto',
       description:
-        'El nombre del tipo de un valor: "número", "texto", "lógico", "nulo", "lista", "diccionario" o "procedimiento".',
+        'El nombre del tipo de un valor: "número", "texto", "lógico", "nulo", "lista", "diccionario", "dominio" o "procedimiento".',
       examples: [
         { code: 'tipo(3.5)', result: '"número"' },
         { code: 'tipo([1, 2])', result: '"lista"' },

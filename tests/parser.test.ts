@@ -210,6 +210,50 @@ describe('parser', () => {
     });
   });
 
+  describe('dominios', () => {
+    test('agrupa declaraciones bajo un nombre', () => {
+      const { program, errors } = parse(
+        'dominio geometría {\n  constante LADOS = 4;\n  variable usos = 0;\n  procedimiento área(l) { regresa l * l; }\n  dominio círculo { }\n}',
+      );
+      expect(errors).toEqual([]);
+      const domain = program.statements[0] as ast.Domain;
+      expect(domain.kind).toBe('Domain');
+      expect(domain.name.name).toBe('geometría');
+      expect(domain.body.statements.map(statement => statement.kind)).toEqual([
+        'VariableDeclaration',
+        'VariableDeclaration',
+        'FunctionDeclaration',
+        'Domain',
+      ]);
+      expect(domain.span.end.line).toBe(6);
+    });
+
+    test('el acceso es con punto, también anidado', () => {
+      expect(expression('geometría.círculo.área(2)')).toBe('geometría.círculo.área(2)');
+    });
+
+    test.each([
+      ['dominio c { imprimir(1); }', 'DOMINIO_SOLO_DECLARACIONES'],
+      ['dominio c { si (verdadero) { } }', 'DOMINIO_SOLO_DECLARACIONES'],
+      ['dominio c { regresa 1; }', 'DOMINIO_SOLO_DECLARACIONES'],
+      ['dominio c { procedimiento f() { } variable f = 1; }', 'NOMBRE_REPETIDO'],
+      ['dominio { }', 'NOMBRE_ESPERADO'],
+      ['dominio c', 'TOKEN_ESPERADO'],
+      ['dominio c {', 'BLOQUE_SIN_CERRAR'],
+      ['variable x = dominio c { };', 'SENTENCIA_EN_EXPRESIÓN'],
+      ['variable dominio = 1;', 'PALABRA_RESERVADA'],
+    ])('%s → %s', (source, code) => {
+      expect(errorCodes(source)).toEqual([code]);
+    });
+
+    test('la pista dice qué puede ir dentro', () => {
+      const [error] = parse('dominio c {\n  mientras (verdadero) { }\n}').errors;
+      expect(error!.message).toContain('`mientras` no es una');
+      expect(error!.hint).toContain('`procedimiento`');
+      expect(error!.span?.start.line).toBe(2);
+    });
+  });
+
   describe('diccionarios', () => {
     test.each([
       ['variable d = { "a": 1, "b": [2] };', '{"a": 1, "b": [2]}'],

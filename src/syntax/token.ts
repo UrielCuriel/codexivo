@@ -22,6 +22,7 @@ export enum TokenType {
   // palabras reservadas
   LET = 'LET',
   CONST = 'CONST',
+  DOMAIN = 'DOMAIN',
   FUNCTION = 'FUNCTION',
   RETURN = 'RETURN',
   IF = 'IF',
@@ -97,6 +98,7 @@ export interface Token {
 export const KEYWORDS: Readonly<Record<string, TokenType>> = {
   variable: TokenType.LET,
   constante: TokenType.CONST,
+  dominio: TokenType.DOMAIN,
   procedimiento: TokenType.FUNCTION,
   regresa: TokenType.RETURN,
   si: TokenType.IF,

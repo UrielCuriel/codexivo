@@ -190,8 +190,30 @@ describe('eventos', () => {
     if (d.type !== 'diccionario') return;
     const entry = snapshot.heap[d.ref];
     expect(entry).toMatchObject({ entries: [{ key: { repr: '"a"' }, value: { type: 'lista' } }] });
-    const list = !Array.isArray(entry) && entry?.entries[0]!.value;
+    const list = entry && !Array.isArray(entry) && 'entries' in entry && entry.entries[0]!.value;
     if (list && list.type === 'lista') expect(snapshot.heap[list.ref]).toMatchObject([{ repr: '1' }]);
+  });
+
+  test('un dominio aparece en la memoria con sus miembros', () => {
+    const machine = machineFor('dominio c {\n  variable n = [1];\n  constante K = 2;\n}\nc;', { breakpoints: [5] });
+    machine.run();
+    const snapshot = machine.snapshot();
+    const c = snapshot.frames[0]!.scopes[0]!.c!;
+    expect(c).toMatchObject({ type: 'dominio', name: 'c', repr: 'dominio c' });
+    if (c.type !== 'dominio') return;
+    expect(snapshot.heap[c.ref]).toMatchObject({
+      domain: 'c',
+      members: [
+        { name: 'n', value: { type: 'lista' }, writable: true },
+        { name: 'K', value: { repr: '2' }, writable: false },
+      ],
+    });
+  });
+
+  test('cambiar un miembro de un dominio es una asignación con su ruta', () => {
+    const list = events('dominio c { variable n = 1; } c.n = 2;');
+    expect(of(list, 'declara').map(event => `${event.name}:${event.constant}`)).toEqual(['n:false', 'c:true']);
+    expect(of(list, 'asigna')[0]).toMatchObject({ name: 'c.n', before: { repr: '1' }, after: { repr: '2' } });
   });
 
   test('`declara` indica si es constante', () => {

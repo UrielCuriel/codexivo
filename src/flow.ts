@@ -72,9 +72,19 @@ interface Loop {
 const INPUT = new Set(['leer', 'leer_número', 'leer_numero']);
 const OUTPUT = new Set(['imprimir']);
 
-/** Nombre del procedimiento al que llama una expresión, si es una llamada directa por nombre. */
+/** `f` o `dominio.f`: la ruta de un nombre, si la expresión es solo eso. */
+const path = (node: ast.Expression): string | undefined => {
+  if (node.kind === 'Identifier') return node.name;
+  if (node.kind === 'Index' && node.dot && node.index.kind === 'StringLiteral') {
+    const object = path(node.object);
+    return object && `${object}.${node.index.value}`;
+  }
+  return undefined;
+};
+
+/** Nombre (o ruta) del procedimiento al que llama una expresión, si es una llamada directa. */
 const calledName = (node: ast.Expression | undefined): string | undefined =>
-  node?.kind === 'Call' && node.callee.kind === 'Identifier' ? node.callee.name : undefined;
+  node?.kind === 'Call' ? path(node.callee) : undefined;
 
 class Builder {
   readonly nodes: FlowNode[] = [];
@@ -171,6 +181,21 @@ class Builder {
       case 'FunctionDeclaration':
         // Se crea al entrar al bloque, no en este punto; su grafo va en `procedures`.
         return incoming;
+      case 'Domain': {
+        // Un dominio solo declara: es un paso de proceso que representa todas sus declaraciones.
+        const members: ast.Statement[] = [];
+        const collect = (domain: ast.Domain) => {
+          members.push(domain);
+          for (const member of domain.body.statements) {
+            if (member.kind === 'VariableDeclaration') members.push(member);
+            else if (member.kind === 'Domain') collect(member);
+          }
+        };
+        collect(statement);
+        const id = this.node('proceso', printStatement(statement), members);
+        this.connect(incoming, id);
+        return [{ from: id }];
+      }
       case 'VariableDeclaration':
       case 'Assignment':
       case 'Increment':
@@ -289,12 +314,16 @@ class Builder {
   }
 }
 
-/** Procedimientos con nombre declarados directamente en estas sentencias. */
+/** Procedimientos con nombre declarados en estas sentencias, con su ruta si están en un dominio. */
 const procedureNames = (statements: ast.Statement[], known: Iterable<string> = []): Set<string> => {
   const names = new Set(known);
-  for (const statement of statements) {
-    if (statement.kind === 'FunctionDeclaration') names.add(statement.name.name);
-  }
+  const visit = (list: ast.Statement[], prefix: string) => {
+    for (const statement of list) {
+      if (statement.kind === 'FunctionDeclaration') names.add(`${prefix}${statement.name.name}`);
+      if (statement.kind === 'Domain') visit(statement.body.statements, `${prefix}${statement.name.name}.`);
+    }
+  };
+  visit(statements, '');
   return names;
 };
 
@@ -332,14 +361,19 @@ const graphOf = (
   const graph: FlowGraph = { nodes: builder.nodes, edges: builder.edges };
   if (options.expandProcedures) {
     graph.procedures = [];
-    for (const statement of statements) {
-      if (statement.kind !== 'FunctionDeclaration') continue;
-      graph.procedures.push({
-        name: statement.name.name,
-        astId: statement.id,
-        graph: graphOf(statement, options, names),
-      });
-    }
+    // Los procedimientos de un dominio se nombran con su ruta: `calculadora.suma`.
+    const visit = (list: ast.Statement[], prefix: string) => {
+      for (const statement of list) {
+        if (statement.kind === 'Domain') visit(statement.body.statements, `${prefix}${statement.name.name}.`);
+        if (statement.kind !== 'FunctionDeclaration') continue;
+        graph.procedures!.push({
+          name: `${prefix}${statement.name.name}`,
+          astId: statement.id,
+          graph: graphOf(statement, options, names),
+        });
+      }
+    };
+    visit(statements, '');
   }
   return graph;
 };
