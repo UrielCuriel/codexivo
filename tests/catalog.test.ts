@@ -57,9 +57,11 @@ describe('catálogo', () => {
   test('cada código de error que se usa en `src/` está en el catálogo, y viceversa', async () => {
     const glob = new Bun.Glob('**/*.ts');
     const used = new Set<string>();
-    for await (const path of glob.scan(new URL('../src', import.meta.url).pathname)) {
+    // `fileURLToPath` y `absolute` para que las rutas funcionen también en Windows.
+    const root = Bun.fileURLToPath(new URL('../src', import.meta.url));
+    for await (const path of glob.scan({ cwd: root, absolute: true })) {
       if (path.endsWith('token.ts') || path.endsWith('error-codes.ts')) continue;
-      const text = await Bun.file(new URL(`../src/${path}`, import.meta.url)).text();
+      const text = await Bun.file(path).text();
       for (const match of text.matchAll(/'([A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ_]{2,})'/g)) used.add(match[1]!);
     }
     used.delete('NFD'); // `normalize('NFD')`, no es un código
