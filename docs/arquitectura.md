@@ -109,10 +109,28 @@ biblioteca cuesta lo que dice la tabla (`n` para los que recorren su argumento, 
 aparece. Lo que hace `f` se cuenta aparte, como cualquier código del programa. Las llamadas que hace la biblioteca a sus
 propios ayudantes no se cobran otra vez.
 
-## 6. Errores (`src/errors.ts`)
+## 6. Errores (`src/errors.ts`, `src/error-codes.ts`)
 
 `CodexivoError` tiene `kind` (`léxico`, `sintaxis`, `ejecución` o `límite`), un `code` estable, `message`, `hint`, `span` y la
-pila de llamadas. `formatError` lo convierte en el texto que muestran el REPL y la consola.
+pila de llamadas. `formatError` lo convierte en el texto que muestran el REPL y la consola. `error-codes.ts` lista todos los
+códigos con una explicación larga; una prueba revisa que no falte ni sobre ninguno.
+
+## Catálogo (`src/catalog.ts`)
+
+`catalog` exporta como datos serializables lo que el sitio necesita para el resaltado, el autocompletado, la documentación y
+los avisos del editor:
+
+- `keywords`: las palabras reservadas por grupo (declaración, control, lógicas, literales, operadores), generadas desde
+  `KEYWORDS`;
+- `operators`: símbolo, forma en palabras, precedencia, asociatividad y descripción;
+- `library`: cada procedimiento con su nombre canónico y alias, nivel, categoría, firma, tipo que regresa, si cambia su
+  argumento, descripción y ejemplos ejecutables;
+- `constants`, `errors` y `exampleWorld` (el mundo con el que corren los ejemplos del modo mundo).
+
+La documentación de cada procedimiento vive junto a su definición: `define()` en `builtins.ts` la exige, y los
+procedimientos de `prelude.ts` y del modo mundo tienen la suya al lado. Las pruebas ejecutan cada ejemplo del catálogo y
+revisan que cada procedimiento registrado tenga entrada y viceversa. `bun run docs:biblioteca` genera las tablas de la
+biblioteca en Markdown.
 
 ## 7. API (`src/engine.ts`, `src/index.ts`)
 

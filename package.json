@@ -29,6 +29,7 @@
     "build:binary": "bun run scripts/build-binaries.ts",
     "build:binaries": "bun run scripts/build-binaries.ts --all",
     "test:package": "bun run scripts/test-package.ts",
+    "docs:biblioteca": "bun run scripts/docs-biblioteca.ts",
     "prepack": "bun run build:lib",
     "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
     "publish:native": "bun run scripts/publish-native.ts",

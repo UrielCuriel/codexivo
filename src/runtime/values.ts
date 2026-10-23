@@ -50,9 +50,47 @@ export interface NativeContext {
 
 export const WAIT_FOR_INPUT: unique symbol = Symbol('esperar-entrada');
 
+export type ProcedureLevel = 'principiante' | 'intermedio' | 'avanzado';
+
+export type ProcedureCategory =
+  | 'entrada y salida'
+  | 'tipos'
+  | 'matemáticas'
+  | 'texto'
+  | 'listas'
+  | 'diccionarios'
+  | 'procedimientos'
+  | 'estructuras'
+  | 'mundo';
+
+/** Ejemplo ejecutable de un procedimiento: `result` es el valor final como se escribiría en código. */
+export interface ProcedureExample {
+  code: string;
+  result?: string;
+  output?: string;
+}
+
+/** Documentación de un procedimiento de la biblioteca; de aquí sale el catálogo (`catalog.ts`). */
+export interface ProcedureDoc {
+  level: ProcedureLevel;
+  category: ProcedureCategory;
+  /** Tipos con los nombres de `tipo(x)`, `cualquiera`, o varios separados por ` | `. */
+  params: Array<{ name: string; type: string; optional?: boolean }>;
+  /** `true` si el último parámetro se puede repetir (`imprimir(a, b, …)`). */
+  variadic?: boolean;
+  /** Lo que regresa; `nulo` si no regresa nada útil. */
+  returns: string;
+  /** `true` si cambia su primer argumento. */
+  mutates?: boolean;
+  description: string;
+  examples: ProcedureExample[];
+}
+
 export interface NativeValue {
   kind: 'nativo';
   name: string;
+  /** Documentación para el catálogo. Los nativos internos de la biblioteca no la tienen. */
+  doc?: ProcedureDoc;
   /** Cantidad de argumentos: exacta, o `[mínimo, máximo]` (`máximo` puede ser `Infinity`). */
   arity: number | [number, number];
   call(args: Value[], context: NativeContext): Value | typeof WAIT_FOR_INPUT;

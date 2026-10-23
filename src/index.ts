@@ -55,3 +55,7 @@ export type {
   RobotAction,
   Direction,
 } from './world';
+
+export { catalog } from './catalog';
+export type { Catalog, KeywordGroup, OperatorEntry, ProcedureEntry, ConstantEntry, ErrorEntry } from './catalog';
+export type { ProcedureDoc, ProcedureExample, ProcedureLevel, ProcedureCategory } from './runtime/values';

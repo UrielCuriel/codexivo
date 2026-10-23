@@ -17,7 +17,11 @@ Pipeline: `tokenize → parse → compile → Machine`.
   `kind`, `id`, `span`), `parser.ts` (Pratt parser with error recovery).
 - `src/runtime/` — `compiler.ts` (AST → stack-machine instructions), `machine.ts` (pausable VM with its own call stack,
   limits, events and snapshots), `values.ts`, `builtins.ts` (standard library), `suggest.ts`.
-- `src/errors.ts` — `CodexivoError` and `formatError`.
+- `src/runtime/prelude.ts` — library procedures written in Codexivo (`mapear`, `ordenar`…), compiled as hidden code;
+  `costs.ts` — the single table of operation costs.
+- `src/world.ts` — world mode (Karel): world format, `createWorld`, `robot` events, `checkGoal`.
+- `src/catalog.ts` — the language and library as data for the site. Every native needs its `doc` in `define()`.
+- `src/errors.ts` — `CodexivoError` and `formatError`; `src/error-codes.ts` — every error code with a long explanation.
 - `src/engine.ts` — `run`, `prepare`, `Session`. `src/index.ts` is the public API.
 - `src/cli.ts` — REPL and file runner (Bun APIs only, no `node:` imports).
 - `packages/cli` — `@codexivo/cli`, the native command installer; declares platform packages as optional dependencies.
@@ -44,6 +48,8 @@ Run `bun fmt --check`, `bun test` and `bun check` before every push.
   is in Spanish** with correct accents: error messages, hints, docs, built-in names.
 - Every error has a stable `code`, a `message` that says what happened and, when possible, a `hint` that says what to check.
   Never let a JavaScript exception escape for a user mistake.
+- New error codes go in `src/error-codes.ts` with an explanation; new library procedures need their `doc` (description,
+  signature and runnable examples). `tests/catalog.test.ts` checks both.
 - Every AST node and token keeps its `span`; every instruction keeps its node. Visualizations depend on it.
 - The machine must stay deterministic: same program + same input ⇒ same output, same operation count.
 - Built-in names with accents are canonical; the unaccented alias is registered automatically.
