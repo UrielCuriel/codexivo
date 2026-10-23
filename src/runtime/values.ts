@@ -68,6 +68,7 @@ export type ProcedureLevel = 'principiante' | 'intermedio' | 'avanzado';
 export type ProcedureCategory =
   | 'entrada y salida'
   | 'tipos'
+  | 'verificación'
   | 'matemáticas'
   | 'texto'
   | 'listas'

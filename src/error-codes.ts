@@ -186,6 +186,11 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   },
 
   // ejecución
+  AFIRMACIÓN_FALLIDA: {
+    kind: 'ejecución',
+    explanation:
+      'Una llamada a `afirmar(condición, mensaje)` encontró que su condición era falsa. Afirmar es escribir lo que esperas que sea cierto en ese punto del programa; si no lo es, el programa se detiene ahí, antes de que el error llegue más lejos. Revisa los valores de las variables justo antes de esa línea.',
+  },
   CANTIDAD_DE_ARGUMENTOS: {
     kind: 'ejecución',
     explanation:

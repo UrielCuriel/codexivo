@@ -51,6 +51,44 @@ describe('biblioteca estándar', () => {
     });
   });
 
+  describe('afirmar', () => {
+    test('si la condición es verdadera, el programa sigue', () => {
+      expect(value('afirmar(1 + 1 es_igual_a 2)\nafirmar(verdadero, "nunca falla")\n5')).toBe('5');
+    });
+
+    test('si es falsa, detiene el programa con el mensaje', () => {
+      const result = run(
+        'variable x = -1\nafirmar(x es_mayor_que 0, "x tenía que ser positivo")\nimprimir("no llega")',
+      );
+      expect(result.output).toBe('');
+      expect(result.errors[0]).toMatchObject({
+        kind: 'ejecución',
+        code: 'AFIRMACIÓN_FALLIDA',
+        message: 'La afirmación no se cumplió: x tenía que ser positivo',
+      });
+      expect(result.errors[0]!.hint).toContain('justo antes');
+      expect(result.errors[0]!.span?.start.line).toBe(2);
+    });
+
+    test('sin mensaje', () => {
+      expect(run('afirmar(falso)').errors[0]!.message).toBe('La afirmación no se cumplió.');
+    });
+
+    test('dentro de un procedimiento muestra desde dónde se llamó', () => {
+      const error = run('procedimiento revisar(n) {\n  afirmar(n es_distinto_de 0)\n}\nrevisar(0)').errors[0]!;
+      expect(error.code).toBe('AFIRMACIÓN_FALLIDA');
+      expect(error.callStack).toEqual(['programa', 'revisar']);
+    });
+
+    test('la condición tiene que ser lógica y el mensaje un texto', () => {
+      const condition = run('afirmar(1)').errors[0]!;
+      expect(condition.code).toBe('TIPO_DE_ARGUMENTO');
+      expect(condition.hint).toContain('es_mayor_que');
+      expect(errorCode('afirmar(verdadero, 5)')).toBe('TIPO_DE_ARGUMENTO');
+      expect(errorCode('afirmar()')).toBe('CANTIDAD_DE_ARGUMENTOS');
+    });
+  });
+
   describe('matemáticas', () => {
     test.each([
       ['absoluto(-3)', '3'],
