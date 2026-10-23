@@ -1,6 +1,6 @@
 {
   "name": "codexivo-darwin-x64",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Ejecutable nativo de Codexivo para darwin-x64.",
   "os": [
     "darwin"

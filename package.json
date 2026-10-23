@@ -1,6 +1,6 @@
 {
   "name": "codexivo",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Lenguaje de programación en español para practicar lógica y algoritmos, que se ejecuta en el navegador.",
   "type": "module",
   "main": "dist/index.js",

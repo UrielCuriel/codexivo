@@ -1,6 +1,6 @@
 {
   "name": "codexivo-windows-arm64",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Ejecutable nativo de Codexivo para windows-arm64.",
   "os": [
     "win32"
