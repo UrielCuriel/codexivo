@@ -36,6 +36,14 @@ describe('worker del sandbox', () => {
     expect(await rejection(sandbox.run())).toContain('No hay un programa cargado');
   });
 
+  test('cargar con `parseTrace` trae la traza del parser', async () => {
+    const sandbox = open();
+    expect((await sandbox.load('1 + 2')).parseTrace).toBeUndefined();
+    const loaded = await sandbox.load('1 + 2 * 3', { parseTrace: true });
+    expect(loaded.parseTrace!.filter(event => event.type === 'precedence')).toHaveLength(2);
+    expect(loaded.parseTrace!.at(-1)).toMatchObject({ type: 'exit', kind: 'Program', id: loaded.program.id });
+  });
+
   test('ejecutar hasta terminar, con la salida y el resultado', async () => {
     const sandbox = open();
     await sandbox.load('imprimir("hola");\n2 + 3;');

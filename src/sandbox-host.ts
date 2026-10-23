@@ -5,6 +5,7 @@ import { Machine, serialize } from './runtime/machine';
 import type { MachineEvent, MachineOptions, MachineStatus, SerializedValue, Snapshot } from './runtime/machine';
 import { compile } from './runtime/compiler';
 import { parse } from './syntax/parser';
+import type { ParseEvent } from './syntax/parser';
 import type * as ast from './syntax/ast';
 import type { Token } from './syntax/token';
 import { createWorld } from './world';
@@ -39,6 +40,8 @@ export interface SandboxOptions {
   detail?: EventDetail;
   /** Operaciones por tanda antes de ceder el control. Por defecto 50 000. */
   batchSize?: number;
+  /** Si `cargado` trae `parseTrace`: cómo construyó el parser el árbol, paso a paso. Por defecto `false`. */
+  parseTrace?: boolean;
 }
 
 export type SandboxRequest =
@@ -67,6 +70,8 @@ export interface Loaded {
   errors: ErrorInfo[];
   /** Semilla de `aleatorio` de esta carga. */
   seed: number;
+  /** La traza del parser (ver `parse(código, { trace: true })`), solo con la opción `parseTrace`. */
+  parseTrace?: ParseEvent[];
 }
 
 export interface Progress {
@@ -193,10 +198,18 @@ export class SandboxHost {
     this.inputClosed = false;
     this.events = [];
     this.sentOutput = 0;
-    const { program, tokens, errors } = parse(source);
+    const { program, tokens, errors, trace } = parse(source, { trace: options.parseTrace ?? false });
     this.program = errors.length === 0 ? program : undefined;
     this.machine = this.program ? this.createMachine() : undefined;
-    this.post({ type: 'cargado', id, tokens, program, errors: errors.map(error => error.toJSON()), seed: this.seed });
+    this.post({
+      type: 'cargado',
+      id,
+      tokens,
+      program,
+      errors: errors.map(error => error.toJSON()),
+      seed: this.seed,
+      ...(trace ? { parseTrace: trace } : {}),
+    });
   }
 
   private createMachine(): Machine {

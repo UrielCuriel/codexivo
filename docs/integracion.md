@@ -62,6 +62,7 @@ promesa se rechaza.
 | `world`                                      | —              | Un mundo del [modo mundo](./modo-mundo.md), en JSON                                         |
 | `detail`                                     | `decisiones`   | Eventos por tanda: `nada`, `pasos` (`paso` y `robot`), `decisiones` (más `decide`) o `todo` |
 | `batchSize`                                  | 50 000         | Operaciones por tanda                                                                       |
+| `parseTrace`                                 | `false`        | `cargado` trae `parseTrace`: la [traza del parser](./arquitectura.md#traza-del-parser)      |
 
 ## Tandas
 
