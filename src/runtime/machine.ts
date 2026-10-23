@@ -2,6 +2,7 @@ import { CodexivoError } from '../errors';
 import type { ErrorInfo } from '../errors';
 import type * as ast from '../syntax/ast';
 import type { Span } from '../syntax/token';
+import type { RobotEvent, World, WorldState } from '../world';
 import { constants as libraryConstants, internals, natives as defaultNatives } from './builtins';
 import { COSTS } from './costs';
 import { libraryProcedures } from './prelude';
@@ -23,8 +24,10 @@ export interface MachineOptions {
   input?: string | string[];
   /** Si es `true`, `leer()` sin entrada pausa la máquina en lugar de regresar `nulo`. */
   interactiveInput?: boolean;
-  /** Procedimientos nativos adicionales (por ejemplo, los del modo mundo). */
+  /** Procedimientos nativos adicionales. */
   natives?: Record<string, NativeValue>;
+  /** Mundo del robot (de `createWorld`): agrega sus procedimientos y su estado a `snapshot()`. */
+  world?: World;
   /** Líneas donde `run()` se detiene antes de ejecutar la sentencia. */
   breakpoints?: number[];
   /** Alcance global compartido entre ejecuciones (lo usa el REPL). */
@@ -103,6 +106,7 @@ export type MachineEvent = EventBase &
       }
     | { type: 'llama'; name: string; args: SerializedValue[]; nodeId: number; span: Span }
     | { type: 'regresa'; name: string; value: SerializedValue }
+    | (RobotEvent & { nodeId: number; span: Span })
     | { type: 'imprime'; text: string }
     | { type: 'lee'; text: string | null }
     | { type: 'error'; error: ErrorInfo }
@@ -129,6 +133,8 @@ export interface Snapshot {
   /** Contenido de las listas que aparecen en `frames`, por `ref`. */
   heap: Record<number, HeapEntry>;
   output: string;
+  /** Estado del mundo, si la máquina corre en modo mundo. */
+  world?: WorldState;
 }
 
 // ── máquina ──────────────────────────────────────────────────────────────────
@@ -197,7 +203,7 @@ export class Machine {
     program: Chunk,
     private readonly options: MachineOptions = {},
   ) {
-    this.natives = { ...defaultNatives, ...options.natives };
+    this.natives = { ...defaultNatives, ...options.world?.natives, ...options.natives };
     this.limits = {
       maxOperations: options.maxOperations ?? DEFAULTS.maxOperations,
       maxCallDepth: options.maxCallDepth ?? DEFAULTS.maxCallDepth,
@@ -282,6 +288,7 @@ export class Machine {
       frames,
       heap,
       output: this.output,
+      ...(this.options.world ? { world: this.options.world.state() } : {}),
     };
   }
 
@@ -809,6 +816,7 @@ export class Machine {
       newDict: entries => this.newDict(entries),
       random: () => this.random(),
       fail: (code, message, hint) => this.runtimeError(code, message, node, hint),
+      emit: event => this.emit({ ...event, nodeId: node.id, span: node.span }),
     };
   }
 

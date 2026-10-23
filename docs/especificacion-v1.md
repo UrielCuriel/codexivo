@@ -557,9 +557,13 @@ existen cuando el programa corre en un mundo.
 | `dejar_zumbador()`   | `mirando_al_norte()`, `mirando_al_sur()`, `mirando_al_este()`, `mirando_al_oeste()` |
 | `apagar()`           |                                                                                     |
 
-Chocar con una pared o recoger donde no hay zumbadores es un error de ejecución, con la posición del
-robot. No hay `girar_derecha()`: construirlo con tres `girar_izquierda()` es el primer ejercicio, igual
-que en Karel.
+Chocar con una pared (`CHOQUE_CON_PARED`), recoger donde no hay zumbadores (`SIN_ZUMBADORES`), dejar sin tener
+(`MOCHILA_VACÍA`) o hacer cualquier acción después de `apagar()` (`ROBOT_APAGADO`) es un error de ejecución, con la
+posición y la orientación del robot. `apagar()` no termina el programa; las preguntas siguen funcionando. No hay
+`girar_derecha()`: construirlo con tres `girar_izquierda()` es el primer ejercicio, igual que en Karel.
+
+El formato del mundo (versión 1), los eventos `robot` y los objetivos de un reto están en
+[`modo-mundo.md`](./modo-mundo.md).
 
 ## 13. Fuera de v1
 
@@ -609,7 +613,8 @@ Todas aprobadas.
    `cost` registrado en cada procedimiento nativo; el cobro llega en el paso 6).
 6. ✅ **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la
    biblioteca.
-7. **Modo mundo.**
+7. ✅ **Modo mundo:** formato JSON versionado con `validateWorld`, `createWorld`, evento `robot`, estado en
+   `snapshot()` y objetivos de reto con `checkGoal` (ver [`modo-mundo.md`](./modo-mundo.md)).
 
 Cada paso llega con tests y actualiza `lenguaje.md` para que la documentación nunca vuelva a prometer
 lo que el código no hace.

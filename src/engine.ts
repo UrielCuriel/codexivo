@@ -7,6 +7,7 @@ import { Machine } from './runtime/machine';
 import type { MachineEvent, MachineOptions, MachineStatus } from './runtime/machine';
 import { repr, Scope } from './runtime/values';
 import type { Value } from './runtime/values';
+import type { WorldState } from './world';
 
 export interface PreparedProgram {
   program: ast.Program;
@@ -43,6 +44,8 @@ export interface RunResult {
   operations: number;
   /** Semilla de `aleatorio` que usó la ejecución; pásala en `seed` para repetirla. */
   seed?: number;
+  /** Estado final del mundo, si se ejecutó en modo mundo. */
+  world?: WorldState;
   events?: MachineEvent[];
   /** `true` si se guardaron menos eventos de los que ocurrieron. */
   eventsTruncated?: boolean;
@@ -84,6 +87,7 @@ export const run = (source: string, options: RunOptions = {}): RunResult => {
     errors: machine.error ? [machine.error.toJSON()] : [],
     operations: machine.operations,
     seed: machine.seed,
+    ...(options.world ? { world: options.world.state() } : {}),
     ...(trace ? { events, eventsTruncated } : {}),
   };
 };

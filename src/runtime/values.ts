@@ -1,4 +1,5 @@
 import type { CodexivoError } from '../errors';
+import type { RobotEvent } from '../world';
 import type { Chunk } from './compiler';
 
 /**
@@ -43,6 +44,8 @@ export interface NativeContext {
   random(): number;
   /** Error de ejecución ubicado en la llamada actual. */
   fail(code: string, message: string, hint?: string): CodexivoError;
+  /** Emite un evento propio del procedimiento (el modo mundo emite `robot`), ubicado en la llamada actual. */
+  emit(event: RobotEvent): void;
 }
 
 export const WAIT_FOR_INPUT: unique symbol = Symbol('esperar-entrada');

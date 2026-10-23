@@ -140,7 +140,7 @@ notarizados.
 - [x] Nivel principiante de la v1: `repetir … veces`, `++`/`--`, `mod`/`div`, operadores en palabras, `constante`
 - [x] Nivel intermedio: procedimientos con nombre, `para_cada`, `romper`/`continuar`, diccionarios, más biblioteca
 - [x] Nivel avanzado: procedimientos como valores en la biblioteca, pilas y colas
-- [ ] Modo mundo (Karel)
+- [x] Modo mundo (Karel)
 - [ ] Sitio con documentación y sandbox: `codexivo.urielcuriel.dev`
 
 ## Cómo contribuir

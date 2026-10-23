@@ -37,3 +37,21 @@ export type {
   NativeContext,
   TypeName,
 } from './runtime/values';
+
+export { createWorld, validateWorld, checkGoal, DIRECTIONS } from './world';
+export type {
+  World,
+  WorldDefinition,
+  WorldState,
+  WorldGoal,
+  WorldValidationError,
+  GoalDifference,
+  Wall,
+  BeeperPile,
+  BeeperCount,
+  Robot,
+  RobotEvent,
+  RobotSnapshot,
+  RobotAction,
+  Direction,
+} from './world';
