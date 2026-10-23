@@ -1,8 +1,11 @@
 export {};
 
 // Publish native dependencies first; reruns can resume a partially published release.
+// They don't depend on each other, so they are uploaded in parallel: one by one, the eight uploads were most of the
+// release time. `npm publish` (not `bun publish`) because only npm signs provenance and authenticates with OIDC.
 const root = await Bun.file('packages/cli/package.json').json();
 const tag = root.version.includes('-') ? 'next' : 'latest';
+const pending: string[] = [];
 for (const name of Object.keys(root.optionalDependencies)) {
   const directory = `./packages/${name}`;
   const pkg = await Bun.file(`${directory}/package.json`).json();
@@ -17,10 +20,21 @@ for (const name of Object.keys(root.optionalDependencies)) {
     continue;
   }
   if (response.status !== 404) throw new Error(`npm respondió ${response.status} para ${name}.`);
-  const child = Bun.spawn(['npm', 'publish', directory, '--access', 'public', '--provenance', '--tag', tag], {
-    stdout: 'inherit',
-    stderr: 'inherit',
-  });
-  const status = await child.exited;
-  if (status !== 0) process.exit(status);
+  pending.push(name);
 }
+
+const results = await Promise.all(
+  pending.map(async name => {
+    const child = Bun.spawn(
+      ['npm', 'publish', `./packages/${name}`, '--access', 'public', '--provenance', '--tag', tag],
+      {
+        stdout: 'inherit',
+        stderr: 'inherit',
+      },
+    );
+    return { name, status: await child.exited };
+  }),
+);
+const failed = results.filter(result => result.status !== 0);
+for (const { name, status } of failed) console.error(`No se pudo publicar ${name} (código ${status}).`);
+if (failed.length > 0) process.exit(1);
