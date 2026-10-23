@@ -134,7 +134,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
     params: each(),
     returns: 'lista',
     description: 'Una lista nueva con el resultado de `f(x)` para cada elemento.',
-    examples: [{ code: 'mapear([1, 2, 3], procedimiento(x) { regresa x * 2; })', result: '[2, 4, 6]' }],
+    examples: [{ code: 'mapear([1, 2, 3], procedimiento(x) { regresa x * 2 })', result: '[2, 4, 6]' }],
   },
   filtrar: {
     level: 'avanzado',
@@ -142,7 +142,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
     params: each(),
     returns: 'lista',
     description: 'Una lista nueva con los elementos para los que `f(x)` es `verdadero`.',
-    examples: [{ code: 'filtrar([1, 2, 3, 4], procedimiento(x) { regresa x mod 2 == 0; })', result: '[2, 4]' }],
+    examples: [{ code: 'filtrar([1, 2, 3, 4], procedimiento(x) { regresa x mod 2 == 0 })', result: '[2, 4]' }],
   },
   reducir: {
     level: 'avanzado',
@@ -150,7 +150,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
     params: [...each(), { name: 'inicial', type: 'cualquiera' }],
     returns: 'cualquiera',
     description: 'Junta la lista en un solo valor: empieza con `inicial` y en cada elemento hace `f(acumulado, x)`.',
-    examples: [{ code: 'reducir([1, 2, 3], procedimiento(total, x) { regresa total + x; }, 0)', result: '6' }],
+    examples: [{ code: 'reducir([1, 2, 3], procedimiento(total, x) { regresa total + x }, 0)', result: '6' }],
   },
   alguno: {
     level: 'avanzado',
@@ -158,7 +158,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
     params: each(),
     returns: 'lógico',
     description: '`verdadero` si `f(x)` es `verdadero` para al menos un elemento.',
-    examples: [{ code: 'alguno([1, 5], procedimiento(x) { regresa x > 3; })', result: 'verdadero' }],
+    examples: [{ code: 'alguno([1, 5], procedimiento(x) { regresa x > 3 })', result: 'verdadero' }],
   },
   todos: {
     level: 'avanzado',
@@ -166,7 +166,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
     params: each(),
     returns: 'lógico',
     description: '`verdadero` si `f(x)` es `verdadero` para todos los elementos.',
-    examples: [{ code: 'todos([1, 5], procedimiento(x) { regresa x > 3; })', result: 'falso' }],
+    examples: [{ code: 'todos([1, 5], procedimiento(x) { regresa x > 3 })', result: 'falso' }],
   },
   buscar: {
     level: 'avanzado',
@@ -174,7 +174,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
     params: each(),
     returns: 'cualquiera',
     description: 'El primer elemento para el que `f(x)` es `verdadero`, o `nulo` si no hay.',
-    examples: [{ code: 'buscar([1, 5, 7], procedimiento(x) { regresa x > 3; })', result: '5' }],
+    examples: [{ code: 'buscar([1, 5, 7], procedimiento(x) { regresa x > 3 })', result: '5' }],
   },
   ordenar: {
     level: 'intermedio',
@@ -188,7 +188,7 @@ export const libraryDocs: Readonly<Record<string, ProcedureDoc>> = {
       'Una lista nueva ordenada. Sin comparador, todos tienen que ser números o todos textos; `va_antes(a, b)` responde «¿va `a` antes que `b`?». Es estable.',
     examples: [
       { code: 'ordenar([3, 1, 2])', result: '[1, 2, 3]' },
-      { code: 'ordenar([3, 1, 2], procedimiento(a, b) { regresa a > b; })', result: '[3, 2, 1]' },
+      { code: 'ordenar([3, 1, 2], procedimiento(a, b) { regresa a > b })', result: '[3, 2, 1]' },
     ],
   },
 };

@@ -151,6 +151,11 @@ class Parser {
   private position = 0;
   private nextId = 1;
   private depth = 0;
+  /**
+   * Paréntesis, corchetes o llaves abiertos alrededor de la expresión actual. Dentro de ellos una expresión puede
+   * seguir en la línea siguiente; fuera, un salto de línea la termina (salvo después de un operador).
+   */
+  private grouping = 0;
   /** Bucles abiertos alrededor de la sentencia actual, sin contar los de afuera de un procedimiento. */
   private loopDepth = 0;
 
@@ -259,6 +264,18 @@ class Parser {
   // ── sentencias ─────────────────────────────────────────────────────────────
 
   private parseStatements(terminator: TokenType.EOF | TokenType.RBRACE): ast.Statement[] {
+    // Un bloque dentro de un paréntesis (el cuerpo de un procedimiento que se pasa como argumento) vuelve a
+    // terminar sus sentencias con el salto de línea.
+    const grouping = this.grouping;
+    this.grouping = 0;
+    try {
+      return this.parseStatementList(terminator);
+    } finally {
+      this.grouping = grouping;
+    }
+  }
+
+  private parseStatementList(terminator: TokenType.EOF | TokenType.RBRACE): ast.Statement[] {
     const statements: ast.Statement[] = [];
     let recovering = false;
     while (!this.check(terminator) && !this.check(TokenType.EOF)) {
@@ -355,7 +372,7 @@ class Parser {
             'DICCIONARIO_COMO_SENTENCIA',
             'Al inicio de una sentencia, `{` abre un bloque, no un diccionario.',
             token.span,
-            'Guarda el diccionario en una variable: `variable d = { "clave": valor };`.',
+            'Guarda el diccionario en una variable: `variable d = { "clave": valor }`.',
           );
         }
         return this.endCompoundStatement(this.parseBlock('para abrir el bloque'));
@@ -520,13 +537,23 @@ class Parser {
     return { kind: 'Block', id: this.id(), statements, span: this.spanFrom(open.span.start) };
   }
 
+  /** Analiza `parse` dentro de paréntesis, corchetes o llaves, donde los saltos de línea no terminan nada. */
+  private grouped<T>(parse: () => T): T {
+    this.grouping += 1;
+    try {
+      return parse();
+    } finally {
+      this.grouping -= 1;
+    }
+  }
+
   private parseCondition(keyword: string): ast.Expression {
     this.expect(
       TokenType.LPAREN,
       `después de \`${keyword}\``,
       `La condición va entre paréntesis: \`${keyword} (x > 0)\`.`,
     );
-    const condition = this.parseExpression();
+    const condition = this.grouped(() => this.parseExpression());
     this.expect(TokenType.RPAREN, `para cerrar la condición de \`${keyword}\``);
     return condition;
   }
@@ -571,7 +598,7 @@ class Parser {
     this.expect(
       TokenType.UNTIL,
       'después del bloque de `hacer`',
-      'La forma completa es `hacer { … } hasta_que (condición);`.',
+      'La forma completa es `hacer { … } hasta_que (condición)`.',
     );
     const condition = this.parseCondition('hasta_que');
     return { kind: 'DoUntil', id: this.id(), body, condition, span: this.spanFrom(start) };
@@ -587,19 +614,22 @@ class Parser {
       'La forma completa es `para (variable i = 0; i < 10; i += 1) { … }`.',
     );
 
-    let init: ast.For['init'];
-    if (!this.check(TokenType.SEMICOLON)) {
-      if (this.check(TokenType.LET) || this.check(TokenType.CONST)) init = this.parseVariableDeclaration();
-      else init = this.parseSimpleStatement();
-    }
-    this.expect(TokenType.SEMICOLON, 'después del inicio del `para`');
+    const { init, condition, update } = this.grouped(() => {
+      let init: ast.For['init'];
+      if (!this.check(TokenType.SEMICOLON)) {
+        if (this.check(TokenType.LET) || this.check(TokenType.CONST)) init = this.parseVariableDeclaration();
+        else init = this.parseSimpleStatement();
+      }
+      this.expect(TokenType.SEMICOLON, 'después del inicio del `para`');
 
-    const condition = this.check(TokenType.SEMICOLON) ? undefined : this.parseExpression();
-    this.expect(TokenType.SEMICOLON, 'después de la condición del `para`');
+      const condition = this.check(TokenType.SEMICOLON) ? undefined : this.parseExpression();
+      this.expect(TokenType.SEMICOLON, 'después de la condición del `para`');
 
-    let update: ast.For['update'];
-    if (!this.check(TokenType.RPAREN)) update = this.parseSimpleStatement();
-    this.expect(TokenType.RPAREN, 'para cerrar el `para`');
+      let update: ast.For['update'];
+      if (!this.check(TokenType.RPAREN)) update = this.parseSimpleStatement();
+      this.expect(TokenType.RPAREN, 'para cerrar el `para`');
+      return { init, condition, update };
+    });
 
     const body = this.parseLoopBody('después de `para (…)`');
     return { kind: 'For', id: this.id(), init, condition, update, body, span: this.spanFrom(start) };
@@ -767,6 +797,8 @@ class Parser {
     this.enter();
     let left = this.parsePrefix();
     while (precedence < (INFIX_PRECEDENCE[this.current.type] ?? Precedence.LOWEST)) {
+      // Sin `;`, una línea que empieza con `-`, `(` o `[` es otra sentencia, no la continuación de la anterior.
+      if (this.grouping === 0 && this.current.span.start.line > this.previous.span.end.line) break;
       left = this.parseInfix(left);
     }
     if (!statement && INCREMENT_OPERATORS[this.current.type]) this.incrementInExpression(left);
@@ -782,7 +814,7 @@ class Parser {
       `\`${operator}\` es una sentencia: va sola, justo después del nombre de una variable.`,
       this.current.span,
       left?.kind === 'Identifier' || !left
-        ? `Escribe \`${name}${operator};\` en su propia línea y después usa \`${name}\`.`
+        ? `Escribe \`${name}${operator}\` en su propia línea y después usa \`${name}\`.`
         : `Escribe el \`${operator}\` en su propia línea, antes o después de usar el valor.`,
     );
   }
@@ -808,7 +840,7 @@ class Parser {
         return { kind: 'Identifier', id: this.id(), name: token.lexeme, span: token.span };
       case TokenType.LPAREN: {
         this.advance();
-        const expression = this.parseExpression();
+        const expression = this.grouped(() => this.parseExpression());
         this.expect(TokenType.RPAREN, 'para cerrar el paréntesis');
         return expression;
       }
@@ -833,7 +865,7 @@ class Parser {
             'PROCEDIMIENTO_CON_NOMBRE',
             'Un procedimiento con nombre es una sentencia; no puede ir dentro de una expresión.',
             this.peek().span,
-            'Como valor, escríbelo sin nombre: `variable doble = procedimiento(x) { … };`.',
+            'Como valor, escríbelo sin nombre: `variable doble = procedimiento(x) { … }`.',
           );
         }
         return this.parseFunction(this.advance().span.start);
@@ -845,7 +877,7 @@ class Parser {
             'INCREMENTO_EN_EXPRESIÓN',
             `En Codexivo \`${token.lexeme}\` va después del nombre de la variable.`,
             { start: token.span.start, end: this.peek().span.end },
-            `Escribe \`${name}${token.lexeme};\` como una sentencia propia.`,
+            `Escribe \`${name}${token.lexeme}\` como una sentencia propia.`,
           );
         }
         this.incrementInExpression();
@@ -906,7 +938,7 @@ class Parser {
             'Por ejemplo: `lista[0]`.',
           );
         }
-        const index = this.parseExpression();
+        const index = this.grouped(() => this.parseExpression());
         this.expect(TokenType.RBRACKET, 'para cerrar el índice');
         return { kind: 'Index', id: this.id(), object: left, index, span: this.spanFrom(start) };
       }
@@ -980,9 +1012,9 @@ class Parser {
           `Escribe \`"${this.current.lexeme}": …\`. Si querías usar el valor de una variable como clave, ponla entre paréntesis: \`(${this.current.lexeme}): …\`.`,
         );
       }
-      const key = this.parseExpression();
+      const key = this.grouped(() => this.parseExpression());
       this.expect(TokenType.COLON, 'después de la clave', 'Cada elemento de un diccionario se escribe `clave: valor`.');
-      const value = this.parseExpression();
+      const value = this.grouped(() => this.parseExpression());
       if (key.kind === 'StringLiteral' || key.kind === 'NumberLiteral') {
         if (literalKeys.has(key.value)) {
           this.error('CLAVE_REPETIDA', `La clave ${describeKey(key.value)} está repetida.`, key.span);
@@ -1009,7 +1041,7 @@ class Parser {
   private parseList_(closing: TokenType, context: string): ast.Expression[] {
     const items: ast.Expression[] = [];
     while (!this.check(closing)) {
-      items.push(this.parseExpression());
+      items.push(this.grouped(() => this.parseExpression()));
       if (!this.match(TokenType.COMMA)) break;
     }
     this.expect(closing, context);

@@ -60,28 +60,28 @@ Recoger todos los zumbadores de la fila y volver al inicio:
 ```codexivo
 procedimiento girar_derecha() {
   repetir 3 veces {
-    girar_izquierda();
+    girar_izquierda()
   }
 }
 
 procedimiento recoger_todos() {
   mientras (hay_zumbador()) {
-    recoger_zumbador();
+    recoger_zumbador()
   }
 }
 
 mientras (frente_libre()) {
-  avanzar();
-  recoger_todos();
+  avanzar()
+  recoger_todos()
 }
 
 // media vuelta y de regreso
-girar_derecha();
-girar_derecha();
+girar_derecha()
+girar_derecha()
 mientras (frente_libre()) {
-  avanzar();
+  avanzar()
 }
-apagar();
+apagar()
 ```
 
 Al terminar, el robot está en `(1, 1)` mirando al oeste, apagado y con los 4 zumbadores en la mochila.

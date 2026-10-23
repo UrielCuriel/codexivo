@@ -236,7 +236,7 @@ const library: NativeValue[] = [
       returns: 'nulo',
       description:
         'Escribe los valores separados por un espacio y termina la línea. Los textos se escriben sin comillas.',
-      examples: [{ code: 'imprimir("Hola,", "Ana", 16);', output: 'Hola, Ana 16\n' }],
+      examples: [{ code: 'imprimir("Hola,", "Ana", 16)', output: 'Hola, Ana 16\n' }],
     },
     (args, context) => {
       context.write(`${args.map(show).join(' ')}\n`);
@@ -252,7 +252,7 @@ const library: NativeValue[] = [
       params: [],
       returns: 'texto | nulo',
       description: 'Lee la siguiente línea de entrada como texto. Si ya no hay más entrada, regresa `nulo`.',
-      examples: [{ code: 'leer();', result: 'nulo' }],
+      examples: [{ code: 'leer()', result: 'nulo' }],
     },
     (_args, context) => context.readLine(),
   ),
@@ -265,7 +265,7 @@ const library: NativeValue[] = [
       params: [],
       returns: 'número',
       description: 'Lee la siguiente línea de entrada y la convierte en número. Si no es un número, es un error.',
-      examples: [{ code: 'variable edad = 0;\nsi (falso) { edad = leer_número(); }\nedad;', result: '0' }],
+      examples: [{ code: 'variable edad = 0\nsi (falso) { edad = leer_número() }\nedad', result: '0' }],
     },
     (_args, context) => {
       const line = context.readLine();
@@ -447,7 +447,7 @@ const library: NativeValue[] = [
       returns: 'nulo',
       mutates: true,
       description: 'Agrega `x` al final de la lista.',
-      examples: [{ code: 'variable l = [1];\nagregar(l, 2);\nl;', result: '[1, 2]' }],
+      examples: [{ code: 'variable l = [1]\nagregar(l, 2)\nl', result: '[1, 2]' }],
     },
     (args, context) => {
       expectList('agregar', args[0]!, context).items.push(args[1]!);
@@ -534,8 +534,8 @@ const library: NativeValue[] = [
       description:
         'Quita el elemento en esa posición de una lista, o esa clave de un diccionario, y regresa lo que quitó.',
       examples: [
-        { code: 'variable l = [1, 2, 3];\n[quitar(l, 0), l];', result: '[1, [2, 3]]' },
-        { code: 'variable d = { "a": 1 };\n[quitar(d, "a"), d];', result: '[1, {}]' },
+        { code: 'variable l = [1, 2, 3]\n[quitar(l, 0), l]', result: '[1, [2, 3]]' },
+        { code: 'variable d = { "a": 1 }\n[quitar(d, "a"), d]', result: '[1, {}]' },
       ],
     },
     (args, context) => {
@@ -740,7 +740,7 @@ const library: NativeValue[] = [
       returns: 'número',
       description:
         'Un entero al azar entre `mínimo` y `máximo`, los dos incluidos. Con la misma semilla da los mismos números.',
-      examples: [{ code: 'variable dado = aleatorio(1, 6);\ndado >= 1 y dado <= 6;', result: 'verdadero' }],
+      examples: [{ code: 'variable dado = aleatorio(1, 6)\ndado >= 1 y dado <= 6', result: 'verdadero' }],
     },
     (args, context) => {
       const low = expectInteger('aleatorio', args[0]!, context, ' como mínimo');
@@ -1048,7 +1048,7 @@ const library: NativeValue[] = [
       returns: 'nulo',
       mutates: true,
       description: 'Pone `x` en esa posición y recorre los demás elementos.',
-      examples: [{ code: 'variable l = [1, 3];\ninsertar(l, 1, 2);\nl;', result: '[1, 2, 3]' }],
+      examples: [{ code: 'variable l = [1, 3]\ninsertar(l, 1, 2)\nl', result: '[1, 2, 3]' }],
     },
     (args, context) => {
       const list = expectList('insertar', args[0]!, context);
@@ -1067,7 +1067,7 @@ const library: NativeValue[] = [
       returns: 'cualquiera',
       mutates: true,
       description: 'Quita el último elemento y lo regresa.',
-      examples: [{ code: 'variable l = [1, 2];\n[quitar_último(l), l];', result: '[2, [1]]' }],
+      examples: [{ code: 'variable l = [1, 2]\n[quitar_último(l), l]', result: '[2, [1]]' }],
     },
     (args, context) => {
       const list = expectList('quitar_último', args[0]!, context);
@@ -1085,7 +1085,7 @@ const library: NativeValue[] = [
       returns: 'cualquiera',
       mutates: true,
       description: 'Quita el primer elemento y lo regresa.',
-      examples: [{ code: 'variable l = [1, 2];\n[quitar_primero(l), l];', result: '[1, [2]]' }],
+      examples: [{ code: 'variable l = [1, 2]\n[quitar_primero(l), l]', result: '[1, [2]]' }],
     },
     (args, context) => {
       const list = expectList('quitar_primero', args[0]!, context);
@@ -1103,7 +1103,7 @@ const library: NativeValue[] = [
       returns: 'nulo',
       mutates: true,
       description: 'Quita todos los elementos de una lista (o todas las claves de un diccionario).',
-      examples: [{ code: 'variable l = [1, 2];\nvaciar(l);\nl;', result: '[]' }],
+      examples: [{ code: 'variable l = [1, 2]\nvaciar(l)\nl', result: '[]' }],
     },
     (args, context) => {
       const container = args[0]!;
@@ -1169,9 +1169,7 @@ const library: NativeValue[] = [
       returns: 'lista | diccionario',
       description:
         'Una lista o diccionario nuevo con los mismos elementos. Los elementos que son listas se siguen compartiendo.',
-      examples: [
-        { code: 'variable a = [1];\nvariable b = copiar(a);\nagregar(b, 2);\n[a, b];', result: '[[1], [1, 2]]' },
-      ],
+      examples: [{ code: 'variable a = [1]\nvariable b = copiar(a)\nagregar(b, 2)\n[a, b]', result: '[[1], [1, 2]]' }],
     },
     (args, context) => {
       const value = args[0]!;
@@ -1261,7 +1259,7 @@ const library: NativeValue[] = [
       returns: 'nulo',
       mutates: true,
       description: 'Pone `x` encima de la pila.',
-      examples: [{ code: 'variable p = [];\napilar(p, 1);\napilar(p, 2);\np;', result: '[1, 2]' }],
+      examples: [{ code: 'variable p = []\napilar(p, 1)\napilar(p, 2)\np', result: '[1, 2]' }],
     },
     (args, context) => {
       expectStructure('apilar', 'pila', args[0]!, context).items.push(args[1]!);
@@ -1278,7 +1276,7 @@ const library: NativeValue[] = [
       returns: 'cualquiera',
       mutates: true,
       description: 'Quita el elemento de encima de la pila y lo regresa.',
-      examples: [{ code: 'variable p = [1, 2];\n[desapilar(p), p];', result: '[2, [1]]' }],
+      examples: [{ code: 'variable p = [1, 2]\n[desapilar(p), p]', result: '[2, [1]]' }],
     },
     (args, context) => {
       const stack = expectStructure('desapilar', 'pila', args[0]!, context);
@@ -1316,7 +1314,7 @@ const library: NativeValue[] = [
       returns: 'nulo',
       mutates: true,
       description: 'Pone `x` al final de la cola.',
-      examples: [{ code: 'variable c = [];\nencolar(c, 1);\nencolar(c, 2);\nc;', result: '[1, 2]' }],
+      examples: [{ code: 'variable c = []\nencolar(c, 1)\nencolar(c, 2)\nc', result: '[1, 2]' }],
     },
     (args, context) => {
       expectStructure('encolar', 'cola', args[0]!, context).items.push(args[1]!);
@@ -1333,7 +1331,7 @@ const library: NativeValue[] = [
       returns: 'cualquiera',
       mutates: true,
       description: 'Quita el primer elemento de la cola y lo regresa.',
-      examples: [{ code: 'variable c = [1, 2];\n[desencolar(c), c];', result: '[1, [2]]' }],
+      examples: [{ code: 'variable c = [1, 2]\n[desencolar(c), c]', result: '[1, [2]]' }],
     },
     (args, context) => {
       const queue = expectStructure('desencolar', 'cola', args[0]!, context);
@@ -1401,7 +1399,7 @@ export const internals: Record<string, NativeValue> = Object.fromEntries(
       throw context.fail(
         'TIPO_DE_ARGUMENTO',
         `\`${args[0] as string}\` espera un procedimiento, pero recibió ${describeType(typeOf(value))} (${repr(value)}).`,
-        'Pasa el nombre del procedimiento sin paréntesis (`mapear(lista, doble)`), o escribe uno: `procedimiento(x) { regresa x * 2; }`.',
+        'Pasa el nombre del procedimiento sin paréntesis (`mapear(lista, doble)`), o escribe uno: `procedimiento(x) { regresa x * 2 }`.',
       );
     }),
     internal('revisar_logico', 2, (args, context) => {
@@ -1411,8 +1409,8 @@ export const internals: Record<string, NativeValue> = Object.fromEntries(
         'TIPO_DE_ARGUMENTO',
         `El procedimiento que recibió \`${args[0] as string}\` tiene que regresar \`verdadero\` o \`falso\`, pero regresó ${repr(value)}.`,
         args[0] === 'ordenar'
-          ? 'El comparador de `ordenar(lista, va_antes)` responde «¿va `a` antes que `b`?»: `procedimiento(a, b) { regresa a < b; }`.'
-          : '¿Le falta un `regresa` con una comparación, como `regresa x > 0;`?',
+          ? 'El comparador de `ordenar(lista, va_antes)` responde «¿va `a` antes que `b`?»: `procedimiento(a, b) { regresa a < b }`.'
+          : '¿Le falta un `regresa` con una comparación, como `regresa x > 0`?',
       );
     }),
     internal('ordenar_natural', 1, (args, context) => {

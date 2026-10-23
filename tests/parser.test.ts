@@ -210,6 +210,47 @@ describe('parser', () => {
     });
   });
 
+  describe('sin punto y coma', () => {
+    const kinds = (source: string) => {
+      const { program, errors } = parse(source);
+      expect(errors).toEqual([]);
+      return program.statements.map(statement =>
+        statement.kind === 'ExpressionStatement' ? show(statement.expression) : statement.kind,
+      );
+    };
+
+    test('una línea que empieza con `-`, `(` o `[` es otra sentencia', () => {
+      expect(kinds('7 div 2\n-7 div 2')).toEqual(['(7 div 2)', '((- 7) div 2)']);
+      expect(kinds('variable f = 1\n(2 + 3)')).toEqual(['VariableDeclaration', '(2 + 3)']);
+      expect(kinds('x\n[1, 2]')).toEqual(['x', '[1, 2]']);
+    });
+
+    test('después de un operador, la expresión sigue en la línea siguiente', () => {
+      expect(kinds('1 +\n2')).toEqual(['(1 + 2)']);
+      expect(kinds('a y\nb')).toEqual(['(a y b)']);
+    });
+
+    test('dentro de paréntesis, corchetes o llaves los saltos de línea no terminan nada', () => {
+      expect(kinds('(1\n+ 2)')).toEqual(['(1 + 2)']);
+      expect(kinds('f(1\n- 2,\n3)')).toEqual(['f((1 - 2), 3)']);
+      expect(kinds('[1\n- 2]')).toEqual(['[(1 - 2)]']);
+      expect(kinds('si (a\ny b) { }')).toEqual(['If']);
+    });
+
+    test('el cuerpo de un procedimiento dentro de un paréntesis vuelve a separar por líneas', () => {
+      expect(kinds('mapear(l, procedimiento(x) {\n  variable y2 = x\n  -y2\n})')).toEqual([
+        'mapear(l, procedimiento(x))',
+      ]);
+      const call = parse('mapear(l, procedimiento(x) {\n  variable y2 = x\n  -y2\n})').program
+        .statements[0] as ast.ExpressionStatement;
+      const fn = (call.expression as ast.Call).args[1] as ast.FunctionLiteral;
+      expect(fn.body.statements.map(statement => statement.kind)).toEqual([
+        'VariableDeclaration',
+        'ExpressionStatement',
+      ]);
+    });
+  });
+
   describe('para … desde … hasta', () => {
     test('después de `para`, un nombre es la forma que cuenta y `(` la clásica', () => {
       const { program, errors } = parse(
@@ -395,8 +436,8 @@ describe('parser', () => {
       expect(parse('sino { }').errors[0]!.hint).toContain('si_no');
       expect(parse('si (x = 2) { }').errors[0]!.hint).toContain('==');
       expect(parse('1 < x < 5').errors[0]!.hint).toContain('y');
-      expect(parse('x = i++').errors[0]!.hint).toContain('`i++;`');
-      expect(parse('++i').errors[0]!.hint).toContain('`i++;`');
+      expect(parse('x = i++').errors[0]!.hint).toContain('`i++` en su propia línea');
+      expect(parse('++i').errors[0]!.hint).toContain('`i++`');
       expect(parse('constante K').errors[0]!.hint).toContain('constante K =');
     });
 

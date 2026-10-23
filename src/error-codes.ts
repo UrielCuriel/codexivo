@@ -81,7 +81,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   DICCIONARIO_COMO_SENTENCIA: {
     kind: 'sintaxis',
     explanation:
-      'Al inicio de una sentencia, `{` abre un bloque. Un diccionario tiene que estar en una expresión: guárdalo en una variable (`variable d = { "a": 1 };`) o pásalo a un procedimiento.',
+      'Al inicio de una sentencia, `{` abre un bloque. Un diccionario tiene que estar en una expresión: guárdalo en una variable (`variable d = { "a": 1 }`) o pásalo a un procedimiento.',
   },
   DOMINIO_SOLO_DECLARACIONES: {
     kind: 'sintaxis',
@@ -115,7 +115,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   INCREMENTO_EN_EXPRESIÓN: {
     kind: 'sintaxis',
     explanation:
-      '`i++` e `i--` son sentencias: cambian la variable y nada más. No se pueden usar dentro de una expresión (`x = i++`) ni antes del nombre (`++i`). Escribe `i++;` en su propia línea y después usa `i`.',
+      '`i++` e `i--` son sentencias: cambian la variable y nada más. No se pueden usar dentro de una expresión (`x = i++`) ni antes del nombre (`++i`). Escribe `i++` en su propia línea y después usa `i`.',
   },
   LLAVE_SOBRANTE: {
     kind: 'sintaxis',
@@ -149,7 +149,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   PROCEDIMIENTO_CON_NOMBRE: {
     kind: 'sintaxis',
     explanation:
-      '`procedimiento nombre(…) { … }` es una sentencia y no puede ir dentro de una expresión. Como valor, el procedimiento se escribe sin nombre: `variable doble = procedimiento(x) { regresa x * 2; };`.',
+      '`procedimiento nombre(…) { … }` es una sentencia y no puede ir dentro de una expresión. Como valor, el procedimiento se escribe sin nombre: `variable doble = procedimiento(x) { regresa x * 2 }`.',
   },
   RAMA_SIN_SI: {
     kind: 'sintaxis',

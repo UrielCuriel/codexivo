@@ -5,8 +5,9 @@ donde va el lenguaje está en la [especificación v1](./especificacion-v1.md); l
 
 ## Un programa
 
-Un programa es una lista de sentencias. El punto y coma al final de cada sentencia es opcional si la siguiente empieza en otra
-línea. El valor de un programa es el de su última expresión, o lo que regrese con `regresa`.
+Un programa es una lista de sentencias, una por línea. El punto y coma solo hace falta para poner dos sentencias en la misma
+línea (`x = 1; y = 2`); los ejemplos de esta guía no lo usan. El valor de un programa es el de su última expresión, o lo que
+regrese con `regresa`.
 
 El mismo lenguaje funciona mediante la biblioteca ESM `codexivo`, el comando npm `codexivo` (sin instalar Bun) y los ejecutables
 autónomos de cada sistema. Consulta [REPL y terminal](./repl.md) para ejecutar archivos y proporcionar entrada estándar.
@@ -49,11 +50,11 @@ Las listas y los diccionarios se comparten: si dos variables apuntan a la misma 
 ## Variables
 
 ```codexivo
-variable contador = 0;
-contador = contador + 1;
+variable contador = 0
+contador = contador + 1
 
-constante LADOS = 4;
-imprimir(LADOS * contador);
+constante LADOS = 4
+imprimir(LADOS * contador)
 ```
 
 - Toda variable se declara una vez con `variable` y un valor inicial.
@@ -70,13 +71,13 @@ Los nombres pueden llevar `ñ`, acentos y diéresis: `año`, `canción`, `pingü
 Cuando ya se entiende la asignación, hay formas cortas para los cambios más comunes:
 
 ```codexivo
-variable total = 10;
-total += 5;  // lo mismo que total = total + 5; también -=, *=, /=, %=
-total++;     // suma 1
-total--;     // resta 1
+variable total = 10
+total += 5   // lo mismo que total = total + 5; también -=, *=, /=, %=
+total++      // suma 1
+total--      // resta 1
 ```
 
-`++` y `--` son sentencias, no expresiones: `x = i++` es un error. Se escribe `i++;` en su propia línea.
+`++` y `--` son sentencias, no expresiones: `x = i++` es un error. Se escribe `i++` en su propia línea.
 
 ## Operadores
 
@@ -95,12 +96,12 @@ De menor a mayor precedencia:
 | llamadas `f(x)`, índices `lista[i]`                  |                                                                          |
 
 ```codexivo
-7 / 2;     // 3.5, división real
-7 div 2;   // 3, división entera hacia abajo
--7 div 2;  // -4
-7 mod 3;   // 1, el residuo (también 7 % 3)
--7 mod 3;  // 2: siempre se cumple a == (a div b) * b + (a mod b)
--2 ^ 2;    // -4, como en matemáticas: la potencia va antes que el signo
+7 / 2      // 3.5, división real
+7 div 2    // 3, división entera hacia abajo
+-7 div 2   // -4
+7 mod 3    // 1, el residuo (también 7 % 3)
+-7 mod 3   // 2: siempre se cumple a == (a div b) * b + (a mod b)
+-2 ^ 2     // -4, como en matemáticas: la potencia va antes que el signo
 ```
 
 Cada comparación tiene una forma en palabras que significa exactamente lo mismo:
@@ -115,9 +116,9 @@ Cada comparación tiene una forma en palabras que significa exactamente lo mismo
 | `>=`    | `es_mayor_o_igual_a` |
 
 ```codexivo
-variable edad = 16;
+variable edad = 16
 si (edad es_mayor_o_igual_a 13 y edad es_menor_que 18) {
-  imprimir("adolescente");
+  imprimir("adolescente")
 }
 ```
 
@@ -128,13 +129,13 @@ si (edad es_mayor_o_igual_a 13 y edad es_menor_que 18) {
 ## Condiciones y bucles
 
 ```codexivo
-variable edad = 15;
+variable edad = 15
 si (edad es_mayor_o_igual_a 18) {
-  imprimir("adulto");
+  imprimir("adulto")
 } pero_si (edad es_mayor_o_igual_a 13) {
-  imprimir("adolescente");
+  imprimir("adolescente")
 } si_no {
-  imprimir("niño");
+  imprimir("niño")
 }
 ```
 
@@ -150,40 +151,40 @@ Hay una forma de bucle para cada intención:
 
 ```codexivo
 repetir 3 veces {
-  imprimir("¡hola!");
+  imprimir("¡hola!")
 }
 
-variable suma = 0;
+variable suma = 0
 para i desde 1 hasta 10 {
-  suma = suma + i;
+  suma = suma + i
 }
-imprimir("La suma es", suma);
+imprimir("La suma es", suma)
 
 para i desde 10 hasta 0 con_paso -2 {
-  imprimir(i);
+  imprimir(i)
 }
 
-variable intentos = 0;
+variable intentos = 0
 mientras (intentos es_menor_que 3) {
-  intentos = intentos + 1;
+  intentos = intentos + 1
 }
 
 hacer {
-  intentos = intentos - 1;
-} hasta_que (intentos es_igual_a 0);
+  intentos = intentos - 1
+} hasta_que (intentos es_igual_a 0)
 
 para_cada fruta en ["mango", "piña"] {
-  imprimir(fruta);
+  imprimir(fruta)
 }
 
 para n desde 1 hasta 10 {
   si (n mod 2 es_igual_a 0) {
-    continuar;  // salta a la siguiente vuelta
+    continuar   // salta a la siguiente vuelta
   }
   si (n es_mayor_que 7) {
-    romper;     // sale del bucle
+    romper      // sale del bucle
   }
-  imprimir(n);
+  imprimir(n)
 }
 ```
 
@@ -206,15 +207,15 @@ para n desde 1 hasta 10 {
 
 ```codexivo
 procedimiento área(base, altura) {
-  regresa base * altura;
+  regresa base * altura
 }
-área(3, 4);
+área(3, 4)
 
 // también como valor, guardado en una variable
 variable saludar = procedimiento(nombre) {
-  regresa "Hola, " + nombre;
-};
-saludar("Uriel");
+  regresa "Hola, " + nombre
+}
+saludar("Uriel")
 ```
 
 - Un procedimiento con nombre existe desde el inicio de su bloque: se puede llamar antes de la línea donde se declara, y
@@ -226,17 +227,17 @@ saludar("Uriel");
 ## Listas y textos
 
 ```codexivo
-variable números = [10, 20, 30];
-números[0];    // 10
-números[-1];   // 30, desde el final
-"hola"[1];     // "o"
+variable números = [10, 20, 30]
+números[0]     // 10
+números[-1]    // 30, desde el final
+"hola"[1]      // "o"
 
-números[0] = 15;
-números[-1] += 1;
-números[1]++;
+números[0] = 15
+números[-1] += 1
+números[1]++
 
-variable matriz = [[1, 2], [3, 4]];
-matriz[1][0] = 9;
+variable matriz = [[1, 2], [3, 4]]
+matriz[1][0] = 9
 ```
 
 - Los índices son enteros desde 0; un índice fuera de rango es un error que dice cuántos elementos hay.
@@ -245,24 +246,24 @@ matriz[1][0] = 9;
 ## Diccionarios
 
 ```codexivo
-variable persona = { "nombre": "Ana", "edad": 16 };
-persona["nombre"];        // "Ana"
-persona.edad;             // 16, lo mismo que persona["edad"]
-persona.ciudad = "León";  // agrega la clave
-persona.edad += 1;
+variable persona = { "nombre": "Ana", "edad": 16 }
+persona["nombre"]         // "Ana"
+persona.edad              // 16, lo mismo que persona["edad"]
+persona.ciudad = "León"   // agrega la clave
+persona.edad += 1
 
 para_cada clave, valor en persona {
-  imprimir(clave, valor);
+  imprimir(clave, valor)
 }
 
 si (tiene(persona, "correo")) {
-  imprimir(persona.correo);
+  imprimir(persona.correo)
 }
 
 variable calculadora = {
   "suma": procedimiento(a, b) { regresa a + b; },
-};
-calculadora.suma(1, 3);   // 4
+}
+calculadora.suma(1, 3)    // 4
 ```
 
 - Las claves son textos o números (`1` y `"1"` son claves distintas) y van entre comillas: `{ nombre: "Ana" }` es un
@@ -281,31 +282,31 @@ con `.`. No es un módulo ni hay que importarlo: se declara en el mismo programa
 
 ```codexivo
 dominio calculadora {
-  constante PRECISIÓN = 2;
-  variable operaciones = 0;
+  constante PRECISIÓN = 2
+  variable operaciones = 0
 
   procedimiento suma(a, b) {
-    operaciones++;
-    regresa redondear(a + b, PRECISIÓN);
+    operaciones++
+    regresa redondear(a + b, PRECISIÓN)
   }
 
   procedimiento promedio(a, b) {
-    regresa suma(a, b) / 2;   // dentro del dominio, sin prefijo
+    regresa suma(a, b) / 2    // dentro del dominio, sin prefijo
   }
 }
 
-calculadora.suma(1, 3);         // 4
-calculadora.promedio(2, 3);     // 2.5
-calculadora.operaciones;        // 2
+calculadora.suma(1, 3)          // 4
+calculadora.promedio(2, 3)      // 2.5
+calculadora.operaciones         // 2
 
 dominio geometría {
   dominio círculo {
     procedimiento área(r) {
-      regresa PI * r ^ 2;
+      regresa PI * r ^ 2
     }
   }
 }
-geometría.círculo.área(1);
+geometría.círculo.área(1)
 ```
 
 - Dentro de un dominio solo van declaraciones: `variable`, `constante`, `procedimiento` y otros `dominio`. Un `si` o un
@@ -322,18 +323,18 @@ Un procedimiento es un valor como cualquier otro: se guarda en variables, en lis
 procedimientos. La biblioteca trae varios que reciben uno:
 
 ```codexivo
-variable números = [3, 8, 1, 6];
+variable números = [3, 8, 1, 6]
 procedimiento es_par(n) {
-  regresa n mod 2 == 0;
+  regresa n mod 2 == 0
 }
 
-mapear(números, procedimiento(n) { regresa n * 10; });       // [30, 80, 10, 60]
-filtrar(números, es_par);                                      // [8, 6]
-reducir(números, procedimiento(total, n) { regresa total + n; }, 0); // 18
-alguno(números, es_par);                                       // verdadero
-todos(números, es_par);                                        // falso
-buscar(números, procedimiento(n) { regresa n > 5; });          // 8
-ordenar(números, procedimiento(a, b) { regresa a > b; });      // [8, 6, 3, 1]
+mapear(números, procedimiento(n) { regresa n * 10; })        // [30, 80, 10, 60]
+filtrar(números, es_par)                                       // [8, 6]
+reducir(números, procedimiento(total, n) { regresa total + n; }, 0)  // 18
+alguno(números, es_par)                                        // verdadero
+todos(números, es_par)                                         // falso
+buscar(números, procedimiento(n) { regresa n > 5; })           // 8
+ordenar(números, procedimiento(a, b) { regresa a > b; })       // [8, 6, 3, 1]
 ```
 
 | Procedimiento                | Qué hace                                                                                |
@@ -361,15 +362,15 @@ Son listas con un vocabulario propio, para que el algoritmo se lea como se expli
 | `tope(p)`      | `frente(c)`     | Regresa, sin quitarlo, el que saldría  |
 
 ```codexivo
-variable pendientes = [];
-encolar(pendientes, "lavar");
-encolar(pendientes, "secar");
-imprimir(desencolar(pendientes), frente(pendientes));
+variable pendientes = []
+encolar(pendientes, "lavar")
+encolar(pendientes, "secar")
+imprimir(desencolar(pendientes), frente(pendientes))
 
-variable pila = [];
-apilar(pila, 1);
-apilar(pila, 2);
-imprimir(desapilar(pila), tope(pila));
+variable pila = []
+apilar(pila, 1)
+apilar(pila, 2)
+imprimir(desapilar(pila), tope(pila))
 ```
 
 Sacar de una pila o cola vacía es un error: _"No se puede `desencolar` de una cola vacía."_
@@ -406,9 +407,9 @@ Todo está disponible sin importar nada. Los nombres con acento también se acep
 regresa la semilla que usó en `seed`, y se puede fijar con la opción `seed`.
 
 ```codexivo
-variable dado = aleatorio(1, 6);
-imprimir("Salió", dado);
-imprimir(piso(7 / 2), techo(7 / 2), raíz(16));
+variable dado = aleatorio(1, 6)
+imprimir("Salió", dado)
+imprimir(piso(7 / 2), techo(7 / 2), raíz(16))
 ```
 
 ### Texto
@@ -431,10 +432,10 @@ Ninguno cambia el texto original (los textos no cambian nunca): todos regresan u
 | `código_de(c)`, `carácter_de(n)`                 | El código Unicode de un carácter, y el carácter de un código                            |
 
 ```codexivo
-variable frase = "  El sol sale  ";
-variable palabras = dividir(recortar(frase), " ");
-imprimir(unir(palabras, "-"));
-imprimir(mayúsculas(palabras[1]), contiene(frase, "sol"), posición_de(frase, "sale"));
+variable frase = "  El sol sale  "
+variable palabras = dividir(recortar(frase), " ")
+imprimir(unir(palabras, "-"))
+imprimir(mayúsculas(palabras[1]), contiene(frase, "sol"), posición_de(frase, "sale"))
 ```
 
 ### Listas
@@ -463,15 +464,15 @@ nuevo.** Los índices siguen la misma convención que `[ ]`: desde 0, y los nega
 `lista_de` y `matriz` copian el valor en cada casilla, así cambiar una no cambia las demás:
 
 ```codexivo
-variable tablero = matriz(3, 3, ".");
-tablero[1][1] = "X";
+variable tablero = matriz(3, 3, ".")
+tablero[1][1] = "X"
 para_cada fila en tablero {
-  imprimir(unir(fila, " "));
+  imprimir(unir(fila, " "))
 }
 
-variable números = [5, 3, 8];
-insertar(números, 0, 1);
-imprimir(ordenar(números), sumar(números), quitar_último(números), números);
+variable números = [5, 3, 8]
+insertar(números, 0, 1)
+imprimir(ordenar(números), sumar(números), quitar_último(números), números)
 ```
 
 ### Diccionarios
@@ -499,7 +500,7 @@ pasar a ellos:
 
 ```codexivo
 para (variable i = 1; i <= 10; i += 1) {
-  imprimir(i);
+  imprimir(i)
 }
 ```
 
