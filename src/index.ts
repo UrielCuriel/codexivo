@@ -6,8 +6,8 @@ export type { ErrorInfo, ErrorKind } from './errors';
 
 export { tokenize } from './syntax/lexer';
 export type { LexResult } from './syntax/lexer';
-export { parse } from './syntax/parser';
-export type { ParseResult } from './syntax/parser';
+export { parse, traceParse } from './syntax/parser';
+export type { ParseResult, ParseOptions, ParseEvent, PrecedenceOperator } from './syntax/parser';
 export { TokenType, KEYWORDS, isKeyword } from './syntax/token';
 export type { Token, Span, Position } from './syntax/token';
 export { childrenOf, walk } from './syntax/ast';

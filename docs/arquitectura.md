@@ -29,6 +29,51 @@ código ──tokenize──▶ tokens ──parse──▶ AST ──compile─
 - Ante un error, el parser lo registra, salta hasta un punto seguro (un `;`, una `}`, una palabra que empieza sentencia o una
   línea nueva) y sigue. Así reporta varios errores en una pasada sin inventar errores en cascada.
 
+### Traza del parser
+
+`parse(código, { trace: true })` (o `traceParse(código)`) regresa además `trace`: los pasos con los que el parser construyó
+el árbol, en orden. Con eso el sitio puede animar **cómo** se construye, no solo mostrar el resultado. Cada evento es un
+objeto plano con su `span`:
+
+| Evento       | Qué cuenta                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| `consume`    | El parser toma un token: `index` en `tokens`, `tokenType` y `lexeme`.                                          |
+| `enter`      | Empieza a construir un nodo (`kind`). Si lo construye a partir de uno ya hecho, `left` es el `id` de ese nodo. |
+| `exit`       | Termina el nodo: `kind` e `id`, el mismo `id` que tiene en el AST.                                             |
+| `precedence` | Decide de quién es un valor (ver abajo).                                                                       |
+| `error`      | Un error de sintaxis, con su `code` y `message` (el mismo que está en `errors`).                               |
+| `recover`    | Después de un error: qué nodos abiertos abandona y qué tokens salta para seguir.                               |
+
+**Nodos abiertos.** Entre el `enter` y el `exit` de un nodo, el nodo está abierto esperando a sus hijos, que son los nodos
+que terminan en medio. Un parser Pratt no sabe que `1` es el lado izquierdo de una suma hasta que ve el `+`: por eso el
+`enter` del `Binary` llega después del `exit` del `1` y lleva `left` con su `id`; la vista mueve ese nodo dentro del nuevo.
+Lo mismo pasa con las llamadas (`f` en `f(1)`), los índices, las asignaciones (`x` en `x = 1`) y las sentencias que son
+una expresión.
+
+**Precedencia.** Es la decisión central del parser. En `1 + 2 * 3`, después de leer `2` el parser está construyendo el lado
+derecho del `+` y llega el `*`. El evento lleva:
+
+- `operand`: el `id` del valor en disputa (el `2`);
+- `building`: el operador que está esperando ese valor (`+`) y la precedencia con la que compara; no viene si ningún
+  operador lo espera (al inicio de una expresión o dentro de un paréntesis);
+- `incoming`: el operador que llegó (`*`) y su precedencia;
+- `decision`: `se_lo_lleva` si `incoming` tiene más precedencia (el `2` pasa a ser el lado izquierdo del `*`) o `se_queda`
+  si no (el `2` se queda como lado derecho del `+`).
+
+En `(1 + 2) * 3` el paréntesis cierra la suma antes de que llegue el `*`: el evento del `*` no trae `building` y su
+`operand` es la suma completa. En `1 < 2 y 5 < 4`, el `2` se queda con el `<` porque la `y` tiene menos precedencia. Como
+`^` agrupa a la derecha, su lado derecho compara con una precedencia menos que la suya: en `2 ^ 3 ^ 2` el segundo `^` se
+lleva al `3`. Las llamadas, los índices y el `.` también tienen precedencia (la más alta) y producen su evento.
+
+**Errores.** Los nodos que estaban abiertos cuando falló la sentencia se abandonan: no tienen `exit` y no están en el AST.
+`recover` los lista (`abandoned`, del más interno al más externo) junto con los tokens que saltó (`skipped.from` hasta
+`skipped.to - 1`); el siguiente `consume` es el token `skipped.to`. Los errores léxicos no aparecen en la traza; el lexer
+ya los reporta en `errors`.
+
+La traza no cambia nada del análisis: sin `trace`, el parser no la construye; con ella, el AST y sus `id` son los mismos; el
+mismo código produce siempre la misma traza, y los eventos se pueden mandar desde un Web Worker (en el sandbox, con la
+opción `parseTrace` de `cargar`).
+
 ## 3. Compilador (`src/runtime/compiler.ts`)
 
 `compile(program)` traduce el AST a una lista de instrucciones para una máquina de pila. Por ejemplo, `x += 1` se convierte en:
@@ -171,4 +216,4 @@ cualquier otra vista.
 
 1. `bun run repl` y escribe programas pequeños.
 2. Lee los tests de `tests/` en el orden del pipeline: `lexer`, `parser`, `machine`, `stepping`.
-3. Usa `tokenize`, `parse` y `run(código, { trace: true })` para ver cada etapa del mismo programa.
+3. Usa `tokenize`, `traceParse` y `run(código, { trace: true })` para ver cada etapa del mismo programa.

@@ -9,18 +9,71 @@ export interface ParseResult {
   tokens: Token[];
   /** Errores léxicos y sintácticos, en el orden en que aparecen en el código. */
   errors: CodexivoError[];
+  /** Cómo se construyó el árbol, paso a paso. Solo con `{ trace: true }`. */
+  trace?: ParseEvent[];
 }
 
+export interface ParseOptions {
+  /** Registra en `trace` cada paso del parser. Sin esta opción el parser no hace ningún trabajo extra. */
+  trace?: boolean;
+}
+
+/** Un operador en una decisión de precedencia. */
+export interface PrecedenceOperator {
+  /** El texto del operador tal como está en el código (`+`, `y`, `es_igual_a`, `(` de una llamada…). */
+  operator: string;
+  /** La precedencia con la que se compara: más alta, agrupa antes. */
+  precedence: number;
+}
+
+/**
+ * Un paso del parser. Todos son objetos planos con su `span`: se pueden convertir a JSON o mandar desde un Web Worker.
+ *
+ * - `consume`: toma el token número `index` de `tokens`.
+ * - `enter` / `exit`: empieza o termina de construir un nodo. `exit.id` es el `id` del nodo en el AST. Un nodo que se
+ *   construye a partir de otro que ya estaba hecho (el lado izquierdo de `1 + 2`, el procedimiento de una llamada, la
+ *   variable de una asignación) lo indica en `enter.left`.
+ * - `precedence`: el parser Pratt decide de quién es `operand`. Si `incoming` tiene más precedencia que `building` (el
+ *   operador que se está construyendo), `incoming` se lo lleva; si no, se queda con `building`. Sin `building`, no hay
+ *   operador esperando ese valor.
+ * - `error`: un error de sintaxis (el mismo de `errors`).
+ * - `recover`: después de un error, el parser abandona los nodos que seguían abiertos (`abandoned`, del más interno al
+ *   más externo; no tendrán `exit`), salta los tokens `skipped.from` a `skipped.to - 1` y sigue desde `skipped.to`.
+ */
+export type ParseEvent =
+  | { type: 'consume'; index: number; tokenType: TokenType; lexeme: string; span: Span }
+  | { type: 'enter'; kind: ast.Node['kind']; left?: number; span: Span }
+  | { type: 'exit'; kind: ast.Node['kind']; id: number; span: Span }
+  | {
+      type: 'precedence';
+      operand: number;
+      building?: PrecedenceOperator;
+      incoming: PrecedenceOperator;
+      decision: 'se_queda' | 'se_lo_lleva';
+      span: Span;
+    }
+  | { type: 'error'; code: string; message: string; span: Span }
+  | {
+      type: 'recover';
+      abandoned: ast.Node['kind'][];
+      skipped: { from: number; to: number };
+      span: Span;
+    };
+
 /** Analiza el código y construye el AST. Nunca lanza: los problemas se reportan en `errors`. */
-export const parse = (source: string): ParseResult => {
+export const parse = (source: string, options: ParseOptions = {}): ParseResult => {
   const { tokens, errors: lexicalErrors } = tokenize(source);
-  const parser = new Parser(tokens);
+  const parser = new Parser(tokens, options.trace ? [] : undefined);
   const program = parser.parseProgram();
   const errors = [...lexicalErrors, ...parser.errors].sort(
     (a, b) => (a.span?.start.offset ?? 0) - (b.span?.start.offset ?? 0),
   );
-  return { program, tokens, errors };
+  return parser.trace ? { program, tokens, errors, trace: parser.trace } : { program, tokens, errors };
 };
+
+/** `parse` con la traza: cómo se construyó el árbol, paso a paso. */
+export const traceParse = (source: string): ParseResult & { trace: ParseEvent[] } =>
+  parse(source, { trace: true }) as ParseResult & { trace: ParseEvent[] };
 
 enum Precedence {
   LOWEST,
@@ -158,13 +211,20 @@ class Parser {
   private grouping = 0;
   /** Bucles abiertos alrededor de la sentencia actual, sin contar los de afuera de un procedimiento. */
   private loopDepth = 0;
+  /** Con traza: los nodos con `enter` que todavía no tienen `exit`. */
+  private readonly open: ast.Node['kind'][] = [];
 
-  constructor(private readonly tokens: Token[]) {}
+  constructor(
+    private readonly tokens: Token[],
+    /** Los pasos del parser, solo si se pidió la traza. */
+    readonly trace?: ParseEvent[],
+  ) {}
 
   parseProgram(): ast.Program {
     const start = this.current.span.start;
+    this.begin('Program');
     const statements = this.parseStatements(TokenType.EOF);
-    return { kind: 'Program', id: this.id(), statements, span: { start, end: this.current.span.end } };
+    return this.finish({ kind: 'Program', id: this.id(), statements, span: { start, end: this.current.span.end } });
   }
 
   // ── utilidades ─────────────────────────────────────────────────────────────
@@ -187,8 +247,74 @@ class Parser {
 
   private advance(): Token {
     const token = this.current;
-    if (token.type !== TokenType.EOF) this.position += 1;
+    if (token.type === TokenType.EOF) return token;
+    this.trace?.push({
+      type: 'consume',
+      index: this.position,
+      tokenType: token.type,
+      lexeme: token.lexeme,
+      span: token.span,
+    });
+    this.position += 1;
     return token;
+  }
+
+  /** Salta un token al recuperarse de un error; en la traza va dentro de `recover`, no como `consume`. */
+  private skip(): void {
+    if (!this.check(TokenType.EOF)) this.position += 1;
+  }
+
+  // ── traza ──────────────────────────────────────────────────────────────────
+
+  /** Empieza a construir un nodo. `left` es el nodo ya construido que el nuevo toma como primer hijo. */
+  private begin(kind: ast.Node['kind'], left?: ast.Node, span: Span = this.current.span): void {
+    if (!this.trace) return;
+    this.open.push(kind);
+    this.trace.push(left ? { type: 'enter', kind, left: left.id, span } : { type: 'enter', kind, span });
+  }
+
+  /** Termina de construir un nodo (su `begin` ya se registró). */
+  private finish<T extends ast.Node>(node: T): T {
+    if (!this.trace) return node;
+    this.open.pop();
+    this.trace.push({ type: 'exit', kind: node.kind, id: node.id, span: node.span });
+    return node;
+  }
+
+  /** Un nodo hecho de un solo token: `begin`, `consume` y `finish`. */
+  private leaf<T extends ast.Node>(kind: T['kind'], build: (token: Token, id: number) => T): T {
+    this.begin(kind);
+    const token = this.advance();
+    return this.finish(build(token, this.id()));
+  }
+
+  private tracePrecedence(
+    operand: ast.Expression,
+    precedence: Precedence,
+    owner: Token | undefined,
+    incoming: Precedence,
+    takes: boolean,
+  ): void {
+    this.trace!.push({
+      type: 'precedence',
+      operand: operand.id,
+      ...(owner ? { building: { operator: owner.lexeme, precedence } } : {}),
+      incoming: { operator: this.current.lexeme, precedence: incoming },
+      decision: takes ? 'se_lo_lleva' : 'se_queda',
+      span: this.current.span,
+    });
+  }
+
+  /** Después de un error: los nodos abiertos desde `openBefore` se abandonan y se saltaron los tokens desde `from`. */
+  private traceRecover(openBefore: number, from: number): void {
+    if (!this.trace) return;
+    const to = this.position;
+    const span =
+      to > from
+        ? { start: this.tokens[from]!.span.start, end: this.tokens[to - 1]!.span.end }
+        : { start: this.current.span.start, end: this.current.span.start };
+    const abandoned = this.open.splice(openBefore).reverse();
+    this.trace.push({ type: 'recover', abandoned, skipped: { from, to }, span });
   }
 
   private check(type: TokenType): boolean {
@@ -206,10 +332,15 @@ class Parser {
   }
 
   private error(code: string, message: string, span: Span, hint?: string): never {
-    if (this.errors.length < MAX_ERRORS) {
-      this.errors.push(new CodexivoError({ kind: 'sintaxis', code, message, hint, span }));
-    }
+    this.report(code, message, span, hint);
     throw new ParseFailure();
+  }
+
+  /** Registra un error sin abandonar lo que se está analizando. */
+  private report(code: string, message: string, span: Span, hint?: string): void {
+    if (this.errors.length >= MAX_ERRORS) return;
+    this.errors.push(new CodexivoError({ kind: 'sintaxis', code, message, hint, span }));
+    this.trace?.push({ type: 'error', code, message, span });
   }
 
   /** Un token ILLEGAL ya tiene su error léxico; no lo reportamos dos veces. */
@@ -251,13 +382,13 @@ class Parser {
 
   /** Salta tokens hasta un punto seguro para seguir analizando después de un error. */
   private synchronize(failedAt: Token): void {
-    if (this.position === this.tokens.indexOf(failedAt) && !this.check(TokenType.EOF)) this.advance();
+    if (this.position === this.tokens.indexOf(failedAt)) this.skip();
     while (!this.check(TokenType.EOF)) {
       if (this.previous.type === TokenType.SEMICOLON) return;
       if (this.check(TokenType.RBRACE)) return;
       if (STATEMENT_KEYWORDS.has(this.current.type)) return;
       if (this.current.span.start.line > failedAt.span.start.line) return;
-      this.advance();
+      this.skip();
     }
   }
 
@@ -280,11 +411,14 @@ class Parser {
     let recovering = false;
     while (!this.check(terminator) && !this.check(TokenType.EOF)) {
       const failedAt = this.current;
+      const openBefore = this.open.length;
       try {
         if (terminator === TokenType.EOF && this.check(TokenType.RBRACE)) {
           // Una `}` sobrante después de un error suele ser parte de lo que ya se reportó.
           if (recovering) {
-            this.advance();
+            const from = this.position;
+            this.skip();
+            this.traceRecover(openBefore, from);
             continue;
           }
           this.error('LLAVE_SOBRANTE', 'Sobra esta `}`: no hay ningún bloque abierto.', this.current.span);
@@ -295,7 +429,9 @@ class Parser {
         if (!(error instanceof ParseFailure)) throw error;
         this.depth = 0;
         recovering = true;
+        const from = this.position;
         this.synchronize(failedAt);
+        this.traceRecover(openBefore, from);
       }
     }
     this.checkDuplicateProcedures(statements);
@@ -318,14 +454,11 @@ class Parser {
         continue;
       }
       if (this.errors.length >= MAX_ERRORS) return;
-      this.errors.push(
-        new CodexivoError({
-          kind: 'sintaxis',
-          code: 'NOMBRE_REPETIDO',
-          message: `Ya hay un procedimiento llamado \`${name.name}\` en este bloque.`,
-          hint: 'Un procedimiento con nombre existe desde el inicio de su bloque; cambia uno de los dos nombres.',
-          span: name.span,
-        }),
+      this.report(
+        'NOMBRE_REPETIDO',
+        `Ya hay un procedimiento llamado \`${name.name}\` en este bloque.`,
+        name.span,
+        'Un procedimiento con nombre existe desde el inicio de su bloque; cambia uno de los dos nombres.',
       );
     }
   }
@@ -405,7 +538,8 @@ class Parser {
     // `;;` o un `;` suelto no hacen nada; seguimos con lo que venga.
     if (this.check(TokenType.EOF) || this.check(TokenType.RBRACE)) {
       const span = this.previous.span;
-      return { kind: 'Block', id: this.id(), statements: [], span };
+      this.begin('Block', undefined, span);
+      return this.finish({ kind: 'Block', id: this.id(), statements: [], span });
     }
     return this.parseStatement();
   }
@@ -430,6 +564,7 @@ class Parser {
   }
 
   private parseVariableDeclaration(): ast.VariableDeclaration {
+    this.begin('VariableDeclaration');
     const keyword = this.advance(); // variable / constante
     const constant = keyword.type === TokenType.CONST;
     const name = this.parseBindingName(`después de \`${keyword.lexeme}\``);
@@ -442,14 +577,14 @@ class Parser {
     );
     const value = this.parseExpression();
     if (value.kind === 'FunctionLiteral' && !value.name) value.name = name.name;
-    return {
+    return this.finish({
       kind: 'VariableDeclaration',
       id: this.id(),
       constant,
       name,
       value,
       span: this.spanFrom(keyword.span.start),
-    };
+    });
   }
 
   private parseBindingName(context: string): ast.Identifier {
@@ -472,8 +607,7 @@ class Parser {
         token.span,
       );
     }
-    this.advance();
-    return { kind: 'Identifier', id: this.id(), name: token.lexeme, span: token.span };
+    return this.leaf('Identifier', (token, id) => ({ kind: 'Identifier', id, name: token.lexeme, span: token.span }));
   }
 
   /** Asignación (`x = …`, `lista[i] += …`), incremento (`i++`) o expresión. */
@@ -483,7 +617,8 @@ class Parser {
     const operator = ASSIGNMENT_OPERATORS[this.current.type];
     const increment = INCREMENT_OPERATORS[this.current.type];
     if (!operator && !increment) {
-      return { kind: 'ExpressionStatement', id: this.id(), expression, span: this.spanFrom(start) };
+      this.begin('ExpressionStatement', expression, expression.span);
+      return this.finish({ kind: 'ExpressionStatement', id: this.id(), expression, span: this.spanFrom(start) });
     }
     if (expression.kind !== 'Identifier' && expression.kind !== 'Index') {
       this.error(
@@ -494,25 +629,33 @@ class Parser {
         this.current.span,
       );
     }
+    this.begin(increment ? 'Increment' : 'Assignment', expression);
     this.advance();
     if (increment) {
-      return { kind: 'Increment', id: this.id(), target: expression, operator: increment, span: this.spanFrom(start) };
+      return this.finish({
+        kind: 'Increment',
+        id: this.id(),
+        target: expression,
+        operator: increment,
+        span: this.spanFrom(start),
+      });
     }
     const value = this.parseExpression();
     if (value.kind === 'FunctionLiteral' && !value.name && expression.kind === 'Identifier') {
       value.name = expression.name;
     }
-    return {
+    return this.finish({
       kind: 'Assignment',
       id: this.id(),
       target: expression,
       operator: operator!,
       value,
       span: this.spanFrom(start),
-    };
+    });
   }
 
   private parseReturn(): ast.Return {
+    this.begin('Return');
     const keyword = this.advance();
     const endsHere =
       this.check(TokenType.SEMICOLON) ||
@@ -520,10 +663,11 @@ class Parser {
       this.check(TokenType.EOF) ||
       this.current.span.start.line > keyword.span.end.line;
     const value = endsHere ? undefined : this.parseExpression();
-    return { kind: 'Return', id: this.id(), value, span: this.spanFrom(keyword.span.start) };
+    return this.finish({ kind: 'Return', id: this.id(), value, span: this.spanFrom(keyword.span.start) });
   }
 
   private parseBlock(context: string): ast.Block {
+    this.begin('Block');
     const open = this.expect(TokenType.LBRACE, context, 'Los bloques de Codexivo siempre van entre llaves `{ }`.');
     const statements = this.parseStatements(TokenType.RBRACE);
     if (!this.check(TokenType.RBRACE)) {
@@ -534,7 +678,7 @@ class Parser {
       );
     }
     this.advance();
-    return { kind: 'Block', id: this.id(), statements, span: this.spanFrom(open.span.start) };
+    return this.finish({ kind: 'Block', id: this.id(), statements, span: this.spanFrom(open.span.start) });
   }
 
   /** Analiza `parse` dentro de paréntesis, corchetes o llaves, donde los saltos de línea no terminan nada. */
@@ -560,6 +704,7 @@ class Parser {
 
   private parseIf(): ast.If {
     const start = this.current.span.start;
+    this.begin('If');
     const branches: ast.IfBranch[] = [];
     let keyword = 'si';
     do {
@@ -582,17 +727,19 @@ class Parser {
       }
       alternative = this.parseBlock('después de `si_no`');
     }
-    return { kind: 'If', id: this.id(), branches, alternative, span: this.spanFrom(start) };
+    return this.finish({ kind: 'If', id: this.id(), branches, alternative, span: this.spanFrom(start) });
   }
 
   private parseWhile(): ast.While {
+    this.begin('While');
     const start = this.advance().span.start;
     const condition = this.parseCondition('mientras');
     const body = this.parseLoopBody('después de la condición de `mientras`');
-    return { kind: 'While', id: this.id(), condition, body, span: this.spanFrom(start) };
+    return this.finish({ kind: 'While', id: this.id(), condition, body, span: this.spanFrom(start) });
   }
 
   private parseDoUntil(): ast.DoUntil {
+    this.begin('DoUntil');
     const start = this.advance().span.start;
     const body = this.parseLoopBody('después de `hacer`');
     this.expect(
@@ -601,10 +748,11 @@ class Parser {
       'La forma completa es `hacer { … } hasta_que (condición)`.',
     );
     const condition = this.parseCondition('hasta_que');
-    return { kind: 'DoUntil', id: this.id(), body, condition, span: this.spanFrom(start) };
+    return this.finish({ kind: 'DoUntil', id: this.id(), body, condition, span: this.spanFrom(start) });
   }
 
   private parseFor(): ast.For | ast.ForRange {
+    this.begin(this.peek().type === TokenType.LPAREN ? 'For' : 'ForRange');
     const start = this.advance().span.start;
     // `para i desde …` cuenta; `para (…; …; …)` es la forma clásica.
     if (!this.check(TokenType.LPAREN)) return this.parseForRange(start);
@@ -632,7 +780,7 @@ class Parser {
     });
 
     const body = this.parseLoopBody('después de `para (…)`');
-    return { kind: 'For', id: this.id(), init, condition, update, body, span: this.spanFrom(start) };
+    return this.finish({ kind: 'For', id: this.id(), init, condition, update, body, span: this.spanFrom(start) });
   }
 
   private parseForRange(start: Position): ast.ForRange {
@@ -669,10 +817,11 @@ class Parser {
     const to = value('hasta');
     const step = this.match(TokenType.STEP) ? value('con_paso') : undefined;
     const body = this.parseLoopBody('después de `para … desde … hasta …`');
-    return { kind: 'ForRange', id: this.id(), variable, from, to, step, body, span: this.spanFrom(start) };
+    return this.finish({ kind: 'ForRange', id: this.id(), variable, from, to, step, body, span: this.spanFrom(start) });
   }
 
   private parseRepeat(): ast.Repeat {
+    this.begin('Repeat');
     const keyword = this.advance();
     if (this.check(TokenType.TIMES) || this.check(TokenType.LBRACE)) {
       this.error(
@@ -689,12 +838,14 @@ class Parser {
       'La forma completa es `repetir 4 veces { … }`.',
     );
     const body = this.parseLoopBody('después de `repetir … veces`');
-    return { kind: 'Repeat', id: this.id(), count, body, span: this.spanFrom(keyword.span.start) };
+    return this.finish({ kind: 'Repeat', id: this.id(), count, body, span: this.spanFrom(keyword.span.start) });
   }
 
   private parseDomain(): ast.Domain {
+    this.begin('Domain');
     const keyword = this.advance();
     const name = this.parseBindingName('después de `dominio`');
+    this.begin('Block');
     const open = this.expect(
       TokenType.LBRACE,
       `después de \`dominio ${name.name}\``,
@@ -718,24 +869,27 @@ class Parser {
     }
     this.advance();
     for (const statement of statements) {
-      if (DOMAIN_MEMBERS.has(statement.kind) || this.errors.length >= MAX_ERRORS) continue;
-      this.errors.push(
-        new CodexivoError({
-          kind: 'sintaxis',
-          code: 'DOMINIO_SOLO_DECLARACIONES',
-          message: printStart(statement)
-            ? `Un dominio solo agrupa declaraciones, y \`${printStart(statement)}\` no es una.`
-            : 'Un dominio solo agrupa declaraciones, y esta sentencia no es una.',
-          hint: 'Dentro de `dominio` van `variable`, `constante`, `procedimiento` u otro `dominio`. Lo demás va en un procedimiento o fuera del dominio.',
-          span: statement.span,
-        }),
+      if (DOMAIN_MEMBERS.has(statement.kind)) continue;
+      this.report(
+        'DOMINIO_SOLO_DECLARACIONES',
+        printStart(statement)
+          ? `Un dominio solo agrupa declaraciones, y \`${printStart(statement)}\` no es una.`
+          : 'Un dominio solo agrupa declaraciones, y esta sentencia no es una.',
+        statement.span,
+        'Dentro de `dominio` van `variable`, `constante`, `procedimiento` u otro `dominio`. Lo demás va en un procedimiento o fuera del dominio.',
       );
     }
-    const body: ast.Block = { kind: 'Block', id: this.id(), statements, span: this.spanFrom(open.span.start) };
-    return { kind: 'Domain', id: this.id(), name, body, span: this.spanFrom(keyword.span.start) };
+    const body = this.finish<ast.Block>({
+      kind: 'Block',
+      id: this.id(),
+      statements,
+      span: this.spanFrom(open.span.start),
+    });
+    return this.finish({ kind: 'Domain', id: this.id(), name, body, span: this.spanFrom(keyword.span.start) });
   }
 
   private parseForEach(): ast.ForEach {
+    this.begin('ForEach');
     const keyword = this.advance();
     const form = 'La forma completa es `para_cada fruta en frutas { … }`, sin paréntesis.';
     if (this.check(TokenType.LPAREN)) {
@@ -753,7 +907,7 @@ class Parser {
     this.expect(TokenType.IN, `después de \`para_cada ${names}\``, form);
     const iterable = this.parseExpression();
     const body = this.parseLoopBody('después de `para_cada … en …`');
-    return {
+    return this.finish({
       kind: 'ForEach',
       id: this.id(),
       variable,
@@ -761,7 +915,7 @@ class Parser {
       iterable,
       body,
       span: this.spanFrom(keyword.span.start),
-    };
+    });
   }
 
   /** El cuerpo de un bucle: ahí sí se puede usar `romper` y `continuar`. */
@@ -775,8 +929,9 @@ class Parser {
   }
 
   private parseLoopJump(): ast.Break | ast.Continue {
+    const kind = this.check(TokenType.BREAK) ? 'Break' : 'Continue';
+    this.begin(kind);
     const token = this.advance();
-    const kind = token.type === TokenType.BREAK ? 'Break' : 'Continue';
     if (this.loopDepth === 0) {
       this.error(
         kind === 'Break' ? 'ROMPER_FUERA_DE_BUCLE' : 'CONTINUAR_FUERA_DE_BUCLE',
@@ -787,18 +942,31 @@ class Parser {
           : 'Dentro de un procedimiento, `continuar` no afecta al bucle desde donde se llamó.',
       );
     }
-    return { kind, id: this.id(), span: token.span };
+    return this.finish({ kind, id: this.id(), span: token.span });
   }
 
   // ── expresiones ────────────────────────────────────────────────────────────
 
-  /** `statement` indica que la expresión es una sentencia completa, donde `i++` sí está permitido. */
-  private parseExpression(precedence: Precedence = Precedence.LOWEST, statement = false): ast.Expression {
+  /**
+   * `statement` indica que la expresión es una sentencia completa, donde `i++` sí está permitido. `owner` es el operador
+   * que espera esta expresión como su lado derecho (o su operando), con precedencia `precedence`; solo se usa en la traza.
+   */
+  private parseExpression(
+    precedence: Precedence = Precedence.LOWEST,
+    statement = false,
+    owner?: Token,
+  ): ast.Expression {
     this.enter();
     let left = this.parsePrefix();
-    while (precedence < (INFIX_PRECEDENCE[this.current.type] ?? Precedence.LOWEST)) {
+    while (true) {
+      const incoming = INFIX_PRECEDENCE[this.current.type];
+      if (incoming === undefined) break;
       // Sin `;`, una línea que empieza con `-`, `(` o `[` es otra sentencia, no la continuación de la anterior.
       if (this.grouping === 0 && this.current.span.start.line > this.previous.span.end.line) break;
+      // La decisión del parser Pratt: si el operador que llega agrupa más fuerte, se lleva a `left`.
+      const takes = precedence < incoming;
+      if (this.trace) this.tracePrecedence(left, precedence, owner, incoming, takes);
+      if (!takes) break;
       left = this.parseInfix(left);
     }
     if (!statement && INCREMENT_OPERATORS[this.current.type]) this.incrementInExpression(left);
@@ -823,21 +991,31 @@ class Parser {
     const token = this.current;
     switch (token.type) {
       case TokenType.NUMBER:
-        this.advance();
-        return { kind: 'NumberLiteral', id: this.id(), value: token.value as number, span: token.span };
+        return this.leaf('NumberLiteral', (_, id) => ({
+          kind: 'NumberLiteral',
+          id,
+          value: token.value as number,
+          span: token.span,
+        }));
       case TokenType.STRING:
-        this.advance();
-        return { kind: 'StringLiteral', id: this.id(), value: token.value as string, span: token.span };
+        return this.leaf('StringLiteral', (_, id) => ({
+          kind: 'StringLiteral',
+          id,
+          value: token.value as string,
+          span: token.span,
+        }));
       case TokenType.TRUE:
       case TokenType.FALSE:
-        this.advance();
-        return { kind: 'BooleanLiteral', id: this.id(), value: token.type === TokenType.TRUE, span: token.span };
+        return this.leaf('BooleanLiteral', (_, id) => ({
+          kind: 'BooleanLiteral',
+          id,
+          value: token.type === TokenType.TRUE,
+          span: token.span,
+        }));
       case TokenType.NULL:
-        this.advance();
-        return { kind: 'NullLiteral', id: this.id(), span: token.span };
+        return this.leaf('NullLiteral', (_, id) => ({ kind: 'NullLiteral', id, span: token.span }));
       case TokenType.IDENT:
-        this.advance();
-        return { kind: 'Identifier', id: this.id(), name: token.lexeme, span: token.span };
+        return this.leaf('Identifier', (_, id) => ({ kind: 'Identifier', id, name: token.lexeme, span: token.span }));
       case TokenType.LPAREN: {
         this.advance();
         const expression = this.grouped(() => this.parseExpression());
@@ -849,15 +1027,29 @@ class Parser {
       case TokenType.LBRACE:
         return this.parseDict();
       case TokenType.MINUS: {
+        this.begin('Unary');
         this.advance();
-        const operand = this.parseExpression(Precedence.UNARY);
-        return { kind: 'Unary', id: this.id(), operator: '-', operand, span: this.spanFrom(token.span.start) };
+        const operand = this.parseExpression(Precedence.UNARY, false, token);
+        return this.finish({
+          kind: 'Unary',
+          id: this.id(),
+          operator: '-',
+          operand,
+          span: this.spanFrom(token.span.start),
+        });
       }
       case TokenType.NOT:
       case TokenType.BANG: {
+        this.begin('Unary');
         this.advance();
-        const operand = this.parseExpression(Precedence.NOT);
-        return { kind: 'Unary', id: this.id(), operator: 'no', operand, span: this.spanFrom(token.span.start) };
+        const operand = this.parseExpression(Precedence.NOT, false, token);
+        return this.finish({
+          kind: 'Unary',
+          id: this.id(),
+          operator: 'no',
+          operand,
+          span: this.spanFrom(token.span.start),
+        });
       }
       case TokenType.FUNCTION:
         if (this.peek().type === TokenType.IDENT) {
@@ -868,6 +1060,7 @@ class Parser {
             'Como valor, escríbelo sin nombre: `variable doble = procedimiento(x) { … }`.',
           );
         }
+        this.begin('FunctionLiteral');
         return this.parseFunction(this.advance().span.start);
       case TokenType.INCREMENT:
       case TokenType.DECREMENT:
@@ -924,11 +1117,13 @@ class Parser {
     const start = left.span.start;
     switch (token.type) {
       case TokenType.LPAREN: {
+        this.begin('Call', left);
         this.advance();
         const args = this.parseList_(TokenType.RPAREN, 'para cerrar los argumentos');
-        return { kind: 'Call', id: this.id(), callee: left, args, span: this.spanFrom(start) };
+        return this.finish({ kind: 'Call', id: this.id(), callee: left, args, span: this.spanFrom(start) });
       }
       case TokenType.LBRACKET: {
+        this.begin('Index', left);
         this.advance();
         if (this.check(TokenType.RBRACKET)) {
           this.error(
@@ -940,9 +1135,10 @@ class Parser {
         }
         const index = this.grouped(() => this.parseExpression());
         this.expect(TokenType.RBRACKET, 'para cerrar el índice');
-        return { kind: 'Index', id: this.id(), object: left, index, span: this.spanFrom(start) };
+        return this.finish({ kind: 'Index', id: this.id(), object: left, index, span: this.spanFrom(start) });
       }
       case TokenType.DOT: {
+        this.begin('Index', left);
         this.advance();
         const property = this.current;
         if (property.type !== TokenType.IDENT) {
@@ -956,28 +1152,36 @@ class Parser {
             'Con `.` solo se usan claves que son nombres válidos; para las demás escribe `d["clave"]`.',
           );
         }
-        this.advance();
-        const index: ast.StringLiteral = {
+        const index = this.leaf<ast.StringLiteral>('StringLiteral', (_, id) => ({
           kind: 'StringLiteral',
-          id: this.id(),
+          id,
           value: property.lexeme,
           span: property.span,
-        };
-        return { kind: 'Index', id: this.id(), object: left, index, dot: true, span: this.spanFrom(start) };
+        }));
+        return this.finish({
+          kind: 'Index',
+          id: this.id(),
+          object: left,
+          index,
+          dot: true,
+          span: this.spanFrom(start),
+        });
       }
       case TokenType.AND:
       case TokenType.OR: {
+        this.begin('Logical', left);
         this.advance();
         const precedence = INFIX_PRECEDENCE[token.type]!;
-        const right = this.parseExpression(precedence);
+        const right = this.parseExpression(precedence, false, token);
         const operator = token.type === TokenType.AND ? 'y' : 'o';
-        return { kind: 'Logical', id: this.id(), operator, left, right, span: this.spanFrom(start) };
+        return this.finish({ kind: 'Logical', id: this.id(), operator, left, right, span: this.spanFrom(start) });
       }
       default: {
+        this.begin('Binary', left);
         this.advance();
         const precedence = INFIX_PRECEDENCE[token.type]!;
         // `^` es asociativo a la derecha: `2 ^ 3 ^ 2` es `2 ^ (3 ^ 2)`.
-        const right = this.parseExpression(precedence === Precedence.POWER ? precedence - 1 : precedence);
+        const right = this.parseExpression(precedence === Precedence.POWER ? precedence - 1 : precedence, false, token);
         const operator = BINARY_OPERATORS[token.type]!;
         if (precedence === Precedence.COMPARE && INFIX_PRECEDENCE[this.current.type] === Precedence.COMPARE) {
           this.error(
@@ -987,18 +1191,20 @@ class Parser {
             'Une las dos comparaciones con `y`, por ejemplo: `1 < x y x < 5`.',
           );
         }
-        return { kind: 'Binary', id: this.id(), operator, left, right, span: this.spanFrom(start) };
+        return this.finish({ kind: 'Binary', id: this.id(), operator, left, right, span: this.spanFrom(start) });
       }
     }
   }
 
   private parseList(): ast.ListLiteral {
+    this.begin('ListLiteral');
     const start = this.advance().span.start;
     const elements = this.parseList_(TokenType.RBRACKET, 'para cerrar la lista');
-    return { kind: 'ListLiteral', id: this.id(), elements, span: this.spanFrom(start) };
+    return this.finish({ kind: 'ListLiteral', id: this.id(), elements, span: this.spanFrom(start) });
   }
 
   private parseDict(): ast.DictLiteral {
+    this.begin('DictLiteral');
     const open = this.advance();
     const entries: ast.DictEntry[] = [];
     const literalKeys = new Set<string | number>();
@@ -1034,7 +1240,7 @@ class Parser {
       );
     }
     this.advance();
-    return { kind: 'DictLiteral', id: this.id(), entries, span: this.spanFrom(open.span.start) };
+    return this.finish({ kind: 'DictLiteral', id: this.id(), entries, span: this.spanFrom(open.span.start) });
   }
 
   /** Expresiones separadas por comas hasta `closing`. Se permite una coma final. */
@@ -1049,13 +1255,15 @@ class Parser {
   }
 
   private parseFunctionDeclaration(): ast.FunctionDeclaration {
+    this.begin('FunctionDeclaration');
     const start = this.advance().span.start;
     const name = this.parseBindingName('después de `procedimiento`');
+    this.begin('FunctionLiteral');
     const fn = this.parseFunction(start, name.name);
-    return { kind: 'FunctionDeclaration', id: this.id(), name, function: fn, span: fn.span };
+    return this.finish({ kind: 'FunctionDeclaration', id: this.id(), name, function: fn, span: fn.span });
   }
 
-  /** Parámetros y cuerpo; `procedimiento` (y el nombre, si lo hay) ya se leyeron. */
+  /** Parámetros y cuerpo; `procedimiento` (y el nombre, si lo hay) ya se leyeron y el nodo ya empezó (`begin`). */
   private parseFunction(start: Position, name?: string): ast.FunctionLiteral {
     this.expect(
       TokenType.LPAREN,
@@ -1083,7 +1291,7 @@ class Parser {
     } finally {
       this.loopDepth = loopDepth;
     }
-    return { kind: 'FunctionLiteral', id: this.id(), name, params, body, span: this.spanFrom(start) };
+    return this.finish({ kind: 'FunctionLiteral', id: this.id(), name, params, body, span: this.spanFrom(start) });
   }
 }
 
