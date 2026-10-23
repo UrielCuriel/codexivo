@@ -22,16 +22,21 @@ imprimir("Hola,", nombre)
 ## Palabras reservadas
 
 ```
-variable  procedimiento  regresa
-si  pero_si  si_no  mientras  hacer  hasta_que  para
-verdadero  falso  nulo  y  o  no
+variable  constante  procedimiento  regresa
+si  pero_si  si_no  mientras  hacer  hasta_que  para  repetir  veces
+verdadero  falso  nulo  y  o  no  mod  div
+es_igual_a  es_distinto_de  es_menor_que  es_mayor_que
+es_menor_o_igual_a  es_mayor_o_igual_a
 ```
+
+`para_cada`, `en`, `romper` y `continuar` también están reservadas: llegarán en el siguiente paso de la v1 y, mientras tanto,
+usarlas da un error que lo explica.
 
 ## Valores
 
 | Tipo          | Ejemplos                                                                      |
 | ------------- | ----------------------------------------------------------------------------- |
-| número        | `10`, `3.14`, `.5`, `-2`                                                      |
+| número        | `10`, `3.14`, `.5`, `-2`, `1_000_000` (el `_` solo separa grupos de dígitos)  |
 | texto         | `"hola"`, `'mundo'`, `"línea\nnueva"` (escapes: `\n`, `\t`, `\\`, `\"`, `\'`) |
 | lógico        | `verdadero`, `falso`                                                          |
 | nulo          | `nulo`                                                                        |
@@ -45,11 +50,18 @@ Las listas se comparten: si dos variables apuntan a la misma lista, un cambio se
 ```codexivo
 variable contador = 0;
 contador = contador + 1;
-contador += 5;   // también -=, *=, /=
+contador += 5;   // también -=, *=, /=, %=
+contador++;      // suma 1
+contador--;      // resta 1
+
+constante LADOS = 4;
+imprimir(LADOS * contador);
 ```
 
 - Toda variable se declara una vez con `variable` y un valor inicial.
 - Asignar a una variable sin declararla es un error.
+- Una `constante` no se puede cambiar: reasignarla (con `=`, `+=`, `++`…) es un error.
+- `++` y `--` son sentencias, no expresiones: `x = i++` es un error. Escribe `i++;` en su propia línea.
 - Lo que se declara dentro de un bloque `{ }` solo existe dentro de él.
 
 Los nombres pueden llevar `ñ`, acentos y diéresis: `año`, `canción`, `pingüino`.
@@ -58,16 +70,44 @@ Los nombres pueden llevar `ñ`, acentos y diéresis: `año`, `canción`, `pingü
 
 De menor a mayor precedencia:
 
-| Operadores                          | Notas                                                                    |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| `o`                                 | Cortocircuito                                                            |
-| `y`                                 | Cortocircuito                                                            |
-| `no`, `!`                           |                                                                          |
-| `==` `!=` `<` `>` `<=` `>=`         | No se pueden encadenar: `1 < x < 5` es un error; escribe `1 < x y x < 5` |
-| `+` `-`                             | `+` también une dos textos                                               |
-| `*` `/`                             | `/` es división real; dividir entre cero es un error                     |
-| `-` (signo)                         |                                                                          |
-| llamadas `f(x)`, índices `lista[i]` |                                                                          |
+| Operadores                                           | Notas                                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| `o`                                                  | Cortocircuito                                                            |
+| `y`                                                  | Cortocircuito                                                            |
+| `no`, `!`                                            |                                                                          |
+| `==` `!=` `<` `>` `<=` `>=` y sus formas en palabras | No se pueden encadenar: `1 < x < 5` es un error; escribe `1 < x y x < 5` |
+| `+` `-`                                              | `+` también une dos textos                                               |
+| `*` `/` `div` `mod` (`%`)                            | Dividir entre cero (con `/`, `div` o `mod`) es un error                  |
+| `-` (signo)                                          |                                                                          |
+| `^`                                                  | Potencia, asociativa a la derecha: `2 ^ 3 ^ 2` es `2 ^ 9`                |
+| llamadas `f(x)`, índices `lista[i]`                  |                                                                          |
+
+```codexivo
+7 / 2;     // 3.5, división real
+7 div 2;   // 3, división entera hacia abajo
+-7 div 2;  // -4
+7 mod 3;   // 1, el residuo (también 7 % 3)
+-7 mod 3;  // 2: siempre se cumple a == (a div b) * b + (a mod b)
+-2 ^ 2;    // -4, como en matemáticas: la potencia va antes que el signo
+```
+
+Cada comparación tiene una forma en palabras que significa exactamente lo mismo:
+
+| Símbolo | Palabra              |
+| ------- | -------------------- |
+| `==`    | `es_igual_a`         |
+| `!=`    | `es_distinto_de`     |
+| `<`     | `es_menor_que`       |
+| `>`     | `es_mayor_que`       |
+| `<=`    | `es_menor_o_igual_a` |
+| `>=`    | `es_mayor_o_igual_a` |
+
+```codexivo
+variable edad = 16;
+si (edad es_mayor_o_igual_a 13 y edad es_menor_que 18) {
+  imprimir("adolescente");
+}
+```
 
 - `==` compara por valor, también listas: `[1, 2] == [1, 2]` es `verdadero`.
 - `+` no mezcla textos y números: `"Total: " + 5` es un error. Usa `texto(5)` o `imprimir("Total:", 5)`.
@@ -94,13 +134,19 @@ hacer {
   i -= 1;
 } hasta_que (i == 0);
 
-para (variable j = 0; j < 3; j += 1) {
+para (variable j = 0; j < 3; j++) {
   imprimir(j);
+}
+
+repetir 3 veces {
+  imprimir("¡hola!");
 }
 ```
 
 - `hacer … hasta_que` ejecuta el bloque al menos una vez y repite **hasta que** la condición sea verdadera.
 - La variable de un `para` solo existe dentro del bucle.
+- `repetir n veces` evalúa `n` una sola vez, al empezar. Tiene que ser un número entero, 0 o más; con 0 el bloque no se
+  ejecuta. Lleva la cuenta por dentro, sin crear ninguna variable.
 
 ## Procedimientos
 
@@ -144,6 +190,7 @@ Los nombres con acento también se aceptan sin él (`máximo` o `maximo`).
 | `absoluto(x)`                     | Valor absoluto                                                             |
 | `máximo(…)`, `mínimo(…)`          | De varios números o de una lista                                           |
 | `redondear(x, decimales?)`        | Redondea; los `.5` se alejan del cero                                      |
+| `PI`                              | La constante 3.14159…; una variable tuya con el mismo nombre la oculta     |
 | `agregar(lista, x)`               | Agrega al final (cambia la lista)                                          |
 | `primero(lista)`, `último(lista)` | Primer y último elemento                                                   |
 

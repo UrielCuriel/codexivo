@@ -38,7 +38,7 @@ bloquean nada en el editor.
 ## 1. Estado actual frente a v1
 
 Probado contra `main` (`1ca0398`), cuyos 56 tests pasaban sin cubrir estos casos. La columna "Estado" dice qué ya resolvió
-la reescritura del núcleo (pasos 1 a 3 de §16).
+la reescritura del núcleo y los pasos siguientes de §16.
 
 | Caso                             | Antes                                                                                                | v1                                        | Estado                             |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------- |
@@ -47,7 +47,7 @@ la reescritura del núcleo (pasos 1 a 3 de §16).
 | Varios `pero_si` seguidos        | Solo se conservaba el último                                                                         | Todas las ramas, en orden                 | ✅                                 |
 | `procedimiento suma(a, b) { … }` | Error de sintaxis                                                                                    | Declaración con nombre                    | Paso 5 (hoy da un error con pista) |
 | `// comentario`                  | Excepción de JavaScript (`value is null or undefined`)                                               | Comentario                                | ✅                                 |
-| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | Paso 4                             |
+| `%`, `n++`, `n--`                | Error de sintaxis                                                                                    | Soportados                                | ✅ (paso 4)                        |
 | `a[0] = 9`                       | Error de sintaxis                                                                                    | Asignación por índice                     | Paso 5                             |
 | `nulo`                           | "identificador no encontrado"                                                                        | Literal                                   | ✅                                 |
 | `imprimir(…)` / `leer()`         | No existían; el programa solo devolvía su última expresión                                           | Entrada y salida                          | ✅                                 |
@@ -82,14 +82,14 @@ variable canción_favorita = "Cielito lindo";
 
 ### 2.3 Literales
 
-| Literal     | Ejemplos                              | Notas                                                                   |
-| ----------- | ------------------------------------- | ----------------------------------------------------------------------- |
-| Número      | `10`, `3.14`, `.5`, `1_000_000`       | Un solo tipo numérico (doble precisión). `_` solo como separador visual |
-| Texto       | `"hola"`, `'mundo'`, `"línea\nnueva"` | Escapes: `\n`, `\t`, `\"`, `\'`, `\\`                                   |
-| Lógico      | `verdadero`, `falso`                  |                                                                         |
-| Nulo        | `nulo`                                | Ausencia de valor                                                       |
-| Lista       | `[1, 2, 3]`, `[]`                     |                                                                         |
-| Diccionario | `{ "nombre": "Ana", "edad": 16 }`     | Ver §4.6                                                                |
+| Literal     | Ejemplos                              | Notas                                                               |
+| ----------- | ------------------------------------- | ------------------------------------------------------------------- |
+| Número      | `10`, `3.14`, `.5`, `1_000_000`       | Un solo tipo numérico (doble precisión). `_` solo entre dos dígitos |
+| Texto       | `"hola"`, `'mundo'`, `"línea\nnueva"` | Escapes: `\n`, `\t`, `\"`, `\'`, `\\`                               |
+| Lógico      | `verdadero`, `falso`                  |                                                                     |
+| Nulo        | `nulo`                                | Ausencia de valor                                                   |
+| Lista       | `[1, 2, 3]`, `[]`                     |                                                                     |
+| Diccionario | `{ "nombre": "Ana", "edad": 16 }`     | Ver §4.6                                                            |
 
 > **✅ Decidido — interpolación de texto.** ¿`"Hola, {nombre}"`? No en v1. `imprimir("Hola,", nombre)` resuelve el caso común sin agregar sintaxis
 > dentro de las cadenas, y `texto(x)` cubre el resto.
@@ -583,8 +583,9 @@ Todas aprobadas.
    `RuntimeTracer`. Se descartaron los generadores anidados porque, con `yield*`, la recursión profunda
    vuelve a depender de la pila de JavaScript. Incluye `imprimir`, `leer`, `leer_número`, `tipo`, `texto`
    y `número`, porque la entrada y salida son parte del contrato de la máquina.
-4. **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
-   operadores en palabras, `constante`, alcance por bloque.
+4. ✅ **Nivel principiante:** `imprimir`/`leer`, `repetir … veces`, `++`/`--`, `%`/`mod`/`div`, `^`,
+   operadores en palabras, `constante`, alcance por bloque, `1_000_000` y `PI`. `repetir` emite `decide` con la
+   etiqueta `repetir` en cada vuelta y `declara` indica si el nombre es constante.
 5. **Nivel intermedio:** procedimientos con nombre, `para_cada`, `romper`/`continuar`, asignación por
    índice, diccionarios, biblioteca de texto y listas.
 6. **Nivel avanzado:** procedimientos como valores, estructuras de datos, costo por operación de la

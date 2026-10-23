@@ -2,7 +2,7 @@ import { CodexivoError } from '../errors';
 import type { ErrorInfo } from '../errors';
 import type * as ast from '../syntax/ast';
 import type { Span } from '../syntax/token';
-import { natives as defaultNatives } from './builtins';
+import { constants as libraryConstants, natives as defaultNatives } from './builtins';
 import type { Chunk, DecisionLabel, Instruction } from './compiler';
 import { describeType, equals, isCallable, isList, repr, Scope, typeOf, WAIT_FOR_INPUT } from './values';
 import type { ListValue, NativeContext, NativeValue, ProcedureValue, Value } from './values';
@@ -68,7 +68,7 @@ interface EventBase {
 export type MachineEvent = EventBase &
   (
     | { type: 'paso'; nodeId: number; nodeKind: ast.Statement['kind']; span: Span }
-    | { type: 'declara'; name: string; value: SerializedValue; nodeId: number; span: Span }
+    | { type: 'declara'; name: string; constant: boolean; value: SerializedValue; nodeId: number; span: Span }
     | { type: 'asigna'; name: string; before: SerializedValue; after: SerializedValue; nodeId: number; span: Span }
     | { type: 'decide'; label: DecisionLabel; value: boolean; nodeId: number; ownerId: number; span: Span }
     | {
@@ -127,7 +127,7 @@ const DEFAULTS = {
   maxOutput: 1_000_000,
 };
 
-const NO_COUNT = new Set<Instruction['op']>(['step', 'enterScope', 'exitScope', 'jump', 'halt']);
+const NO_COUNT = new Set<Instruction['op']>(['step', 'enterScope', 'exitScope', 'jump', 'repeatStart', 'halt']);
 
 /**
  * Ejecuta un programa compilado. Tiene su propia pila de llamadas, así que la recursión no depende
@@ -322,8 +322,8 @@ export class Machine {
           this.stack.push(scope.variables.get(instruction.name)!);
           return false;
         }
-        const native = this.natives[instruction.name];
-        if (native && !instruction.forUpdate) {
+        const native = this.natives[instruction.name] ?? libraryConstants[instruction.name];
+        if (native !== undefined && !instruction.forUpdate) {
           this.stack.push(native);
           return false;
         }
@@ -342,9 +342,12 @@ export class Machine {
           );
         }
         frame.scope.variables.set(instruction.name, value);
+        if (instruction.constant) frame.scope.constants.add(instruction.name);
+        else frame.scope.constants.delete(instruction.name);
         this.emit({
           type: 'declara',
           name: instruction.name,
+          constant: instruction.constant,
           value: serialize(value),
           nodeId: instruction.node.id,
           span: instruction.node.span,
@@ -356,6 +359,7 @@ export class Machine {
         const value = this.stack.pop()!;
         const scope = frame.scope.lookup(instruction.name);
         if (!scope) throw this.undeclaredAssignment(instruction.name, instruction.node.target);
+        if (scope.constants.has(instruction.name)) throw this.constantReassignment(instruction.name, instruction.node);
         const before = scope.variables.get(instruction.name)!;
         scope.variables.set(instruction.name, value);
         if (this.onEvent) {
@@ -447,6 +451,32 @@ export class Machine {
           span: instruction.node.span,
         });
         if (condition === instruction.jumpWhen) frame.pc = instruction.target;
+        return true;
+      }
+
+      case 'repeatStart': {
+        const count = this.stack[this.stack.length - 1]!;
+        if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) {
+          throw this.invalidRepeatCount(count, instruction.node);
+        }
+        return false;
+      }
+
+      case 'repeatNext': {
+        const remaining = this.stack[this.stack.length - 1] as number;
+        const again = remaining > 0;
+        if (again) this.stack[this.stack.length - 1] = remaining - 1;
+        else this.stack.pop();
+        this.currentNode = instruction.node;
+        this.emit({
+          type: 'decide',
+          label: 'repetir',
+          value: again,
+          nodeId: instruction.node.id,
+          ownerId: instruction.owner.id,
+          span: instruction.node.span,
+        });
+        if (!again) frame.pc = instruction.target;
         return true;
       }
 
@@ -614,7 +644,12 @@ export class Machine {
     return !operand;
   }
 
-  private binary(operator: ast.BinaryOperator, left: Value, right: Value, node: ast.Binary | ast.Assignment): Value {
+  private binary(
+    operator: ast.BinaryOperator,
+    left: Value,
+    right: Value,
+    node: ast.Binary | ast.Assignment | ast.Increment,
+  ): Value {
     switch (operator) {
       case '==':
         return equals(left, right);
@@ -635,12 +670,27 @@ export class Machine {
         throw this.operandError(operator, left, right, node);
       case '-':
       case '*':
-      case '/': {
+      case '/':
+      case 'div':
+      case 'mod':
+      case '^': {
         if (typeof left !== 'number' || typeof right !== 'number') throw this.operandError(operator, left, right, node);
         if (operator === '-') return left - right;
         if (operator === '*') return left * right;
+        if (operator === '^') {
+          const result = left ** right;
+          if (Number.isNaN(result)) {
+            throw this.runtimeError(
+              'POTENCIA_INVÁLIDA',
+              `\`${left < 0 ? `(${repr(left)})` : repr(left)} ^ ${repr(right)}\` no tiene un resultado real.`,
+              node,
+              'Un número negativo solo se puede elevar a un exponente entero.',
+            );
+          }
+          return result;
+        }
         if (right === 0) {
-          const divisor = node.kind === 'Binary' ? node.right : node.value;
+          const divisor = node.kind === 'Binary' ? node.right : node.kind === 'Assignment' ? node.value : node;
           throw this.runtimeError(
             'DIVISIÓN_ENTRE_CERO',
             'No se puede dividir entre cero.',
@@ -648,7 +698,10 @@ export class Machine {
             'Revisa que el divisor no valga 0 antes de dividir.',
           );
         }
-        return left / right;
+        if (operator === '/') return left / right;
+        // `div` y `mod` dividen hacia abajo, así `a == (a div b) * b + (a mod b)` y `-7 mod 3 == 2`.
+        const quotient = Math.floor(left / right);
+        return operator === 'div' ? quotient : left - right * quotient;
       }
       case '<':
       case '>':
@@ -738,7 +791,7 @@ export class Machine {
   }
 
   private unknownName(frame: Frame, name: string, node: ast.Identifier): CodexivoError {
-    const visible: string[] = [...Object.keys(this.natives)];
+    const visible: string[] = [...Object.keys(this.natives), ...Object.keys(libraryConstants)];
     for (let scope: Scope | undefined = frame.scope; scope; scope = scope.parent)
       visible.push(...scope.variables.keys());
     const suggestion = suggestName(name, visible);
@@ -752,7 +805,41 @@ export class Machine {
     );
   }
 
+  private constantReassignment(name: string, node: ast.Assignment | ast.Increment): CodexivoError {
+    return this.runtimeError(
+      'CONSTANTE_REASIGNADA',
+      `\`${name}\` es una constante; su valor no puede cambiar.`,
+      node,
+      `Si necesitas cambiarlo, declárala con \`variable ${name} = …\` en lugar de \`constante\`.`,
+    );
+  }
+
+  private invalidRepeatCount(count: Value, node: ast.Expression): CodexivoError {
+    if (typeof count !== 'number') {
+      return this.runtimeError(
+        'REPETICIONES_INVÁLIDAS',
+        `\`repetir\` necesita un número de veces, pero recibió ${describeType(typeOf(count))} (${repr(count)}).`,
+        node,
+        typeof count === 'string' ? 'Convierte el texto con `número(…)`.' : undefined,
+      );
+    }
+    return this.runtimeError(
+      'REPETICIONES_INVÁLIDAS',
+      `\`repetir\` necesita un número entero de veces, 0 o más, pero recibió ${repr(count)}.`,
+      node,
+      count < 0 ? 'Revisa que la cantidad no sea negativa.' : 'Redondea la cantidad con `redondear(…)`.',
+    );
+  }
+
   private undeclaredAssignment(name: string, node: ast.Identifier): CodexivoError {
+    if (Object.hasOwn(libraryConstants, name)) {
+      return this.runtimeError(
+        'NOMBRE_RESERVADO_POR_BIBLIOTECA',
+        `\`${name}\` es una constante de Codexivo; no se le puede asignar un valor.`,
+        node,
+        `Si quieres tu propia variable con ese nombre, declárala: \`variable ${name} = …\`.`,
+      );
+    }
     if (this.natives[name]) {
       return this.runtimeError(
         'NOMBRE_RESERVADO_POR_BIBLIOTECA',

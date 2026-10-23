@@ -31,6 +31,7 @@ enum Precedence {
   SUM,
   PRODUCT,
   UNARY,
+  POWER,
   CALL,
 }
 
@@ -47,6 +48,10 @@ const INFIX_PRECEDENCE: Partial<Record<TokenType, Precedence>> = {
   [TokenType.MINUS]: Precedence.SUM,
   [TokenType.STAR]: Precedence.PRODUCT,
   [TokenType.SLASH]: Precedence.PRODUCT,
+  [TokenType.PERCENT]: Precedence.PRODUCT,
+  [TokenType.MOD]: Precedence.PRODUCT,
+  [TokenType.DIV]: Precedence.PRODUCT,
+  [TokenType.CARET]: Precedence.POWER,
   [TokenType.LPAREN]: Precedence.CALL,
   [TokenType.LBRACKET]: Precedence.CALL,
 };
@@ -56,6 +61,10 @@ const BINARY_OPERATORS: Partial<Record<TokenType, ast.BinaryOperator>> = {
   [TokenType.MINUS]: '-',
   [TokenType.STAR]: '*',
   [TokenType.SLASH]: '/',
+  [TokenType.PERCENT]: 'mod',
+  [TokenType.MOD]: 'mod',
+  [TokenType.DIV]: 'div',
+  [TokenType.CARET]: '^',
   [TokenType.EQ]: '==',
   [TokenType.NEQ]: '!=',
   [TokenType.LT]: '<',
@@ -70,10 +79,24 @@ const ASSIGNMENT_OPERATORS: Partial<Record<TokenType, ast.AssignmentOperator>> =
   [TokenType.MINUS_ASSIGN]: '-=',
   [TokenType.STAR_ASSIGN]: '*=',
   [TokenType.SLASH_ASSIGN]: '/=',
+  [TokenType.PERCENT_ASSIGN]: '%=',
 };
+
+const INCREMENT_OPERATORS: Partial<Record<TokenType, ast.IncrementOperator>> = {
+  [TokenType.INCREMENT]: '++',
+  [TokenType.DECREMENT]: '--',
+};
+
+/** Palabras reservadas para características que todavía no existen. */
+const NOT_YET_AVAILABLE = new Set([TokenType.FOR_EACH, TokenType.IN, TokenType.BREAK, TokenType.CONTINUE]);
 
 const STATEMENT_KEYWORDS = new Set([
   TokenType.LET,
+  TokenType.CONST,
+  TokenType.REPEAT,
+  TokenType.FOR_EACH,
+  TokenType.BREAK,
+  TokenType.CONTINUE,
   TokenType.RETURN,
   TokenType.IF,
   TokenType.WHILE,
@@ -236,6 +259,7 @@ class Parser {
         this.advance();
         return this.parseStatementAfterStraySemicolon();
       case TokenType.LET:
+      case TokenType.CONST:
         return this.endSimpleStatement(this.parseVariableDeclaration());
       case TokenType.RETURN:
         return this.endSimpleStatement(this.parseReturn());
@@ -247,6 +271,13 @@ class Parser {
         return this.endSimpleStatement(this.parseDoUntil());
       case TokenType.FOR:
         return this.endCompoundStatement(this.parseFor());
+      case TokenType.REPEAT:
+        return this.endCompoundStatement(this.parseRepeat());
+      case TokenType.FOR_EACH:
+      case TokenType.IN:
+      case TokenType.BREAK:
+      case TokenType.CONTINUE:
+        this.notYetAvailable(token);
       case TokenType.LBRACE:
         return this.endCompoundStatement(this.parseBlock('para abrir el bloque'));
       case TokenType.ELSE:
@@ -269,6 +300,9 @@ class Parser {
         }
         if (ASSIGNMENT_OPERATORS[next.type]) {
           return this.endSimpleStatement(this.parseAssignment());
+        }
+        if (INCREMENT_OPERATORS[next.type]) {
+          return this.endSimpleStatement(this.parseIncrement());
         }
         return this.endSimpleStatement(this.parseExpressionStatement());
       }
@@ -306,16 +340,35 @@ class Parser {
   }
 
   private parseVariableDeclaration(): ast.VariableDeclaration {
-    const start = this.advance().span.start; // variable
-    const name = this.parseBindingName('después de `variable`');
+    const keyword = this.advance(); // variable / constante
+    const constant = keyword.type === TokenType.CONST;
+    const name = this.parseBindingName(`después de \`${keyword.lexeme}\``);
     this.expect(
       TokenType.ASSIGN,
-      `después de \`variable ${name.name}\``,
-      `Toda variable empieza con un valor: \`variable ${name.name} = 0\`.`,
+      `después de \`${keyword.lexeme} ${name.name}\``,
+      constant
+        ? `Toda constante necesita su valor desde el principio: \`constante ${name.name} = 10\`.`
+        : `Toda variable empieza con un valor: \`variable ${name.name} = 0\`.`,
     );
     const value = this.parseExpression();
     if (value.kind === 'FunctionLiteral' && !value.name) value.name = name.name;
-    return { kind: 'VariableDeclaration', id: this.id(), name, value, span: this.spanFrom(start) };
+    return {
+      kind: 'VariableDeclaration',
+      id: this.id(),
+      constant,
+      name,
+      value,
+      span: this.spanFrom(keyword.span.start),
+    };
+  }
+
+  private notYetAvailable(token: Token): never {
+    this.error(
+      'PALABRA_NO_DISPONIBLE',
+      `\`${token.lexeme}\` es una palabra reservada para algo que todavía no está disponible.`,
+      token.span,
+      'Llegará en una próxima versión de Codexivo.',
+    );
   }
 
   private parseBindingName(context: string): ast.Identifier {
@@ -352,6 +405,25 @@ class Parser {
     const value = this.parseExpression();
     if (value.kind === 'FunctionLiteral' && !value.name) value.name = target.name;
     return { kind: 'Assignment', id: this.id(), target, operator, value, span: this.spanFrom(targetToken.span.start) };
+  }
+
+  private parseIncrement(): ast.Increment {
+    const targetToken = this.advance();
+    const target: ast.Identifier = {
+      kind: 'Identifier',
+      id: this.id(),
+      name: targetToken.lexeme,
+      span: targetToken.span,
+    };
+    const operator = INCREMENT_OPERATORS[this.advance().type]!;
+    return { kind: 'Increment', id: this.id(), target, operator, span: this.spanFrom(targetToken.span.start) };
+  }
+
+  /** Inicio o actualización de un `para`: asignación, `i++` o expresión. */
+  private parseForClause(): ast.Assignment | ast.Increment | ast.ExpressionStatement {
+    if (this.check(TokenType.IDENT) && ASSIGNMENT_OPERATORS[this.peek().type]) return this.parseAssignment();
+    if (this.check(TokenType.IDENT) && INCREMENT_OPERATORS[this.peek().type]) return this.parseIncrement();
+    return this.parseExpressionStatement();
   }
 
   private parseExpressionStatement(): ast.ExpressionStatement {
@@ -462,9 +534,8 @@ class Parser {
 
     let init: ast.For['init'];
     if (!this.check(TokenType.SEMICOLON)) {
-      if (this.check(TokenType.LET)) init = this.parseVariableDeclaration();
-      else if (this.check(TokenType.IDENT) && ASSIGNMENT_OPERATORS[this.peek().type]) init = this.parseAssignment();
-      else init = this.parseExpressionStatement();
+      if (this.check(TokenType.LET) || this.check(TokenType.CONST)) init = this.parseVariableDeclaration();
+      else init = this.parseForClause();
     }
     this.expect(TokenType.SEMICOLON, 'después del inicio del `para`');
 
@@ -472,14 +543,31 @@ class Parser {
     this.expect(TokenType.SEMICOLON, 'después de la condición del `para`');
 
     let update: ast.For['update'];
-    if (!this.check(TokenType.RPAREN)) {
-      if (this.check(TokenType.IDENT) && ASSIGNMENT_OPERATORS[this.peek().type]) update = this.parseAssignment();
-      else update = this.parseExpressionStatement();
-    }
+    if (!this.check(TokenType.RPAREN)) update = this.parseForClause();
     this.expect(TokenType.RPAREN, 'para cerrar el `para`');
 
     const body = this.parseBlock('después de `para (…)`');
     return { kind: 'For', id: this.id(), init, condition, update, body, span: this.spanFrom(start) };
+  }
+
+  private parseRepeat(): ast.Repeat {
+    const keyword = this.advance();
+    if (this.check(TokenType.TIMES) || this.check(TokenType.LBRACE)) {
+      this.error(
+        'REPETIR_SIN_CANTIDAD',
+        'Falta cuántas veces se repite.',
+        this.current.span,
+        'La forma completa es `repetir 4 veces { … }`.',
+      );
+    }
+    const count = this.parseExpression();
+    this.expect(
+      TokenType.TIMES,
+      'después de la cantidad de `repetir`',
+      'La forma completa es `repetir 4 veces { … }`.',
+    );
+    const body = this.parseBlock('después de `repetir … veces`');
+    return { kind: 'Repeat', id: this.id(), count, body, span: this.spanFrom(keyword.span.start) };
   }
 
   // ── expresiones ────────────────────────────────────────────────────────────
@@ -490,8 +578,22 @@ class Parser {
     while (precedence < (INFIX_PRECEDENCE[this.current.type] ?? Precedence.LOWEST)) {
       left = this.parseInfix(left);
     }
+    if (INCREMENT_OPERATORS[this.current.type]) this.incrementInExpression(left);
     this.leave();
     return left;
+  }
+
+  private incrementInExpression(left?: ast.Expression): never {
+    const operator = this.current.lexeme;
+    const name = left?.kind === 'Identifier' ? left.name : 'i';
+    this.error(
+      'INCREMENTO_EN_EXPRESIÓN',
+      `\`${operator}\` es una sentencia: va sola, justo después del nombre de una variable.`,
+      this.current.span,
+      left?.kind === 'Identifier' || !left
+        ? `Escribe \`${name}${operator};\` en su propia línea y después usa \`${name}\`.`
+        : `Solo se puede usar con una variable, como \`${name}${operator};\`.`,
+    );
   }
 
   private parsePrefix(): ast.Expression {
@@ -534,6 +636,18 @@ class Parser {
       }
       case TokenType.FUNCTION:
         return this.parseFunction();
+      case TokenType.INCREMENT:
+      case TokenType.DECREMENT:
+        if (this.peek().type === TokenType.IDENT) {
+          const name = this.peek().lexeme;
+          this.error(
+            'INCREMENTO_EN_EXPRESIÓN',
+            `En Codexivo \`${token.lexeme}\` va después del nombre de la variable.`,
+            { start: token.span.start, end: this.peek().span.end },
+            `Escribe \`${name}${token.lexeme};\` como una sentencia propia.`,
+          );
+        }
+        this.incrementInExpression();
       case TokenType.ILLEGAL:
         throw new ParseFailure();
       case TokenType.IF:
@@ -541,6 +655,8 @@ class Parser {
       case TokenType.FOR:
       case TokenType.DO:
       case TokenType.LET:
+      case TokenType.CONST:
+      case TokenType.REPEAT:
       case TokenType.RETURN:
         this.error(
           'SENTENCIA_EN_EXPRESIÓN',
@@ -600,7 +716,8 @@ class Parser {
       default: {
         this.advance();
         const precedence = INFIX_PRECEDENCE[token.type]!;
-        const right = this.parseExpression(precedence);
+        // `^` es asociativo a la derecha: `2 ^ 3 ^ 2` es `2 ^ (3 ^ 2)`.
+        const right = this.parseExpression(precedence === Precedence.POWER ? precedence - 1 : precedence);
         const operator = BINARY_OPERATORS[token.type]!;
         if (precedence === Precedence.COMPARE && INFIX_PRECEDENCE[this.current.type] === Precedence.COMPARE) {
           this.error(

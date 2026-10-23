@@ -126,6 +126,8 @@ export const equals = (a: Value, b: Value, seen: Array<[ListValue, ListValue]> =
  */
 export class Scope {
   readonly variables = new Map<string, Value>();
+  /** Nombres de este alcance declarados con `constante`. */
+  readonly constants = new Set<string>();
 
   constructor(readonly parent?: Scope) {}
 

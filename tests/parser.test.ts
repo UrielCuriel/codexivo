@@ -60,6 +60,16 @@ describe('parser', () => {
       ['lista[i + 1]', 'lista[(i + 1)]'],
       ['-f(x)', '(- f(x))'],
       ['[1, 2 + 3, "a"]', '[1, (2 + 3), "a"]'],
+      ['a + b mod c', '(a + (b mod c))'],
+      ['a % b * c', '((a mod b) * c)'],
+      ['a div b - c', '((a div b) - c)'],
+      ['2 ^ 3 ^ 2', '(2 ^ (3 ^ 2))'],
+      ['-2 ^ 2', '(- (2 ^ 2))'],
+      ['2 ^ -1', '(2 ^ (- 1))'],
+      ['2 * 3 ^ 2', '(2 * (3 ^ 2))'],
+      ['f(x) ^ 2', '(f(x) ^ 2)'],
+      ['a es_menor_que b y b es_igual_a c', '((a < b) y (b == c))'],
+      ['a es_mayor_o_igual_a 18', '(a >= 18)'],
     ])('%s', (source, expected) => {
       expect(expression(source)).toBe(expected);
     });
@@ -113,6 +123,36 @@ describe('parser', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  test('`i++`, `i--`, `%=` y `constante`', () => {
+    const { program, errors } = parse('constante LÍMITE = 3;\nvariable i = 0;\ni++;\ni--\ni %= 2;');
+    expect(errors).toEqual([]);
+    expect(program.statements.map(statement => statement.kind)).toEqual([
+      'VariableDeclaration',
+      'VariableDeclaration',
+      'Increment',
+      'Increment',
+      'Assignment',
+    ]);
+    expect(program.statements.map(statement => 'constant' in statement && statement.constant)).toEqual([
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(program.statements[2]).toMatchObject({ target: { name: 'i' }, operator: '++' });
+    expect(program.statements[4]).toMatchObject({ operator: '%=' });
+  });
+
+  test('`repetir n veces` y `i++` en un `para`', () => {
+    const { program, errors } = parse('repetir 2 * 3 veces { }\npara (variable i = 0; i < 3; i++) { }');
+    expect(errors).toEqual([]);
+    const repeat = program.statements[0] as ast.Repeat;
+    expect(repeat.kind).toBe('Repeat');
+    expect(show(repeat.count)).toBe('(2 * 3)');
+    expect((program.statements[1] as ast.For).update?.kind).toBe('Increment');
+  });
+
   describe('errores', () => {
     test.each([
       ['1 < x < 5', 'COMPARACIÓN_ENCADENADA'],
@@ -128,6 +168,17 @@ describe('parser', () => {
       ['procedimiento(a, a) { }', 'PARÁMETRO_REPETIDO'],
       ['5 = x', 'ASIGNACIÓN_INVÁLIDA'],
       ['lista[]', 'ÍNDICE_VACÍO'],
+      ['x = i++', 'INCREMENTO_EN_EXPRESIÓN'],
+      ['f(i++)', 'INCREMENTO_EN_EXPRESIÓN'],
+      ['++i', 'INCREMENTO_EN_EXPRESIÓN'],
+      ['lista[0]++', 'INCREMENTO_EN_EXPRESIÓN'],
+      ['repetir veces { }', 'REPETIR_SIN_CANTIDAD'],
+      ['repetir 3 { }', 'TOKEN_ESPERADO'],
+      ['constante K', 'TOKEN_ESPERADO'],
+      ['variable mod = 1', 'PALABRA_RESERVADA'],
+      ['variable es_igual_a = 1', 'PALABRA_RESERVADA'],
+      ['variable veces = 1', 'PALABRA_RESERVADA'],
+      ['romper', 'PALABRA_NO_DISPONIBLE'],
     ])('%s → %s', (source, code) => {
       expect(errorCodes(source)).toContain(code);
     });
@@ -136,6 +187,9 @@ describe('parser', () => {
       expect(parse('sino { }').errors[0]!.hint).toContain('si_no');
       expect(parse('si (x = 2) { }').errors[0]!.hint).toContain('==');
       expect(parse('1 < x < 5').errors[0]!.hint).toContain('y');
+      expect(parse('x = i++').errors[0]!.hint).toContain('`i++;`');
+      expect(parse('++i').errors[0]!.hint).toContain('`i++;`');
+      expect(parse('constante K').errors[0]!.hint).toContain('constante K =');
     });
 
     test('se recupera y reporta errores en varias sentencias', () => {
@@ -145,7 +199,7 @@ describe('parser', () => {
     });
 
     test('un carácter desconocido no genera también un error de sintaxis', () => {
-      const { errors } = parse('variable a = 5 % 2;');
+      const { errors } = parse('variable a = 5 @ 2;');
       expect(errors.map(error => error.kind)).toEqual(['léxico']);
     });
   });

@@ -1,7 +1,7 @@
 import type * as ast from '../syntax/ast';
 import type { Value } from './values';
 
-export type DecisionLabel = 'si' | 'pero_si' | 'mientras' | 'hasta_que' | 'para';
+export type DecisionLabel = 'si' | 'pero_si' | 'mientras' | 'hasta_que' | 'para' | 'repetir';
 
 /**
  * Instrucciones de la máquina de Codexivo. Cada una conserva el nodo del AST que la originó, así la
@@ -13,14 +13,14 @@ export type Instruction =
   | { op: 'const'; value: Value; node: ast.Expression }
   | { op: 'list'; count: number; node: ast.ListLiteral }
   | { op: 'load'; name: string; node: ast.Identifier; forUpdate?: boolean }
-  /** Saca un valor de la pila y crea la variable en el alcance actual. */
-  | { op: 'declare'; name: string; node: ast.VariableDeclaration }
+  /** Saca un valor de la pila y crea la variable (o constante) en el alcance actual. */
+  | { op: 'declare'; name: string; constant: boolean; node: ast.VariableDeclaration }
   /** Saca un valor de la pila y lo guarda en una variable existente. */
-  | { op: 'store'; name: string; node: ast.Assignment }
+  | { op: 'store'; name: string; node: ast.Assignment | ast.Increment }
   /** Saca un valor de la pila; es el valor de una sentencia de expresión. */
   | { op: 'result'; node: ast.ExpressionStatement }
   | { op: 'unary'; operator: ast.UnaryOperator; node: ast.Unary }
-  | { op: 'binary'; operator: ast.BinaryOperator; node: ast.Binary | ast.Assignment }
+  | { op: 'binary'; operator: ast.BinaryOperator; node: ast.Binary | ast.Assignment | ast.Increment }
   | { op: 'index'; node: ast.Index }
   | { op: 'closure'; chunk: Chunk; node: ast.FunctionLiteral }
   | { op: 'call'; argc: number; node: ast.Call }
@@ -35,6 +35,10 @@ export type Instruction =
       node: ast.Expression;
       owner: ast.Statement;
     }
+  /** Revisa que la cantidad de `repetir` (en la cima de la pila) sea un entero ≥ 0; queda como contador oculto. */
+  | { op: 'repeatStart'; node: ast.Expression; owner: ast.Repeat }
+  /** Si al contador le quedan vueltas, lo reduce y sigue; si no, lo saca de la pila y salta a `target`. */
+  | { op: 'repeatNext'; target: number; node: ast.Expression; owner: ast.Repeat }
   /** Cortocircuito: revisa el lado izquierdo de `y`/`o`; si ya decide el resultado, lo deja y salta. */
   | { op: 'shortCircuit'; target: number; node: ast.Logical }
   /** Revisa que el lado derecho de `y`/`o` sea lógico. */
@@ -73,6 +77,15 @@ const compileFunction = (node: ast.FunctionLiteral): Chunk => {
   return compiler.chunk;
 };
 
+/** Operador que aplica cada asignación compuesta. */
+const COMPOUND_OPERATORS: Record<Exclude<ast.AssignmentOperator, '='>, ast.BinaryOperator> = {
+  '+=': '+',
+  '-=': '-',
+  '*=': '*',
+  '/=': '/',
+  '%=': 'mod',
+};
+
 class Compiler {
   constructor(readonly chunk: Chunk) {}
 
@@ -95,7 +108,7 @@ class Compiler {
     switch (node.kind) {
       case 'VariableDeclaration':
         this.expression(node.value);
-        this.emit({ op: 'declare', name: node.name.name, node });
+        this.emit({ op: 'declare', name: node.name.name, constant: node.constant, node });
         return;
       case 'Assignment':
         if (node.operator !== '=') {
@@ -103,8 +116,14 @@ class Compiler {
         }
         this.expression(node.value);
         if (node.operator !== '=') {
-          this.emit({ op: 'binary', operator: node.operator[0] as ast.BinaryOperator, node });
+          this.emit({ op: 'binary', operator: COMPOUND_OPERATORS[node.operator], node });
         }
+        this.emit({ op: 'store', name: node.target.name, node });
+        return;
+      case 'Increment':
+        this.emit({ op: 'load', name: node.target.name, node: node.target, forUpdate: true });
+        this.emit({ op: 'const', value: 1, node: node.target });
+        this.emit({ op: 'binary', operator: node.operator === '++' ? '+' : '-', node });
         this.emit({ op: 'store', name: node.target.name, node });
         return;
       case 'ExpressionStatement':
@@ -166,6 +185,16 @@ class Compiler {
           node: node.condition,
           owner: node,
         });
+        return;
+      }
+      case 'Repeat': {
+        this.expression(node.count);
+        this.emit({ op: 'repeatStart', node: node.count, owner: node });
+        const start = this.here;
+        const exit = this.emit({ op: 'repeatNext', target: -1, node: node.count, owner: node });
+        this.block(node.body);
+        this.emit({ op: 'jump', target: start });
+        this.patch(exit, this.here);
         return;
       }
       case 'For': {

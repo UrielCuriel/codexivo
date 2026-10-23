@@ -106,6 +106,32 @@ describe('eventos', () => {
     ]);
   });
 
+  test('cada vuelta de `repetir` es una decisión', () => {
+    const list = events('repetir 2 veces { }');
+    expect(of(list, 'decide').map(event => `${event.label}:${event.value}`)).toEqual([
+      'repetir:true',
+      'repetir:true',
+      'repetir:false',
+    ]);
+  });
+
+  test('`declara` indica si es constante', () => {
+    const list = of(events('constante K = 1; variable x = 2;'), 'declara');
+    expect(list.map(event => `${event.name}:${event.constant}`)).toEqual(['K:true', 'x:false']);
+  });
+
+  test('`i++` asigna y opera', () => {
+    const list = events('variable i = 1; i++;');
+    expect(of(list, 'asigna')[0]).toMatchObject({ name: 'i', before: { repr: '1' }, after: { repr: '2' } });
+    expect(of(list, 'opera')[0]).toMatchObject({ operator: '+', result: { repr: '2' } });
+  });
+
+  test('`mod` y `%` se ven igual en los eventos', () => {
+    const operators = (source: string) => of(events(source), 'opera').map(event => event.operator);
+    expect(operators('7 % 2;')).toEqual(['mod']);
+    expect(operators('7 mod 2;')).toEqual(['mod']);
+  });
+
   test('operaciones con sus operandos', () => {
     const [operation] = of(events('2 * 3 + 1;'), 'opera');
     expect(operation).toMatchObject({ operator: '*', operands: [{ repr: '2' }, { repr: '3' }], result: { repr: '6' } });

@@ -9,10 +9,12 @@ interface BaseNode {
   span: Span;
 }
 
-export type BinaryOperator = '+' | '-' | '*' | '/' | '==' | '!=' | '<' | '>' | '<=' | '>=';
+/** `%` y `mod` son el mismo operador; en el AST siempre aparece como `mod`. */
+export type BinaryOperator = '+' | '-' | '*' | '/' | 'div' | 'mod' | '^' | '==' | '!=' | '<' | '>' | '<=' | '>=';
 export type LogicalOperator = 'y' | 'o';
 export type UnaryOperator = '-' | 'no';
-export type AssignmentOperator = '=' | '+=' | '-=' | '*=' | '/=';
+export type AssignmentOperator = '=' | '+=' | '-=' | '*=' | '/=' | '%=';
+export type IncrementOperator = '++' | '--';
 
 // ── expresiones ──────────────────────────────────────────────────────────────
 
@@ -104,6 +106,8 @@ export type Expression =
 
 export interface VariableDeclaration extends BaseNode {
   kind: 'VariableDeclaration';
+  /** `true` si se declaró con `constante`: no se puede reasignar. */
+  constant: boolean;
   name: Identifier;
   value: Expression;
 }
@@ -113,6 +117,13 @@ export interface Assignment extends BaseNode {
   target: Identifier;
   operator: AssignmentOperator;
   value: Expression;
+}
+
+/** `i++` / `i--`: son sentencias, no expresiones. */
+export interface Increment extends BaseNode {
+  kind: 'Increment';
+  target: Identifier;
+  operator: IncrementOperator;
 }
 
 export interface ExpressionStatement extends BaseNode {
@@ -159,14 +170,31 @@ export interface DoUntil extends BaseNode {
 
 export interface For extends BaseNode {
   kind: 'For';
-  init?: VariableDeclaration | Assignment | ExpressionStatement;
+  init?: VariableDeclaration | Assignment | Increment | ExpressionStatement;
   condition?: Expression;
-  update?: Assignment | ExpressionStatement;
+  update?: Assignment | Increment | ExpressionStatement;
+  body: Block;
+}
+
+/** `repetir n veces { … }`: el contador es interno, no una variable visible. */
+export interface Repeat extends BaseNode {
+  kind: 'Repeat';
+  count: Expression;
   body: Block;
 }
 
 export type Statement =
-  VariableDeclaration | Assignment | ExpressionStatement | Return | Block | If | While | DoUntil | For;
+  | VariableDeclaration
+  | Assignment
+  | Increment
+  | ExpressionStatement
+  | Return
+  | Block
+  | If
+  | While
+  | DoUntil
+  | For
+  | Repeat;
 
 export interface Program extends BaseNode {
   kind: 'Program';
@@ -198,6 +226,8 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.name, node.value];
     case 'Assignment':
       return [node.target, node.value];
+    case 'Increment':
+      return [node.target];
     case 'ExpressionStatement':
       return [node.expression];
     case 'Return':
@@ -211,6 +241,8 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.condition, node.body];
     case 'DoUntil':
       return [node.body, node.condition];
+    case 'Repeat':
+      return [node.count, node.body];
     case 'For':
       return [
         ...(node.init ? [node.init] : []),

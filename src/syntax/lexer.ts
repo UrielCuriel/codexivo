@@ -20,6 +20,9 @@ const TWO_CHAR_OPERATORS: Readonly<Record<string, TokenType>> = {
   '-=': TokenType.MINUS_ASSIGN,
   '*=': TokenType.STAR_ASSIGN,
   '/=': TokenType.SLASH_ASSIGN,
+  '%=': TokenType.PERCENT_ASSIGN,
+  '++': TokenType.INCREMENT,
+  '--': TokenType.DECREMENT,
 };
 
 const ONE_CHAR_OPERATORS: Readonly<Record<string, TokenType>> = {
@@ -28,6 +31,8 @@ const ONE_CHAR_OPERATORS: Readonly<Record<string, TokenType>> = {
   '-': TokenType.MINUS,
   '*': TokenType.STAR,
   '/': TokenType.SLASH,
+  '%': TokenType.PERCENT,
+  '^': TokenType.CARET,
   '!': TokenType.BANG,
   '<': TokenType.LT,
   '>': TokenType.GT,
@@ -130,12 +135,16 @@ export const tokenize = (source: string): LexResult => {
 
     // números
     if (DIGIT.test(character) || (character === '.' && DIGIT.test(peek(1)))) {
-      while (DIGIT.test(peek())) advance();
+      // `_` separa grupos de dígitos (`1_000_000`); se revisa que esté bien puesto al final.
+      const digits = () => {
+        while (DIGIT.test(peek()) || peek() === '_') advance();
+      };
+      digits();
       if (peek() === '.' && DIGIT.test(peek(1))) {
         advance();
-        while (DIGIT.test(peek())) advance();
+        digits();
       }
-      if (LETTER.test(peek())) {
+      if (LETTER.test(peek()) && peek() !== '_') {
         while (LETTER.test(peek()) || DIGIT.test(peek())) advance();
         const token = push(TokenType.ILLEGAL, start);
         lexicalError(
@@ -146,7 +155,18 @@ export const tokenize = (source: string): LexResult => {
         );
         continue;
       }
-      push(TokenType.NUMBER, start, Number(source.slice(start.offset, offset)));
+      const text = source.slice(start.offset, offset);
+      if (/(^|\D)_|_(\D|$)/.test(text)) {
+        const token = push(TokenType.ILLEGAL, start);
+        lexicalError(
+          'SEPARADOR_INVÁLIDO',
+          `\`${text}\` no es un número válido.`,
+          token.span,
+          'El `_` solo puede ir entre dos dígitos para separar grupos, como en `1_000_000`.',
+        );
+        continue;
+      }
+      push(TokenType.NUMBER, start, Number(text.replaceAll('_', '')));
       continue;
     }
 

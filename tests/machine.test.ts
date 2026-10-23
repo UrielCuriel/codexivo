@@ -120,7 +120,7 @@ describe('control de flujo', () => {
   });
 
   test('hacer … hasta_que se ejecuta al menos una vez', () => {
-    expect(value('variable veces = 0; hacer { veces += 1; } hasta_que (verdadero); veces;')).toBe('1');
+    expect(value('variable vueltas = 0; hacer { vueltas += 1; } hasta_que (verdadero); vueltas;')).toBe('1');
     expect(value('variable i = 0; hacer { i += 2; } hasta_que (i >= 7); i;')).toBe('8');
   });
 
@@ -292,5 +292,140 @@ describe('límites', () => {
   test('el número de operaciones es determinista', () => {
     const source = 'variable s = 0; para (variable i = 0; i < 100; i += 1) { s += i; } s;';
     expect(run(source).operations).toBe(run(source).operations);
+  });
+});
+
+describe('nivel principiante (paso 4)', () => {
+  test.each([
+    ['7 div 2', '3'],
+    ['-7 div 2', '-4'],
+    ['7 mod 3', '1'],
+    ['-7 mod 3', '2'],
+    ['7 % -3', '-2'],
+    ['10 % 4 == 10 mod 4', 'verdadero'],
+    ['2 ^ 10', '1024'],
+    ['-2 ^ 2', '-4'],
+    ['(-2) ^ 2', '4'],
+    ['2 ^ 3 ^ 2', '512'],
+    ['2 ^ -1', '0.5'],
+    ['1_000_000 + 1', '1000001'],
+    ['3 es_menor_que 4', 'verdadero'],
+    ['3 es_mayor_que 4', 'falso'],
+    ['4 es_menor_o_igual_a 4', 'verdadero'],
+    ['4 es_mayor_o_igual_a 5', 'falso'],
+    ['"a" es_igual_a "a"', 'verdadero'],
+    ['"a" es_distinto_de "a"', 'falso'],
+  ])('%s → %s', (source, expected) => {
+    expect(value(source)).toBe(expected);
+  });
+
+  test('`a == (a div b) * b + (a mod b)`', () => {
+    for (const [a, b] of [
+      [7, 2],
+      [-7, 2],
+      [7, -2],
+      [-7, -3],
+    ]) {
+      expect(value(`(${a}) == ((${a}) div (${b})) * (${b}) + ((${a}) mod (${b}))`)).toBe('verdadero');
+    }
+  });
+
+  test.each(['5 div 0', '5 mod 0', '5 % 0', 'variable x = 5; x %= 0;'])('%s → DIVISIÓN_ENTRE_CERO', source => {
+    expect(failure(source).code).toBe('DIVISIÓN_ENTRE_CERO');
+  });
+
+  test('`mod`, `div` y `^` solo trabajan con números', () => {
+    expect(failure('"a" mod 2').code).toBe('TIPO_INVÁLIDO');
+    expect(failure('2 ^ "a"').code).toBe('TIPO_INVÁLIDO');
+  });
+
+  test('una potencia sin resultado real es un error', () => {
+    const error = failure('(-8) ^ 0.5');
+    expect(error.code).toBe('POTENCIA_INVÁLIDA');
+    expect(error.message).toContain('(-8) ^ 0.5');
+  });
+
+  test('`++`, `--` y `%=`', () => {
+    expect(value('variable i = 5; i++; i++; i--; i;')).toBe('6');
+    expect(value('variable x = 17; x %= 5; x;')).toBe('2');
+    expect(value('variable s = 0; para (variable i = 0; i < 4; i++) { s += i; } s;')).toBe('6');
+    expect(failure('j++;').code).toBe('VARIABLE_NO_DECLARADA');
+    expect(failure('variable t = "a"; t++;').code).toBe('TIPOS_MEZCLADOS');
+  });
+
+  describe('repetir', () => {
+    test('repite el bloque n veces', () => {
+      expect(value('variable c = 0; repetir 4 veces { c++; } c;')).toBe('4');
+      expect(value('variable n = 3; variable c = 0; repetir n * 2 veces { c++; } c;')).toBe('6');
+      expect(value('variable c = 0; repetir 3 veces { repetir 2 veces { c++; } } c;')).toBe('6');
+    });
+
+    test('0 veces no ejecuta el bloque', () => {
+      expect(value('repetir 0 veces { 1 / 0; } 5;')).toBe('5');
+    });
+
+    test('la cantidad se evalúa una sola vez', () => {
+      expect(value('variable n = 3; variable c = 0; repetir n veces { n++; c++; } c;')).toBe('3');
+    });
+
+    test('el contador es interno: no crea ninguna variable', () => {
+      const result = run('repetir 2 veces { }', { trace: true });
+      expect(result.events!.filter(event => event.type === 'declara')).toEqual([]);
+    });
+
+    test('`regresa` dentro de `repetir` sale del procedimiento', () => {
+      expect(value('variable f = procedimiento() { repetir 5 veces { regresa 1; } regresa 2; }; f() + f();')).toBe('2');
+    });
+
+    test.each([
+      ['repetir -1 veces { }', 'negativa'],
+      ['repetir 2.5 veces { }', 'redondear'],
+      ['repetir "3" veces { }', 'número(…)'],
+    ])('%s → REPETICIONES_INVÁLIDAS', (source, hint) => {
+      const error = failure(source);
+      expect(error.code).toBe('REPETICIONES_INVÁLIDAS');
+      expect(error.hint).toContain(hint);
+      expect(error.span?.start.column).toBe(9);
+    });
+  });
+
+  describe('constante', () => {
+    test('se declara y se lee como una variable', () => {
+      expect(value('constante LADOS = 4; LADOS * 2;')).toBe('8');
+    });
+
+    test.each([
+      'constante K = 1; K = 2;',
+      'constante K = 1; K += 1;',
+      'constante K = 1; K++;',
+      'constante K = 1; K--;',
+    ])('%s → CONSTANTE_REASIGNADA', source => {
+      const error = failure(source);
+      expect(error.code).toBe('CONSTANTE_REASIGNADA');
+      expect(error.hint).toContain('variable K');
+    });
+
+    test('reasignarla desde un bloque interno también es un error', () => {
+      expect(failure('constante K = 1; si (verdadero) { K = 2; }').code).toBe('CONSTANTE_REASIGNADA');
+    });
+
+    test('un bloque interno puede declarar su propia variable con el mismo nombre', () => {
+      expect(value('constante K = 1; si (verdadero) { variable K = 2; K = 3; } K;')).toBe('1');
+    });
+  });
+
+  describe('PI', () => {
+    test('es una constante de la biblioteca', () => {
+      expect(value('redondear(PI, 4)')).toBe('3.1416');
+    });
+
+    test('una variable del usuario puede ocultarla', () => {
+      expect(value('constante PI = 3.14159; PI;')).toBe('3.14159');
+      expect(value('variable PI = 3; PI;')).toBe('3');
+    });
+
+    test('no se le puede asignar sin declararla', () => {
+      expect(failure('PI = 3;').code).toBe('NOMBRE_RESERVADO_POR_BIBLIOTECA');
+    });
   });
 });

@@ -117,6 +117,11 @@ const library: NativeValue[] = [
   }),
 ];
 
+/** Constantes de la biblioteca. Una variable del usuario con el mismo nombre las oculta. */
+export const constants: Readonly<Record<string, Value>> = {
+  PI: Math.PI,
+};
+
 /** Quita los acentos agudos y la diéresis, pero conserva la ñ. */
 export const withoutAccents = (name: string): string =>
   name.replace(/[áéíóúü]/g, character => ({ á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u' })[character] ?? character);

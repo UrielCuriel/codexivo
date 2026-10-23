@@ -137,7 +137,7 @@ notarizados.
 - [x] Lexer, parser y máquina con posiciones exactas, errores con pistas y límites deterministas
 - [x] Ejecución paso a paso, eventos y fotografías del estado para visualización
 - [x] `imprimir`, `leer`, `leer_número`, comentarios, `nulo`
-- [ ] Nivel principiante de la v1: `repetir … veces`, `++`/`--`, `mod`/`div`, operadores en palabras, `constante`
+- [x] Nivel principiante de la v1: `repetir … veces`, `++`/`--`, `mod`/`div`, operadores en palabras, `constante`
 - [ ] Nivel intermedio: procedimientos con nombre, `para_cada`, `romper`/`continuar`, diccionarios, más biblioteca
 - [ ] Nivel avanzado: procedimientos como valores en la biblioteca, pilas y colas
 - [ ] Modo mundo (Karel)
