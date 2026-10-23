@@ -16,24 +16,24 @@ Inspirado por esta idea, me embarqué en este proyecto con la determinación de 
 
 ```codexivo
 // La suma de los números del 1 al 10
-variable suma = 0;
-para (variable i = 1; i <= 10; i += 1) {
-  suma += i;
+variable suma = 0
+para i desde 1 hasta 10 {
+  suma = suma + i
 }
-imprimir("La suma es", suma);
+imprimir("La suma es", suma)
 ```
 
 ```codexivo
-variable clasificar = procedimiento(edad) {
-  si (edad >= 18) {
-    regresa "adulto";
-  } pero_si (edad >= 13) {
-    regresa "adolescente";
+procedimiento clasificar(edad) {
+  si (edad es_mayor_o_igual_a 18) {
+    regresa "adulto"
+  } pero_si (edad es_mayor_o_igual_a 13) {
+    regresa "adolescente"
   } si_no {
-    regresa "niño";
+    regresa "niño"
   }
-};
-imprimir(clasificar(16));
+}
+imprimir(clasificar(16))
 ```
 
 Lo que funciona hoy está en [`docs/lenguaje.md`](./docs/lenguaje.md), y todos sus ejemplos se ejecutan tal cual. Hacia dónde va

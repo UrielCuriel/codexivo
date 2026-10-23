@@ -152,6 +152,15 @@ describe('diagrama de flujo', () => {
     expect(graphOf('para_cada x en l { }').nodes[1]).toMatchObject({ kind: 'decisión', label: 'para_cada x en l' });
   });
 
+  test('para … desde … hasta es una decisión con repetir y salir', () => {
+    expect(edges(graphOf('para i desde 1 hasta 10 con_paso 2 { imprimir(i) }'))).toEqual([
+      'inicio --> para i desde 1 hasta 10 con_paso 2',
+      'para i desde 1 hasta 10 con_paso 2 -[repetir]-> imprimir(i)',
+      'imprimir(i) -[vuelta]-> para i desde 1 hasta 10 con_paso 2',
+      'para i desde 1 hasta 10 con_paso 2 -[salir]-> fin',
+    ]);
+  });
+
   test('romper y continuar saltan a la salida y a la siguiente vuelta', () => {
     expect(
       edges(graphOf('para (variable i = 0; i < 9; i++) {\n  si (i == 2) { continuar; }\n  si (i == 5) { romper; }\n}')),
@@ -228,6 +237,7 @@ describe('el diagrama cubre la ejecución', () => {
     'variable i = 0;\nhacer { i++; } hasta_que (i == 3);',
     'para (variable i = 0; i < 5; i++) { si (i == 3) { romper; } }\npara (; falso;) { }',
     'variable t = 0;\nrepetir 3 veces { t += 1; }\npara_cada x en [1, 2] { t += x; }',
+    'variable t = 0\npara i desde 1 hasta 5 {\n  si (i == 2) { continuar }\n  si (i == 4) { romper }\n  t = t + i\n}',
     'procedimiento f(n) {\n  si (n == 0) { regresa 0; }\n  regresa f(n - 1);\n}\nimprimir(f(3));',
     'variable d = { "a": 1 };\npara_cada k, v en d { imprimir(k, v); }\n{ variable z = 1; }',
     'dominio c {\n  variable n = 0;\n  dominio d { constante K = 1; }\n  procedimiento f() { regresa n + d.K; }\n}\nimprimir(c.f());',

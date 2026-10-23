@@ -201,6 +201,19 @@ export interface For extends BaseNode {
   body: Block;
 }
 
+/**
+ * `para i desde a hasta b con_paso p { … }`: cuenta de `a` a `b`, incluidos los dos. Los límites y el paso se
+ * evalúan una vez, al empezar; `i` es nueva en cada vuelta y no se puede cambiar dentro del cuerpo.
+ */
+export interface ForRange extends BaseNode {
+  kind: 'ForRange';
+  variable: Identifier;
+  from: Expression;
+  to: Expression;
+  step?: Expression;
+  body: Block;
+}
+
 /** `repetir n veces { … }`: el contador es interno, no una variable visible. */
 export interface Repeat extends BaseNode {
   kind: 'Repeat';
@@ -248,6 +261,7 @@ export type Statement =
   | While
   | DoUntil
   | For
+  | ForRange
   | ForEach
   | Repeat
   | Break
@@ -307,6 +321,8 @@ export const childrenOf = (node: Node): Node[] => {
       return [node.body, node.condition];
     case 'Domain':
       return [node.name, node.body];
+    case 'ForRange':
+      return [node.variable, node.from, node.to, ...(node.step ? [node.step] : []), node.body];
     case 'Repeat':
       return [node.count, node.body];
     case 'For':

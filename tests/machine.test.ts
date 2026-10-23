@@ -969,3 +969,76 @@ describe('dominios', () => {
     expect(run('dominio c { } longitud(c);').errors[0]!.code).toBe('TIPO_DE_ARGUMENTO');
   });
 });
+
+describe('para … desde … hasta', () => {
+  const collect = (header: string) => value(`variable l = []\npara ${header} {\n  agregar(l, i)\n}\nl`);
+
+  test.each([
+    ['i desde 1 hasta 5', '[1, 2, 3, 4, 5]'],
+    ['i desde 3 hasta 3', '[3]'],
+    ['i desde 10 hasta 0 con_paso -2', '[10, 8, 6, 4, 2, 0]'],
+    ['i desde 1 hasta 10 con_paso 4', '[1, 5, 9]'],
+    ['i desde 0 hasta 1 con_paso 0.25', '[0, 0.25, 0.5, 0.75, 1]'],
+    ['i desde 0 hasta 0.3 con_paso 0.1', '[0, 0.1, 0.2, 0.3]'],
+    ['i desde -2 hasta 2', '[-2, -1, 0, 1, 2]'],
+  ])('para %s → %s', (header, expected) => {
+    expect(collect(header)).toBe(expected);
+  });
+
+  test('el ejemplo del README', () => {
+    expect(
+      run(
+        '// La suma de los números del 1 al 10\nvariable suma = 0\npara i desde 1 hasta 10 {\n  suma = suma + i\n}\nimprimir("La suma es", suma)',
+      ).output,
+    ).toBe('La suma es 55\n');
+  });
+
+  test('los límites y el paso se evalúan una sola vez', () => {
+    expect(value('variable n = 3\nvariable c = 0\npara i desde 1 hasta n {\n  n = 100\n  c = c + 1\n}\nc')).toBe('3');
+    expect(
+      value(
+        'variable llamadas = 0\nprocedimiento tres() {\n  llamadas = llamadas + 1\n  regresa 3\n}\npara i desde 1 hasta tres() { }\nllamadas',
+      ),
+    ).toBe('1');
+  });
+
+  test('la variable es nueva en cada vuelta y solo existe dentro', () => {
+    expect(failure('para i desde 1 hasta 3 { }\ni').code).toBe('NOMBRE_DESCONOCIDO');
+    expect(
+      value('variable fs = []\npara i desde 1 hasta 2 { agregar(fs, procedimiento() { regresa i }) }\nfs[0]()'),
+    ).toBe('1');
+    expect(value('variable i = 7\npara i desde 1 hasta 2 { }\ni')).toBe('7');
+  });
+
+  test('romper y continuar', () => {
+    expect(value('variable c = 0\npara i desde 1 hasta 9 {\n  si (i == 4) { romper }\n  c = c + i\n}\nc')).toBe('6');
+    expect(value('variable c = 0\npara i desde 1 hasta 4 {\n  si (i == 2) { continuar }\n  c = c + i\n}\nc')).toBe('8');
+    expect(value('procedimiento f() {\n  para i desde 1 hasta 3 { regresa i * 10 }\n}\nf() + 1')).toBe('11');
+  });
+
+  test.each([
+    ['para i desde 10 hasta 1 { }', 'PARA_SENTIDO_CONTRARIO', 'con_paso -1'],
+    ['para i desde 1 hasta 10 con_paso -1 { }', 'PARA_SENTIDO_CONTRARIO', 'positivo'],
+    ['para i desde 1 hasta 3 con_paso 0 { }', 'PARA_PASO_CERO', 'negativo'],
+    ['para i desde "1" hasta 3 { }', 'PARA_LÍMITE_INVÁLIDO', 'número(…)'],
+    ['para i desde 1 hasta nulo { }', 'PARA_LÍMITE_INVÁLIDO', ''],
+    ['para i desde 1 hasta 3 con_paso "1" { }', 'PARA_LÍMITE_INVÁLIDO', ''],
+    ['para i desde 1 hasta 3 {\n  i = 5\n}', 'VARIABLE_DE_PARA', 'variable nueva'],
+    ['para i desde 1 hasta 3 { i++ }', 'VARIABLE_DE_PARA', ''],
+    ['para i desde 1 hasta 3 { variable i = 2 }', 'VARIABLE_REPETIDA', ''],
+  ])('%s → %s', (source, code, hint) => {
+    const error = failure(source);
+    expect(error.code).toBe(code);
+    expect(error.hint ?? '').toContain(hint);
+  });
+
+  test('el mensaje de la variable del `para`', () => {
+    expect(failure('para i desde 1 hasta 3 { i = 0 }').message).toBe(
+      'La variable de un `para` avanza sola; `i` no se puede cambiar dentro del bucle.',
+    );
+  });
+
+  test('un bloque interno puede declarar su propia variable con el mismo nombre', () => {
+    expect(value('para i desde 1 hasta 2 {\n  si (verdadero) {\n    variable i = 0\n    i = 9\n  }\n}\n1')).toBe('1');
+  });
+});

@@ -125,6 +125,8 @@ export const printStatement = (node: ast.Statement): string => {
       return `para (${node.condition ? printExpression(node.condition) : ''})`;
     case 'Repeat':
       return `repetir ${printExpression(node.count)} veces`;
+    case 'ForRange':
+      return `para ${node.variable.name} desde ${printExpression(node.from)} hasta ${printExpression(node.to)}${node.step ? ` con_paso ${printExpression(node.step)}` : ''}`;
     case 'ForEach':
       return `para_cada ${node.variable.name}${node.value ? `, ${node.value.name}` : ''} en ${printExpression(node.iterable)}`;
   }

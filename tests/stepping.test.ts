@@ -216,6 +216,16 @@ describe('eventos', () => {
     expect(of(list, 'asigna')[0]).toMatchObject({ name: 'c.n', before: { repr: '1' }, after: { repr: '2' } });
   });
 
+  test('cada vuelta de `para … desde … hasta` decide y declara la variable', () => {
+    const list = events('para i desde 1 hasta 2 { }');
+    expect(of(list, 'decide').map(event => `${event.label}:${event.value}`)).toEqual([
+      'para:true',
+      'para:true',
+      'para:false',
+    ]);
+    expect(of(list, 'declara').map(event => `${event.name}=${event.value.repr}`)).toEqual(['i=1', 'i=2']);
+  });
+
   test('`declara` indica si es constante', () => {
     const list = of(events('constante K = 1; variable x = 2;'), 'declara');
     expect(list.map(event => `${event.name}:${event.constant}`)).toEqual(['K:true', 'x:false']);

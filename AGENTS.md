@@ -52,6 +52,9 @@ Run `bun fmt --check`, `bun test` and `bun check` before every push.
   Never let a JavaScript exception escape for a user mistake.
 - New error codes go in `src/error-codes.ts` with an explanation; new library procedures need their `doc` (description,
   signature and runnable examples). `tests/catalog.test.ts` checks both.
+- Beginner-level examples (README, `docs/lenguaje.md`, the recipe book, spec §9) and code suggested in error hints use no
+  abbreviations (`+=`, `++`), no symbols that have a word form (`es_igual_a`, `mod`…), and no `;` at end of line.
+  Abbreviations come later, as shortcuts for something already understood (spec §0).
 - Every AST node and token keeps its `span`; every instruction keeps its node. Visualizations depend on it.
 - The machine must stay deterministic: same program + same input ⇒ same output, same operation count.
 - Built-in names with accents are canonical; the unaccented alias is registered automatically.

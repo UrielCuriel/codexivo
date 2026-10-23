@@ -225,6 +225,8 @@ export class Scope {
   readonly variables = new Map<string, Value>();
   /** Nombres de este alcance declarados con `constante`. */
   readonly constants = new Set<string>();
+  /** Variables de `para … desde … hasta` en este alcance: avanzan solas. */
+  readonly loopVariables = new Set<string>();
 
   constructor(readonly parent?: Scope) {}
 

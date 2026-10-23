@@ -24,6 +24,11 @@ Principios, en orden de prioridad cuando chocan:
 5. **En el navegador y determinista.** Sin instalar nada. El mismo programa con la misma entrada
    produce siempre el mismo resultado y la misma cantidad de operaciones.
 
+> **✅ Decidido (#43) — regla de redacción.** Los ejemplos de nivel principiante no usan abreviaturas (`+=`, `++`) ni
+> símbolos que tengan una alternativa en palabras, y no llevan `;` al final de línea. Las abreviaturas se presentan
+> después, como atajos de algo que ya se entiende. Aplica al README, a `lenguaje.md`, al recetario, a la §9 y a los
+> mensajes de error que sugieren código.
+
 ### Niveles
 
 Cada característica pertenece a un nivel. Los niveles ordenan la documentación y los retos; no
@@ -96,15 +101,20 @@ variable canción_favorita = "Cielito lindo";
 
 ### 2.4 Punto y coma
 
-Separa sentencias. Es **opcional al final de línea**, como hoy; la documentación y el formateador del
-sandbox siempre lo escriben.
+Separa sentencias. Solo hace falta para poner dos en la misma línea; al final de línea es opcional y los ejemplos no lo
+escriben (§0).
+
+Sin `;`, un salto de línea termina la expresión: una línea que empieza con `-`, `(` o `[` es otra sentencia, no la
+continuación de la anterior. Una expresión sigue en la línea siguiente solo si la línea termina en un operador
+(`total = a +`) o si está dentro de paréntesis, corchetes o llaves. Así `x = 1` seguido de `-2` en la otra línea no se
+convierte en silencio en `x = 1 - 2`.
 
 ### 2.5 Palabras reservadas
 
 ```
 variable  constante  procedimiento  regresa  dominio
 si  pero_si  si_no
-mientras  hacer  hasta_que  para  para_cada  en  repetir  veces
+mientras  hacer  hasta_que  para  desde  hasta  con_paso  para_cada  en  repetir  veces
 romper  continuar
 verdadero  falso  nulo
 y  o  no  mod  div
@@ -274,45 +284,83 @@ Las llaves son obligatorias.
 
 ### 5.4 Bucles
 
+Una forma por intención:
+
+| Intención                               | Forma                                          | Nivel |
+| --------------------------------------- | ---------------------------------------------- | ----- |
+| Repetir n veces                         | `repetir n veces { }`                          | 🟢    |
+| Contar                                  | `para i desde a hasta b [con_paso p] { }`      | 🟢    |
+| Mientras se cumpla algo                 | `mientras (c) { }` / `hacer { } hasta_que (c)` | 🟢    |
+| Recorrer una lista, texto o diccionario | `para_cada x en colección { }`                 | 🟡    |
+| Puente hacia otros lenguajes            | `para (inicio; condición; paso) { }`           | 🔴    |
+
 ```codexivo
 // 🟢 repite un número fijo de veces (herencia directa de Karel)
 repetir 4 veces {
-  avanzar();
+  avanzar()
+}
+
+// 🟢 cuenta, incluyendo los dos extremos
+para i desde 1 hasta 10 {
+  suma = suma + i
+}
+para i desde 10 hasta 0 con_paso -2 {
+  imprimir(i)
 }
 
 // 🟢 mientras la condición sea verdadera
-mientras (intentos < 3) {
-  intentos++;
+mientras (intentos es_menor_que 3) {
+  intentos = intentos + 1
 }
 
 // 🟢 al menos una vez, hasta que la condición sea verdadera
 hacer {
-  número = leer_número();
-} hasta_que (número > 0);
+  número = leer_número()
+} hasta_que (número es_mayor_que 0)
 
-// 🟡 recorrer una lista, un rango o un texto
+// 🟡 recorrer una lista o un texto
 para_cada fruta en ["mango", "piña"] {
-  imprimir(fruta);
-}
-para_cada i en rango(1, 10) {
-  imprimir(i);
+  imprimir(fruta)
 }
 
 // 🟡 recorrer un diccionario
 para_cada clave, valor en persona {
-  imprimir(clave, valor);
-}
-
-// 🟡 forma clásica, puente hacia otros lenguajes
-para (variable i = 0; i < 10; i++) {
-  imprimir(i);
+  imprimir(clave, valor)
 }
 ```
 
+> **✅ Decidido (#43) — `para … desde … hasta` es el `para` principal.** «Para i desde 1 hasta 10» es lo que la persona
+> quiere decir; el `for` de C tiene tres partes separadas por `;` que no dicen qué son. `con_paso` lleva guion bajo para no
+> reservar `paso`, que es un nombre común. `hasta` y `hasta_que` son palabras distintas. Después de `para`, un `(` empieza
+> la forma clásica y un nombre, esta.
+
+- **`para i desde a hasta b con_paso p`:**
+  - `i` se declara sola, sin `variable`, es nueva en cada vuelta y solo existe dentro del cuerpo. Cambiarla dentro del
+    bucle es el error `VARIABLE_DE_PARA` («la variable de un `para` avanza sola»).
+  - Incluye los dos extremos. El paso por defecto es `1`.
+  - `desde`, `hasta` y `con_paso` se evalúan **una vez**, al empezar; cambiar después la variable usada en `hasta` no
+    afecta al bucle.
+  - Sin magia: `desde` mayor que `hasta` sin `con_paso` es un error con la pista _«para contar hacia atrás escribe
+    `con_paso -1`»_ (no se invierte solo ni hace cero vueltas en silencio). Un paso en el sentido contrario también
+    (`PARA_SENTIDO_CONTRARIO`), igual que `con_paso 0` (`PARA_PASO_CERO`) o límites que no son números
+    (`PARA_LÍMITE_INVÁLIDO`).
+  - Cada vuelta emite `decide` con `label: 'para'` y `declara` con el nuevo valor de `i`.
+- `para_cada i en rango(1, 10)` deja de ser la forma recomendada para contar; `rango()` sigue creando listas.
 - `romper` sale del bucle más cercano; `continuar` salta a la siguiente vuelta. Fuera de un bucle son un error de
   sintaxis, también dentro de un procedimiento: no cruzan el límite de una llamada.
 - `repetir n veces` exige un número entero no negativo.
 - Modificar la longitud de una lista mientras se recorre con `para_cada` es un error.
+
+**🔴 Puente hacia otros lenguajes.** El `para` clásico se conserva para practicar antes de pasar a C, Java o JavaScript:
+
+```codexivo
+para (variable i = 0; i < 10; i++) {
+  imprimir(i)
+}
+```
+
+Es `para i desde 0 hasta 9` escrito a mano: la condición se vuelve a evaluar en cada vuelta y la variable se puede cambiar
+dentro del cuerpo. La documentación lo presenta en su propia sección, comparándolo con `para … desde … hasta`.
 
 ### 5.5 Procedimientos
 
@@ -484,15 +532,15 @@ diccionarios y `.`.
 
 ```codexivo
 // 🟢 FizzBuzz
-para_cada n en rango(1, 15) {
-  si (n mod 15 == 0) {
-    imprimir("FizzBuzz");
-  } pero_si (n mod 3 == 0) {
-    imprimir("Fizz");
-  } pero_si (n mod 5 == 0) {
-    imprimir("Buzz");
+para n desde 1 hasta 15 {
+  si (n mod 15 es_igual_a 0) {
+    imprimir("FizzBuzz")
+  } pero_si (n mod 3 es_igual_a 0) {
+    imprimir("Fizz")
+  } pero_si (n mod 5 es_igual_a 0) {
+    imprimir("Buzz")
   } si_no {
-    imprimir(n);
+    imprimir(n)
   }
 }
 ```
@@ -500,42 +548,42 @@ para_cada n en rango(1, 15) {
 ```codexivo
 // 🟡 Búsqueda binaria
 procedimiento buscar_binaria(lista, objetivo) {
-  variable inicio = 0;
-  variable fin = longitud(lista) - 1;
-  mientras (inicio <= fin) {
-    variable medio = (inicio + fin) div 2;
+  variable inicio = 0
+  variable fin = longitud(lista) - 1
+  mientras (inicio es_menor_o_igual_a fin) {
+    variable medio = (inicio + fin) div 2
     si (lista[medio] es_igual_a objetivo) {
-      regresa medio;
+      regresa medio
     } pero_si (lista[medio] es_menor_que objetivo) {
-      inicio = medio + 1;
+      inicio = medio + 1
     } si_no {
-      fin = medio - 1;
+      fin = medio - 1
     }
   }
-  regresa -1;
+  regresa -1
 }
 ```
 
 ```codexivo
 // 🔴 Recorrido en anchura: distancia mínima en un grafo
 procedimiento distancia(grafo, origen, destino) {
-  variable visitados = { };
-  variable cola = [[origen, 0]];
-  visitados[origen] = verdadero;
+  variable visitados = { }
+  variable cola = [[origen, 0]]
+  visitados[origen] = verdadero
 
   mientras (longitud(cola) > 0) {
-    variable actual = desencolar(cola);
+    variable actual = desencolar(cola)
     si (actual[0] == destino) {
-      regresa actual[1];
+      regresa actual[1]
     }
     para_cada vecino en grafo[actual[0]] {
       si (no tiene(visitados, vecino)) {
-        visitados[vecino] = verdadero;
-        encolar(cola, [vecino, actual[1] + 1]);
+        visitados[vecino] = verdadero
+        encolar(cola, [vecino, actual[1] + 1])
       }
     }
   }
-  regresa -1;
+  regresa -1
 }
 ```
 

@@ -281,8 +281,14 @@ class Builder {
         return [...(condition ? [{ from: id, label: 'no' as const }] : []), ...loop.breaks];
       }
       case 'Repeat':
+      case 'ForRange':
       case 'ForEach': {
-        const head = statement.kind === 'Repeat' ? statement.count : statement.iterable;
+        const head =
+          statement.kind === 'Repeat'
+            ? statement.count
+            : statement.kind === 'ForRange'
+              ? statement.to
+              : statement.iterable;
         const id = this.node('decisión', printStatement(statement), [statement, head]);
         this.connect(incoming, id);
         const { out, loop } = this.loop(() =>

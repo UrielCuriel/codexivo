@@ -81,7 +81,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   DICCIONARIO_COMO_SENTENCIA: {
     kind: 'sintaxis',
     explanation:
-      'Al inicio de una sentencia, `{` abre un bloque. Un diccionario tiene que estar en una expresión: guárdalo en una variable (`variable d = { "a": 1 };`) o pásalo a un procedimiento.',
+      'Al inicio de una sentencia, `{` abre un bloque. Un diccionario tiene que estar en una expresión: guárdalo en una variable (`variable d = { "a": 1 }`) o pásalo a un procedimiento.',
   },
   DOMINIO_SOLO_DECLARACIONES: {
     kind: 'sintaxis',
@@ -115,7 +115,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   INCREMENTO_EN_EXPRESIÓN: {
     kind: 'sintaxis',
     explanation:
-      '`i++` e `i--` son sentencias: cambian la variable y nada más. No se pueden usar dentro de una expresión (`x = i++`) ni antes del nombre (`++i`). Escribe `i++;` en su propia línea y después usa `i`.',
+      '`i++` e `i--` son sentencias: cambian la variable y nada más. No se pueden usar dentro de una expresión (`x = i++`) ni antes del nombre (`++i`). Escribe `i++` en su propia línea y después usa `i`.',
   },
   LLAVE_SOBRANTE: {
     kind: 'sintaxis',
@@ -149,7 +149,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   PROCEDIMIENTO_CON_NOMBRE: {
     kind: 'sintaxis',
     explanation:
-      '`procedimiento nombre(…) { … }` es una sentencia y no puede ir dentro de una expresión. Como valor, el procedimiento se escribe sin nombre: `variable doble = procedimiento(x) { regresa x * 2; };`.',
+      '`procedimiento nombre(…) { … }` es una sentencia y no puede ir dentro de una expresión. Como valor, el procedimiento se escribe sin nombre: `variable doble = procedimiento(x) { regresa x * 2 }`.',
   },
   RAMA_SIN_SI: {
     kind: 'sintaxis',
@@ -219,7 +219,7 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
   CONDICIÓN_NO_LÓGICA: {
     kind: 'ejecución',
     explanation:
-      'Las condiciones de `si`, `mientras`, `hasta_que` y `para` tienen que ser `verdadero` o `falso`. En otros lenguajes `si (x)` funciona con números; en Codexivo se dice lo que se quiere preguntar: `si (x != 0)`.',
+      'Las condiciones de `si`, `mientras`, `hasta_que` y `para` tienen que ser `verdadero` o `falso`. En otros lenguajes `si (x)` funciona con números; en Codexivo se dice lo que se quiere preguntar: `si (x es_distinto_de 0)`.',
   },
   CONSTANTE_REASIGNADA: {
     kind: 'ejecución',
@@ -284,6 +284,21 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
     kind: 'ejecución',
     explanation:
       '`y`, `o` y `no` unen valores `verdadero` o `falso`. Para preguntar algo sobre un número o un texto, compáralo primero: `x > 0 y nombre != ""`.',
+  },
+  PARA_LÍMITE_INVÁLIDO: {
+    kind: 'ejecución',
+    explanation:
+      'En `para i desde a hasta b con_paso p`, el inicio, el final y el paso tienen que ser números. Si vienen de `leer()`, conviértelos con `número(…)` o usa `leer_número()`.',
+  },
+  PARA_PASO_CERO: {
+    kind: 'ejecución',
+    explanation:
+      'Con `con_paso 0`, la variable nunca cambiaría y el `para` no llegaría al final. Usa un paso positivo para contar hacia arriba o uno negativo para contar hacia abajo.',
+  },
+  PARA_SENTIDO_CONTRARIO: {
+    kind: 'ejecución',
+    explanation:
+      'El paso va en el sentido contrario al que hay que recorrer: por ejemplo, `para i desde 10 hasta 1` sin paso cuenta hacia arriba y nunca llegaría al 1. Codexivo no lo invierte solo ni hace cero vueltas en silencio: para contar hacia atrás escribe `con_paso -1`.',
   },
   PARA_CADA_INVÁLIDO: {
     kind: 'ejecución',
@@ -361,6 +376,11 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
     kind: 'ejecución',
     explanation:
       'El operador no funciona con esos tipos, como `-` entre dos textos o `no` con un número. Revisa qué valor tiene cada lado.',
+  },
+  VARIABLE_DE_PARA: {
+    kind: 'ejecución',
+    explanation:
+      'La variable de `para i desde … hasta …` avanza sola en cada vuelta, así que no se puede cambiar dentro del bucle. Si necesitas otro valor, guárdalo en una variable nueva; si necesitas controlar el avance a mano, usa `mientras`.',
   },
   VARIABLE_NO_DECLARADA: {
     kind: 'ejecución',

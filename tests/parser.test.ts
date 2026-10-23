@@ -210,6 +210,84 @@ describe('parser', () => {
     });
   });
 
+  describe('sin punto y coma', () => {
+    const kinds = (source: string) => {
+      const { program, errors } = parse(source);
+      expect(errors).toEqual([]);
+      return program.statements.map(statement =>
+        statement.kind === 'ExpressionStatement' ? show(statement.expression) : statement.kind,
+      );
+    };
+
+    test('una línea que empieza con `-`, `(` o `[` es otra sentencia', () => {
+      expect(kinds('7 div 2\n-7 div 2')).toEqual(['(7 div 2)', '((- 7) div 2)']);
+      expect(kinds('variable f = 1\n(2 + 3)')).toEqual(['VariableDeclaration', '(2 + 3)']);
+      expect(kinds('x\n[1, 2]')).toEqual(['x', '[1, 2]']);
+    });
+
+    test('después de un operador, la expresión sigue en la línea siguiente', () => {
+      expect(kinds('1 +\n2')).toEqual(['(1 + 2)']);
+      expect(kinds('a y\nb')).toEqual(['(a y b)']);
+    });
+
+    test('dentro de paréntesis, corchetes o llaves los saltos de línea no terminan nada', () => {
+      expect(kinds('(1\n+ 2)')).toEqual(['(1 + 2)']);
+      expect(kinds('f(1\n- 2,\n3)')).toEqual(['f((1 - 2), 3)']);
+      expect(kinds('[1\n- 2]')).toEqual(['[(1 - 2)]']);
+      expect(kinds('si (a\ny b) { }')).toEqual(['If']);
+    });
+
+    test('el cuerpo de un procedimiento dentro de un paréntesis vuelve a separar por líneas', () => {
+      expect(kinds('mapear(l, procedimiento(x) {\n  variable y2 = x\n  -y2\n})')).toEqual([
+        'mapear(l, procedimiento(x))',
+      ]);
+      const call = parse('mapear(l, procedimiento(x) {\n  variable y2 = x\n  -y2\n})').program
+        .statements[0] as ast.ExpressionStatement;
+      const fn = (call.expression as ast.Call).args[1] as ast.FunctionLiteral;
+      expect(fn.body.statements.map(statement => statement.kind)).toEqual([
+        'VariableDeclaration',
+        'ExpressionStatement',
+      ]);
+    });
+  });
+
+  describe('para … desde … hasta', () => {
+    test('después de `para`, un nombre es la forma que cuenta y `(` la clásica', () => {
+      const { program, errors } = parse(
+        'para i desde 1 hasta n + 1 { }\npara j desde 10 hasta 0 con_paso -2 { }\npara (variable k = 0; k < 3; k++) { }',
+      );
+      expect(errors).toEqual([]);
+      expect(program.statements.map(statement => statement.kind)).toEqual(['ForRange', 'ForRange', 'For']);
+      const [first, second] = program.statements as ast.ForRange[];
+      expect(first!.variable.name).toBe('i');
+      expect([show(first!.from), show(first!.to), first!.step]).toEqual(['1', '(n + 1)', undefined]);
+      expect(show(second!.step!)).toBe('(- 2)');
+    });
+
+    test('`hasta` y `hasta_que` son tokens distintos', () => {
+      const { errors } = parse('para i desde 1 hasta 3 { }\nhacer { } hasta_que (verdadero)');
+      expect(errors).toEqual([]);
+    });
+
+    test.each([
+      ['para i = 1 hasta 3 { }', 'desde'],
+      ['para variable i desde 1 hasta 3 { }', 'sin `variable`'],
+      ['para i desde 1 { }', 'hasta'],
+      ['para i desde 1 hasta 3 con_paso { }', 'valor'],
+      ['para i en [1] { }', 'desde'],
+      ['variable hasta = 1;', 'reservada'],
+      ['variable con_paso = 1;', 'reservada'],
+    ])('%s → un error que orienta', (source, text) => {
+      const { errors } = parse(source);
+      expect(errors).toHaveLength(1);
+      expect(`${errors[0]!.message} ${errors[0]!.hint ?? ''}`).toContain(text);
+    });
+
+    test('`romper` y `continuar` valen dentro', () => {
+      expect(parse('para i desde 1 hasta 3 { romper }\npara i desde 1 hasta 3 { continuar }').errors).toEqual([]);
+    });
+  });
+
   describe('dominios', () => {
     test('agrupa declaraciones bajo un nombre', () => {
       const { program, errors } = parse(
@@ -358,8 +436,8 @@ describe('parser', () => {
       expect(parse('sino { }').errors[0]!.hint).toContain('si_no');
       expect(parse('si (x = 2) { }').errors[0]!.hint).toContain('==');
       expect(parse('1 < x < 5').errors[0]!.hint).toContain('y');
-      expect(parse('x = i++').errors[0]!.hint).toContain('`i++;`');
-      expect(parse('++i').errors[0]!.hint).toContain('`i++;`');
+      expect(parse('x = i++').errors[0]!.hint).toContain('`i++` en su propia línea');
+      expect(parse('++i').errors[0]!.hint).toContain('`i++`');
       expect(parse('constante K').errors[0]!.hint).toContain('constante K =');
     });
 

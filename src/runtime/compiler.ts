@@ -19,7 +19,15 @@ export type Instruction =
    * Saca un valor de la pila y crea la variable (o constante) `target` en el alcance actual. `node` es la
    * sentencia que la declara: una declaración, un procedimiento con nombre o la variable de un `para_cada`.
    */
-  | { op: 'declare'; name: string; constant: boolean; target: ast.Identifier; node: ast.Node }
+  | {
+      op: 'declare';
+      name: string;
+      constant: boolean;
+      target: ast.Identifier;
+      node: ast.Node;
+      /** La variable de un `para … desde … hasta`: avanza sola y no se puede cambiar en el cuerpo. */
+      loop?: boolean;
+    }
   /** Saca un valor de la pila y lo guarda en una variable existente. */
   | { op: 'store'; name: string; target: ast.Identifier; node: ast.Assignment | ast.Increment }
   /** Saca valor, índice (o clave) y lista (o diccionario), en ese orden, y cambia el elemento. */
@@ -55,6 +63,13 @@ export type Instruction =
    * diccionario, la lista de sus claves al empezar) y la posición 0.
    */
   | { op: 'forEachStart'; node: ast.Expression; owner: ast.ForEach }
+  /**
+   * Saca inicio, final y paso de la pila, los revisa y deja cuatro valores ocultos: el inicio, el paso, la
+   * cantidad de vueltas y la vuelta actual.
+   */
+  | { op: 'rangeStart'; explicitStep: boolean; owner: ast.ForRange }
+  /** Si quedan vueltas, pone el siguiente valor en la pila; si no, saca los valores ocultos y salta a `target`. */
+  | { op: 'rangeNext'; target: number; node: ast.Expression; owner: ast.ForRange }
   /**
    * Si quedan elementos, pone el siguiente en la pila (en un diccionario, la clave; o el valor y luego la
    * clave si hay dos variables); si no, saca los valores ocultos y salta a `target`.
@@ -328,6 +343,34 @@ class Compiler {
         const start = this.here;
         const exit = this.emit({ op: 'repeatNext', target: -1, node: node.count, owner: node });
         const loop = this.loop(1, () => this.block(node.body));
+        this.emit({ op: 'jump', target: start });
+        this.patch(exit, this.here);
+        this.connect(loop.continues, start);
+        this.connect(loop.breaks, this.here);
+        return;
+      }
+      case 'ForRange': {
+        this.expression(node.from);
+        this.expression(node.to);
+        if (node.step) this.expression(node.step);
+        else this.emit({ op: 'const', value: 1, node });
+        this.emit({ op: 'rangeStart', explicitStep: Boolean(node.step), owner: node });
+        const start = this.here;
+        const exit = this.emit({ op: 'rangeNext', target: -1, node: node.to, owner: node });
+        const loop = this.loop(4, () => {
+          // Como en `para_cada`, la variable es nueva en cada vuelta y comparte alcance con el cuerpo.
+          this.enterScope();
+          this.emit({
+            op: 'declare',
+            name: node.variable.name,
+            constant: false,
+            loop: true,
+            target: node.variable,
+            node: node.variable,
+          });
+          this.statements(node.body.statements);
+          this.exitScope();
+        });
         this.emit({ op: 'jump', target: start });
         this.patch(exit, this.here);
         this.connect(loop.continues, start);

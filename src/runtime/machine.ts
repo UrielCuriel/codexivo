@@ -196,6 +196,7 @@ const NO_COUNT = new Set<Instruction['op']>([
   'pop',
   'repeatStart',
   'forEachStart',
+  'rangeStart',
   'halt',
 ]);
 
@@ -476,6 +477,8 @@ export class Machine {
         frame.scope.variables.set(instruction.name, value);
         if (instruction.constant) frame.scope.constants.add(instruction.name);
         else frame.scope.constants.delete(instruction.name);
+        if (instruction.loop) frame.scope.loopVariables.add(instruction.name);
+        else frame.scope.loopVariables.delete(instruction.name);
         this.emit({
           type: 'declara',
           name: instruction.name,
@@ -491,6 +494,14 @@ export class Machine {
         const value = this.stack.pop()!;
         const scope = frame.scope.lookup(instruction.name);
         if (!scope) throw this.undeclaredAssignment(instruction.name, instruction.target);
+        if (scope.loopVariables.has(instruction.name)) {
+          throw this.runtimeError(
+            'VARIABLE_DE_PARA',
+            `La variable de un \`para\` avanza sola; \`${instruction.name}\` no se puede cambiar dentro del bucle.`,
+            instruction.node,
+            `Si necesitas otro valor, guárdalo en una variable nueva: \`variable otro = ${instruction.name} + 1\`.`,
+          );
+        }
         if (scope.constants.has(instruction.name)) {
           if (isDomain(scope.variables.get(instruction.name)!)) {
             throw this.runtimeError(
@@ -632,6 +643,76 @@ export class Machine {
         this.emit({
           type: 'decide',
           label: 'repetir',
+          value: again,
+          nodeId: instruction.node.id,
+          ownerId: instruction.owner.id,
+          span: instruction.node.span,
+        });
+        if (!again) frame.pc = instruction.target;
+        return true;
+      }
+
+      case 'rangeStart': {
+        const step = this.stack.pop()!;
+        const to = this.stack.pop()!;
+        const from = this.stack.pop()!;
+        const { owner } = instruction;
+        const checkNumber = (value: Value, node: ast.Node, what: string): number => {
+          if (typeof value === 'number' && Number.isFinite(value)) return value;
+          throw this.runtimeError(
+            'PARA_LÍMITE_INVÁLIDO',
+            `${what} de \`para\` tiene que ser un número, pero es ${repr(value)}.`,
+            node,
+            typeof value === 'string' ? 'Convierte el texto con `número(…)`.' : undefined,
+          );
+        };
+        const start = checkNumber(from, owner.from, 'El inicio');
+        const end = checkNumber(to, owner.to, 'El final');
+        const increment = checkNumber(step, owner.step ?? owner, 'El paso');
+        if (increment === 0) {
+          throw this.runtimeError(
+            'PARA_PASO_CERO',
+            'El paso de un `para` no puede ser 0: nunca llegaría al final.',
+            owner.step ?? owner,
+            'Usa un paso positivo para contar hacia arriba o uno negativo para contar hacia abajo.',
+          );
+        }
+        if ((end - start) * increment < 0) {
+          // Sin magia: no se invierte solo ni hace cero vueltas en silencio.
+          throw this.runtimeError(
+            'PARA_SENTIDO_CONTRARIO',
+            increment > 0
+              ? `El \`para\` empieza en ${repr(start)}, que es mayor que ${repr(end)}, y cuenta hacia arriba.`
+              : `El \`para\` empieza en ${repr(start)}, que es menor que ${repr(end)}, y cuenta hacia abajo.`,
+            instruction.explicitStep ? owner.step! : owner.to,
+            instruction.explicitStep
+              ? `Para ir de ${repr(start)} a ${repr(end)} el paso tiene que ser ${increment > 0 ? 'negativo' : 'positivo'}.`
+              : 'Para contar hacia atrás escribe `con_paso -1`.',
+          );
+        }
+        // Se tolera un error de redondeo pequeño para que `desde 0 hasta 1 con_paso 0.1` incluya el 1.
+        const count = Math.floor((end - start) / increment + 1e-9) + 1;
+        this.stack.push(start, increment, count, 0);
+        return false;
+      }
+
+      case 'rangeNext': {
+        const turn = this.stack[this.stack.length - 1] as number;
+        const count = this.stack[this.stack.length - 2] as number;
+        const again = turn < count;
+        if (again) {
+          const start = this.stack[this.stack.length - 4] as number;
+          const increment = this.stack[this.stack.length - 3] as number;
+          this.stack[this.stack.length - 1] = turn + 1;
+          // Se calcula desde el inicio (no sumando) y con 15 cifras, así `0.1 * 3` se ve como 0.3.
+          this.stack.push(Number((start + turn * increment).toPrecision(15)));
+        } else {
+          this.stack.length -= 4;
+        }
+        if (!frame.chunk.hidden) this.currentNode = instruction.node;
+        this.emit({
+          type: 'decide',
+          label: 'para',
           value: again,
           nodeId: instruction.node.id,
           ownerId: instruction.owner.id,
@@ -1409,15 +1490,15 @@ const describeCallee = (node: ast.Call): string => {
 const conditionHint = (value: Value): string | undefined => {
   switch (typeOf(value)) {
     case 'número':
-      return `¿Quisiste comparar? Por ejemplo: \`x != 0\` o \`x > 0\`.`;
+      return `¿Quisiste comparar? Por ejemplo: \`x es_distinto_de 0\` o \`x es_mayor_que 0\`.`;
     case 'texto':
-      return '¿Quisiste comparar? Por ejemplo: `texto != ""`.';
+      return '¿Quisiste comparar? Por ejemplo: `texto es_distinto_de ""`.';
     case 'lista':
-      return '¿Quisiste decir `longitud(lista) > 0`?';
+      return '¿Quisiste decir `longitud(lista) es_mayor_que 0`?';
     case 'diccionario':
-      return '¿Quisiste decir `longitud(d) > 0` o `tiene(d, clave)`?';
+      return '¿Quisiste decir `longitud(d) es_mayor_que 0` o `tiene(d, clave)`?';
     case 'nulo':
-      return '¿Quisiste decir `x != nulo`?';
+      return '¿Quisiste decir `x es_distinto_de nulo`?';
     default:
       return undefined;
   }
