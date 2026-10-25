@@ -1,3 +1,4 @@
+import { assertNever } from './assert';
 import type * as ast from './syntax/ast';
 import type { Span } from './syntax/token';
 import { printExpression, printStatement } from './printer';
@@ -349,6 +350,8 @@ class Builder {
         this.connect(this.back([...out, ...loop.continues]), id);
         return [{ from: id, label: 'salir' }, ...loop.breaks];
       }
+      default:
+        return assertNever(statement, 'sentencia');
     }
   }
 

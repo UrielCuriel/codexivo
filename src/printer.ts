@@ -1,3 +1,4 @@
+import { assertNever } from './assert';
 import type * as ast from './syntax/ast';
 import { repr } from './runtime/values';
 
@@ -86,6 +87,8 @@ export const printExpression = (node: ast.Expression): string => {
       return `${operand(node.object, 10, false)}[${printExpression(node.index)}]`;
     case 'FunctionLiteral':
       return `procedimiento(${node.params.map(param => param.name).join(', ')}) { … }`;
+    default:
+      return assertNever(node, 'expresión');
   }
 };
 
@@ -129,5 +132,7 @@ export const printStatement = (node: ast.Statement): string => {
       return `para ${node.variable.name} desde ${printExpression(node.from)} hasta ${printExpression(node.to)}${node.step ? ` con_paso ${printExpression(node.step)}` : ''}`;
     case 'ForEach':
       return `para_cada ${node.variable.name}${node.value ? `, ${node.value.name}` : ''} en ${printExpression(node.iterable)}`;
+    default:
+      return assertNever(node, 'sentencia');
   }
 };

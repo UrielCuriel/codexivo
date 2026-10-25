@@ -1,3 +1,4 @@
+import { assertNever } from '../assert';
 import type { Span } from './token';
 
 /**
@@ -332,8 +333,16 @@ export const childrenOf = (node: Node): Node[] => {
         ...(node.update ? [node.update] : []),
         node.body,
       ];
-    default:
+    case 'NumberLiteral':
+    case 'StringLiteral':
+    case 'BooleanLiteral':
+    case 'NullLiteral':
+    case 'Identifier':
+    case 'Break':
+    case 'Continue':
       return [];
+    default:
+      return assertNever(node, 'nodo');
   }
 };
 

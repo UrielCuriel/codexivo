@@ -1,3 +1,4 @@
+import { assertNever } from '../assert';
 import type * as ast from '../syntax/ast';
 import type { Value } from './values';
 
@@ -397,6 +398,8 @@ class Compiler {
         this.connect(loop.breaks, this.here);
         return;
       }
+      default:
+        return assertNever(node, 'sentencia');
     }
   }
 
@@ -494,6 +497,8 @@ class Compiler {
       case 'FunctionLiteral':
         this.emit({ op: 'closure', chunk: compileProcedure(node, this.hidden), node });
         return;
+      default:
+        return assertNever(node, 'expresión');
     }
   }
 }
