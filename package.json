@@ -37,7 +37,8 @@
     "test:package": "bun run scripts/test-package.ts",
     "docs:biblioteca": "bun run scripts/docs-biblioteca.ts",
     "prepack": "bun run build:lib",
-    "version": "bun run scripts/sync-native-versions.ts && git add package.json bun.lock packages/*/package.json",
+    "version": "bun run scripts/sync-native-versions.ts && bun run scripts/changelog.ts && git add package.json bun.lock packages/*/package.json CHANGELOG.md",
+    "changelog": "bun run scripts/changelog.ts --imprimir",
     "publish:native": "bun run scripts/publish-native.ts",
     "format": "bun fmt",
     "format:check": "bun fmt --check"
