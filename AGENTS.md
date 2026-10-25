@@ -41,6 +41,7 @@ Pipeline: `tokenize → parse → compile → Machine`.
 - `bun run build:binary [target]` — standalone executable for the host or a Bun cross-compilation target.
 - `bun run build:binaries` — all eight OS/architecture/libc targets in `dist/binaries/`.
 - `bun run test:package` — tarball installation, browser/Vite consumer and CLI smoke tests (needs Node.js 24).
+- `bun run changelog` — print the `CHANGELOG.md` section the next release will generate (see «Historial de cambios»).
 
 Run `bun fmt --check`, `bun test` and `bun check` before every push.
 
@@ -69,3 +70,24 @@ Describe behavior, cover the success path and the error (`code`, and the hint wh
 
 Conventional prefixes (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`). PRs list what was validated (`bun test`,
 `bun check`, `bun run build`) and note any behavior change for learners.
+
+## Historial de cambios
+
+`CHANGELOG.md` is generated (edit a published section only to fix a mistake): on every release `bun pm version` runs
+`scripts/changelog.ts`, which turns the commits since the previous `chore(release): v…` into the new version's section,
+and the GitHub release uses that section as its notes. `bun run changelog` prints what the next version would say. So
+the commit subject is the changelog entry:
+
+- Write it in Spanish, for the learner or the site that uses the package, not about internals:
+  ``feat: `repetir … veces` `` rather than `feat: nuevo nodo RepeatStatement`. Lowercase start, no final period: the
+  generator capitalizes it and adds the link.
+- `feat` → «Novedades», `fix` → «Correcciones», `perf` → «Rendimiento», `docs` → «Documentación». `chore`, `ci`,
+  `build`, `test`, `refactor` and `style` stay out. Anything not conventional lands in «Otros cambios»: avoid it.
+- An optional scope becomes a bold prefix (`feat(cli): …` → **cli**). Use one only when it helps the reader: `cli`,
+  `mundo`, `sandbox`, `catálogo`.
+- A breaking change uses `!` (`feat!: …`) and, ideally, a `BREAKING CHANGE: …` footer saying what the user must change;
+  that text goes to «Cambios que rompen compatibilidad». Breaking changes still need a manual `major` release.
+- Each commit in a PR is one entry, linked to the PR; squash or reword commits that would read as noise (`fix: typo`,
+  `wip`). A commit and its revert in the same release cancel out. `[sin changelog]` in the body leaves a commit out.
+- For a hand-written introduction (a major release, a migration guide), add `## Sin publicar` at the top of
+  `CHANGELOG.md` in the PR; the next release turns it into the introduction of its section.

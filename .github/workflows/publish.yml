@@ -174,11 +174,16 @@ jobs:
           RELEASE_TAG: ${{ needs.version.outputs.tag }}
         shell: bash
         run: |
+          # Las notas son la sección de CHANGELOG.md; un tag creado a mano puede no tenerla.
+          notes=(--generate-notes)
+          if bun run scripts/changelog.ts --notas "$RELEASE_TAG" > release-notes.md; then
+            notes=(--notes-file "$PWD/release-notes.md")
+          fi
           cd release-binaries
           sha256sum codexivo-* > SHA256SUMS.txt
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             flags=()
             if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
-            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes "${flags[@]}"
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag "${notes[@]}" "${flags[@]}"
           fi
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" codexivo-* SHA256SUMS.txt --clobber

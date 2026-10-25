@@ -1,5 +1,23 @@
 # Historial de cambios
 
+Cada versión se genera automáticamente al publicarla, a partir de los commits convencionales desde la versión anterior
+(`bun run changelog`). Las reglas para que un commit llegue bien aquí están en
+[`AGENTS.md`](./AGENTS.md#historial-de-cambios). Para añadir una introducción escrita a mano a la próxima versión,
+escríbela bajo un encabezado `## Sin publicar`.
+
+## 1.0.2 (2026-10-25)
+
+### Novedades
+
+- Análisis estático para el editor (diagnósticos, símbolos y diagrama en vivo) ([#54](https://github.com/UrielCuriel/codexivo/pull/54)).
+- Avisos del linter (sin uso, código inalcanzable, condiciones y literales) ([#54](https://github.com/UrielCuriel/codexivo/pull/54)).
+
+## 1.0.1 (2026-10-22)
+
+### Novedades
+
+- Traza del parser para ver cómo se construye el árbol ([#51](https://github.com/UrielCuriel/codexivo/pull/51)).
+
 ## 1.0.0
 
 Primera versión completa del lenguaje según la [especificación v1](./docs/especificacion-v1.md) (#24). Todo lo que funciona

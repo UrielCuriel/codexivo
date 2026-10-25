@@ -123,7 +123,9 @@ reporta cada decisión, asignación y llamada. Eso es lo que permite visualizar 
 - `bun run test:package` — instalar los tarballs reales con npm, compilar con Vite y probar el comando nativo sin Node.js ni Bun en el `PATH`.
 
 Al integrar cambios en `main` (por merge o push), el workflow incrementa automáticamente la versión con `bun pm version patch`,
-crea el commit y el tag y continúa con las validaciones y la publicación en la misma ejecución. El commit automático no
+añade a [`CHANGELOG.md`](./CHANGELOG.md) la sección de la versión a partir de los commits convencionales, crea el commit y
+el tag y continúa con las validaciones y la publicación en la misma ejecución. La release de GitHub usa esa sección como
+notas. El commit automático no
 dispara otra publicación. El workflow toma el estado más reciente de `main`, por lo que merges muy próximos pueden agruparse.
 Desde **Actions → Publicar → Run workflow**, en `main`, se puede elegir `patch`, `minor` o `major` para una publicación manual.
 
