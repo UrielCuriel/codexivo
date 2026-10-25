@@ -630,7 +630,8 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
   avisan de algo que la máquina no rechazaría (principio 1: un aviso falso enseña mal). El mismo análisis entrega los
   símbolos del programa (declaraciones, alcances y usos) y funciona con código a medias: el parser conserva lo que
   entendió y el diagrama de flujo se dibuja con eso, con una clave estable por nodo para animarlo entre versiones.
-  Los avisos que no son errores (variables sin uso, código que nunca se ejecuta) tienen otra severidad y llegan después.
+  Los avisos que no son errores tienen otra severidad: `advertencia` (nombres sin uso, código que nunca se ejecuta,
+  condiciones que siempre valen lo mismo) y `sugerencia` (una forma más clara de escribir lo mismo).
 
 ## 12. Modo mundo (Karel)
 

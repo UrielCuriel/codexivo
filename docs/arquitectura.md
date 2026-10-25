@@ -179,10 +179,24 @@ del sandbox, ver [`integracion.md`](./integracion.md#análisis-mientras-se-escri
   de afuera están completos, porque un procedimiento puede usar una variable global declarada después de él; una `variable`
   que guarda un procedimiento no se revisa, porque puede cambiar. Una prueba compara el mensaje del analizador con el de la
   máquina caso por caso, y otra pasa todos los ejemplos de la documentación y del catálogo exigiendo cero diagnósticos.
-- **Código a medias.** Con errores de sintaxis el parser abandona lo que no entendió, así que una declaración puede faltar:
-  con `incomplete: true` (lo pone `analyze` sola) se omiten los avisos de nombres que no existen y se conservan los demás.
+- **Literales, con la máquina misma.** Una operación hecha solo de literales (`1 / 0`, `"a" - 1`, `[1, 2][5]`), una
+  condición literal que no es lógica (`si (1)`) o la cabeza de un bucle con literales (`repetir "3" veces`) se evalúa con
+  una `Machine` de verdad sobre esa sola sentencia, con el cuerpo vacío, y se reporta el error que dé. Así no se duplican
+  las reglas de tipos del intérprete y el mensaje es idéntico.
+- **Advertencias y sugerencias.** Con todos los usos contados, se avisa de lo que sobra o no cuadra, sin que sea un error:
+  variables y constantes que nunca se leen (`VARIABLE_SIN_USO`, distinguiendo «se declara pero nunca se usa» de «cambia de
+  valor pero nunca se lee»), parámetros (`PARÁMETRO_SIN_USO`), procedimientos y dominios que nadie usa
+  (`PROCEDIMIENTO_SIN_USO`; llamarse a sí mismo no cuenta, y la opción `used` exime lo que se usa desde fuera, como el
+  `resolver` de un reto), código después de `regresa`, `romper`, `continuar`, de un `si` en el que todas las ramas salen o
+  de un `mientras (verdadero)` sin `romper` (`CÓDIGO_INALCANZABLE`, un aviso por bloque que abarca todas las sentencias
+  muertas; los procedimientos con nombre no cuentan porque se crean al entrar al bloque) y condiciones que siempre valen lo
+  mismo (`CONDICIÓN_CONSTANTE`; `mientras (verdadero)` con `romper` no avisa). La variable de un bucle sin usar es una
+  `sugerencia` que propone `repetir`.
+- **Código a medias.** Con errores de sintaxis el parser abandona lo que no entendió, así que una declaración o un uso
+  puede faltar: con `incomplete: true` (lo pone `analyze` sola) se omiten los avisos de nombres que no existen y los de
+  «sin uso», y se conservan los demás.
 - **Símbolos.** Cada declaración con su `Identifier`, el nodo que abre su alcance, sus parámetros, su dominio y cada uso
-  (`lectura`, `escritura`, `actualización`); todo serializable. De aquí saldrán los avisos de «sin uso».
+  (`lectura`, `escritura`, `actualización`); todo serializable. De aquí salen los avisos de «sin uso».
 
 ## Catálogo (`src/catalog.ts`)
 

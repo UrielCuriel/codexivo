@@ -413,6 +413,33 @@ export const ERROR_CODES: Readonly<Record<string, { kind: ErrorKind; explanation
       '`[ ]` funciona con listas, textos y diccionarios, y `.campo` solo con diccionarios. Revisa qué valor tiene la variable.',
   },
 
+  // análisis
+  CÓDIGO_INALCANZABLE: {
+    kind: 'análisis',
+    explanation:
+      'Hay sentencias después de un `regresa`, un `romper` o un `continuar` (o de un `si` en el que todas las ramas salen) dentro del mismo bloque. Como el salto ocurre antes, esas sentencias nunca se ejecutan. Si tienen que ejecutarse, van antes del salto; si no, sobran.',
+  },
+  CONDICIÓN_CONSTANTE: {
+    kind: 'análisis',
+    explanation:
+      'La condición es `verdadero` o `falso` escrito tal cual, así que siempre decide lo mismo: la rama se ejecuta siempre o nunca, o el bucle no entra. Casi siempre faltó la comparación (`si (x es_mayor_que 0)`). `mientras (verdadero)` con un `romper` adentro no avisa: es una forma normal de escribir un bucle.',
+  },
+  PARÁMETRO_SIN_USO: {
+    kind: 'análisis',
+    explanation:
+      'El procedimiento recibe un valor que no usa en su cuerpo. Puede que falte usarlo, que el nombre esté mal escrito adentro, o que ya no haga falta: en ese caso se quita de la declaración y de todas las llamadas.',
+  },
+  PROCEDIMIENTO_SIN_USO: {
+    kind: 'análisis',
+    explanation:
+      'Se declaró un procedimiento (o un dominio) y el programa nunca lo llama ni lo usa. No es un error, pero suele indicar un nombre mal escrito en la llamada o código que sobró. Un reto que llama a `resolver(…)` desde fuera no avisa.',
+  },
+  VARIABLE_SIN_USO: {
+    kind: 'análisis',
+    explanation:
+      'Una variable o constante se declara (o se le asignan valores) pero nunca se lee. El programa funciona igual sin ella, así que o sobra o faltó usarla. Con la variable de un `para` o un `para_cada` el aviso es una sugerencia: si solo se cuentan vueltas, `repetir n veces` lo dice más claro.',
+  },
+
   // límite
   DEMASIADAS_LLAMADAS: {
     kind: 'límite',

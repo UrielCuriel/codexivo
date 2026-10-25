@@ -75,6 +75,7 @@ variable total = 10
 total += 5   // lo mismo que total = total + 5; también -=, *=, /=, %=
 total++      // suma 1
 total--      // resta 1
+imprimir(total)
 ```
 
 `++` y `--` son sentencias, no expresiones: `x = i++` es un error. Se escribe `i++` en su propia línea.
@@ -511,6 +512,10 @@ Algunos errores se ven antes de ejecutar: usar un nombre que no existe (o que se
 constante, llamar a un procedimiento con más o menos valores de los que pide, o pedirle a un dominio un miembro que no
 tiene. El editor del sandbox los subraya mientras se escribe, con el mismo mensaje y la misma pista que daría el programa
 al llegar a esa línea. Son avisos de tipo `análisis`; el programa se puede ejecutar de todas formas, y se detiene ahí.
+
+También hay **advertencias**, que no detienen nada: una variable que se declara y nunca se usa, un parámetro que el
+procedimiento no lee, código después de un `regresa` que nunca llega a ejecutarse, o un `si (verdadero)` que siempre
+entra. Y **sugerencias**: si la variable de un `para` no se usa en el cuerpo, `repetir n veces` dice lo mismo más claro.
 
 ## Puente hacia otros lenguajes
 

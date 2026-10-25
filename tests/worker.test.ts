@@ -272,7 +272,10 @@ describe('analizar', () => {
     const analysis = await sandbox.analyze('variable x = 1\nimprimir(w)');
     expect(analysis.type).toBe('análisis');
     expect(analysis.errors).toEqual([]);
-    expect(analysis.diagnostics.map(diagnostic => diagnostic.code)).toEqual(['NOMBRE_DESCONOCIDO']);
+    expect(analysis.diagnostics.map(diagnostic => `${diagnostic.severity} ${diagnostic.code}`)).toEqual([
+      'advertencia VARIABLE_SIN_USO',
+      'error NOMBRE_DESCONOCIDO',
+    ]);
     expect(analysis.symbols.map(symbol => symbol.name)).toEqual(['x']);
     expect(analysis.flow!.nodes.map(node => node.key)).toEqual(['inicio', '0', '1', 'fin']);
     expect(await rejection(sandbox.run())).toContain('No hay un programa cargado');

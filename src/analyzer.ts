@@ -2,6 +2,8 @@ import type { ErrorInfo } from './errors';
 import { flowGraph } from './flow';
 import type { FlowGraph, FlowOptions } from './flow';
 import { constants, natives } from './runtime/builtins';
+import { compile } from './runtime/compiler';
+import { Machine } from './runtime/machine';
 import { libraryProcedures } from './runtime/prelude';
 import { suggestName } from './runtime/suggest';
 import { describeType } from './runtime/values';
@@ -17,8 +19,11 @@ import type { WorldDefinition } from './world';
  * alcance que el compilador y la máquina (procedimientos con nombre desde el inicio de su bloque, variables desde su
  * declaración, alcance por bloque) y produce:
  *
- * - `diagnostics`: errores que la máquina daría al llegar a esa línea (nombres que no existen, constantes reasignadas,
- *   cantidad de argumentos…), con el mismo `code` y el mismo mensaje, para que el editor los muestre antes de ejecutar;
+ * - `diagnostics` con severidad `error`: lo que la máquina rechazaría al llegar a esa línea (nombres que no existen,
+ *   constantes reasignadas, cantidad de argumentos, operaciones entre literales que fallan…), con el mismo `code` y el
+ *   mismo mensaje, para que el editor los muestre antes de ejecutar;
+ * - `diagnostics` con severidad `advertencia` o `sugerencia`: el programa corre, pero algo sobra o no cuadra (nombres sin
+ *   uso, código que nunca se ejecuta, condiciones que siempre valen lo mismo);
  * - `symbols`: cada nombre que declara el programa, dónde se declara, en qué alcance se ve y cada uso.
  *
  * Nunca inventa un error que la máquina no daría: cuando no puede saberlo (un procedimiento que usa una variable
@@ -73,6 +78,11 @@ export interface AnalyzeOptions {
   globals?: Iterable<string>;
   /** Permite volver a declarar una variable existente (como en el REPL). */
   allowRedeclare?: boolean;
+  /**
+   * Nombres del programa que se usan desde fuera, para no avisar que están sin uso: el `resolver(…)` que llama un reto,
+   * o lo que el REPL usará en la siguiente línea.
+   */
+  used?: Iterable<string>;
   /**
    * `true` si el AST viene de un código con errores de sintaxis: el parser abandona lo que no entendió, así que una
    * declaración puede faltar. Se omiten entonces los avisos de nombres que no existen.
@@ -137,6 +147,12 @@ interface Sym extends SymbolInfo {
   domainSymbol?: Sym;
   /** Una constante con un valor literal: su tipo, para avisar si se intenta llamar. */
   valueType?: TypeName;
+  /** Variable de un bucle, para el aviso de «sin uso». */
+  loopKind?: 'para' | 'para_cada';
+  /** La segunda variable de `para_cada clave, valor`. */
+  second?: boolean;
+  /** Un procedimiento con nombre: el rango de su cuerpo, para que llamarse a sí mismo no cuente como uso. */
+  body?: Span;
 }
 
 interface StaticScope {
@@ -156,8 +172,105 @@ type Resolution =
   | { kind: 'biblioteca'; entry: LibraryEntry }
   | undefined;
 
-/** Avisos que dependen de que el AST esté completo. */
-const NEEDS_COMPLETE_AST = new Set(['NOMBRE_DESCONOCIDO', 'VARIABLE_NO_DECLARADA', 'MIEMBRO_INEXISTENTE']);
+/** Avisos que dependen de que el AST esté completo (el uso o la declaración pudo quedar en lo abandonado). */
+const NEEDS_COMPLETE_AST = new Set([
+  'NOMBRE_DESCONOCIDO',
+  'VARIABLE_NO_DECLARADA',
+  'MIEMBRO_INEXISTENTE',
+  'VARIABLE_SIN_USO',
+  'PARÁMETRO_SIN_USO',
+  'PROCEDIMIENTO_SIN_USO',
+]);
+
+/** Una expresión hecha solo de literales y operadores: la máquina la puede evaluar sin el programa. */
+const isLiteral = (node: ast.Expression): boolean => {
+  switch (node.kind) {
+    case 'NumberLiteral':
+    case 'StringLiteral':
+    case 'BooleanLiteral':
+    case 'NullLiteral':
+      return true;
+    case 'ListLiteral':
+      return node.elements.every(isLiteral);
+    case 'DictLiteral':
+      return node.entries.every(entry => isLiteral(entry.key) && isLiteral(entry.value));
+    case 'Unary':
+      return isLiteral(node.operand);
+    case 'Binary':
+    case 'Logical':
+      return isLiteral(node.left) && isLiteral(node.right);
+    case 'Index':
+      return isLiteral(node.object) && isLiteral(node.index);
+    default:
+      return false;
+  }
+};
+
+/** Cómo sale una lista de sentencias antes de terminar, si sale: el salto y la sentencia que lo da. */
+interface Exit {
+  kind: 'regresa' | 'romper' | 'continuar' | 'si' | 'mientras';
+  statement: ast.Statement;
+}
+
+/** `romper` que sale de este bucle: los de bucles anidados no cuentan, ni los de procedimientos. */
+const breaksOut = (statements: ast.Statement[]): boolean =>
+  statements.some(statement => {
+    switch (statement.kind) {
+      case 'Break':
+        return true;
+      case 'Block':
+        return breaksOut(statement.statements);
+      case 'If':
+        return (
+          statement.branches.some(branch => breaksOut(branch.body.statements)) ||
+          (statement.alternative ? breaksOut(statement.alternative.statements) : false)
+        );
+      default:
+        return false;
+    }
+  });
+
+const exitOf = (statements: ast.Statement[]): Exit | undefined => {
+  for (const statement of statements) {
+    const exit = statementExit(statement);
+    if (exit) return exit;
+  }
+  return undefined;
+};
+
+/** Si después de esta sentencia ya no se sigue con la siguiente, por dónde se fue. */
+const statementExit = (statement: ast.Statement): Exit | undefined => {
+  switch (statement.kind) {
+    case 'Return':
+      return { kind: 'regresa', statement };
+    case 'Break':
+      return { kind: 'romper', statement };
+    case 'Continue':
+      return { kind: 'continuar', statement };
+    case 'Block':
+      return exitOf(statement.statements);
+    case 'If': {
+      if (!statement.alternative) return undefined;
+      const exits = [...statement.branches.map(branch => branch.body), statement.alternative].map(body =>
+        exitOf(body.statements),
+      );
+      return exits.every(Boolean) ? { kind: 'si', statement } : undefined;
+    }
+    case 'While':
+      // `mientras (verdadero)` sin `romper` no termina: lo que sigue no se ejecuta.
+      return statement.condition.kind === 'BooleanLiteral' &&
+        statement.condition.value &&
+        !breaksOut(statement.body.statements)
+        ? { kind: 'mientras', statement }
+        : undefined;
+    case 'DoUntil':
+      return exitOf(statement.body.statements)?.kind === 'regresa' ? exitOf(statement.body.statements) : undefined;
+    default:
+      return undefined;
+  }
+};
+
+const EMPTY_BLOCK = (span: Span): ast.Block => ({ kind: 'Block', id: -1, span, statements: [] });
 
 const plural = (count: number) => (count === 1 ? '1 valor' : `${count} valores`);
 
@@ -237,6 +350,7 @@ class Analyzer {
     this.statements(program.statements, scope);
     // Cada cuerpo puede encolar más (procedimientos anidados); `for…of` sobre un arreglo ve los que se agregan.
     for (const { literal, parent } of this.pending) this.procedure(literal, parent);
+    this.checkUnused(scope);
 
     const byPosition = (a: { span: Span }, b: { span: Span }) => a.span.start.offset - b.span.start.offset;
     const symbols = [...this.symbols].sort(byPosition);
@@ -244,9 +358,12 @@ class Analyzer {
     return {
       diagnostics: [...this.diagnostics].sort(byPosition),
       symbols: symbols.map((symbol, index) => {
-        const { members, domainSymbol, valueType, ...info } = symbol;
+        const { members, domainSymbol, valueType, loopKind, second, body, ...info } = symbol;
         void members;
         void valueType;
+        void loopKind;
+        void second;
+        void body;
         return { ...info, id: index, ...(domainSymbol ? { domain: ids.get(domainSymbol)! } : {}) };
       }),
     };
@@ -274,7 +391,7 @@ class Analyzer {
     scope: StaticScope,
     name: ast.Identifier,
     kind: SymbolKind,
-    extra: Partial<Pick<Sym, 'loop' | 'params' | 'members' | 'valueType'>> = {},
+    extra: Partial<Pick<Sym, 'loop' | 'params' | 'members' | 'valueType' | 'loopKind' | 'second' | 'body'>> = {},
   ): Sym {
     const existing = scope.symbols.get(name.name);
     // Un nombre repetido con un procedimiento ya lo señala el parser (`NOMBRE_REPETIDO`); los parámetros se
@@ -315,6 +432,9 @@ class Analyzer {
       ...(extra.params ? { params: extra.params } : {}),
       ...(extra.members ? { members: extra.members } : {}),
       ...(extra.valueType ? { valueType: extra.valueType } : {}),
+      ...(extra.loopKind ? { loopKind: extra.loopKind } : {}),
+      ...(extra.second ? { second: true } : {}),
+      ...(extra.body ? { body: extra.body } : {}),
     };
     this.symbols.push(symbol);
     scope.symbols.set(name.name, symbol);
@@ -353,9 +473,153 @@ class Analyzer {
     return names;
   }
 
-  private report(code: string, message: string, span: Span, hint?: string): void {
+  private report(
+    code: string,
+    message: string,
+    span: Span,
+    hint?: string,
+    severity: DiagnosticSeverity = 'error',
+  ): void {
     if (this.options.incomplete && NEEDS_COMPLETE_AST.has(code)) return;
-    this.diagnostics.push({ kind: 'análisis', severity: 'error', code, message, ...(hint ? { hint } : {}), span });
+    this.diagnostics.push({ kind: 'análisis', severity, code, message, ...(hint ? { hint } : {}), span });
+  }
+
+  /**
+   * Evalúa una sentencia hecha solo de literales con la máquina misma (un cuerpo vacío basta: lo que se revisa es la
+   * cabeza) y reporta el error que dé, con su mismo código, mensaje y rango. Así `1 / 0`, `"a" - 1` o `si (1)` se
+   * avisan sin duplicar las reglas de la máquina.
+   */
+  private probe(statement: ast.Statement): void {
+    const program: ast.Program = { kind: 'Program', id: -1, span: statement.span, statements: [statement] };
+    const machine = new Machine(compile(program), { maxOperations: 10_000, maxOutput: 0, seed: 0 });
+    machine.run();
+    const error = machine.error;
+    if (error && error.kind === 'ejecución' && error.span)
+      this.report(error.code, error.message, error.span, error.hint);
+  }
+
+  /** Una condición que siempre vale lo mismo, o que ni siquiera es lógica. */
+  private condition(
+    node: ast.Expression,
+    label: 'si' | 'pero_si' | 'mientras' | 'hasta_que' | 'para',
+    owner: ast.Statement,
+  ): void {
+    if (!isLiteral(node)) return;
+    if (node.kind !== 'BooleanLiteral') {
+      const body = EMPTY_BLOCK(owner.span);
+      const head = owner.span;
+      const probe: ast.Statement =
+        label === 'mientras'
+          ? { kind: 'While', id: -2, span: head, condition: node, body }
+          : label === 'hasta_que'
+            ? { kind: 'DoUntil', id: -2, span: head, condition: node, body }
+            : label === 'para'
+              ? { kind: 'For', id: -2, span: head, condition: node, body }
+              : { kind: 'If', id: -2, span: head, branches: [{ span: head, condition: node, body }] };
+      this.probe(probe);
+      return;
+    }
+    const always = node.value;
+    const message =
+      label === 'mientras'
+        ? always
+          ? undefined // `mientras (verdadero)` con `romper` adentro es una forma normal de escribir un bucle.
+          : '`mientras (falso)` nunca entra al bucle.'
+        : label === 'hasta_que'
+          ? always
+            ? '`hasta_que (verdadero)` termina el bucle en la primera vuelta.'
+            : undefined // `hacer … hasta_que (falso)` con `romper` adentro, igual que `mientras (verdadero)`.
+          : label === 'para'
+            ? always
+              ? undefined
+              : 'La condición del `para` es `falso`: nunca entra al bucle.'
+            : always
+              ? `La condición de \`${label}\` siempre es \`verdadero\`: esta rama se ejecuta siempre.`
+              : `La condición de \`${label}\` siempre es \`falso\`: esta rama nunca se ejecuta.`;
+    if (!message) return;
+    this.report(
+      'CONDICIÓN_CONSTANTE',
+      message,
+      node.span,
+      '¿Querías comparar algo, como `x es_mayor_que 0`? Si es a propósito, quita la condición y deja el código directo.',
+      'advertencia',
+    );
+  }
+
+  /** Nombres declarados y nunca leídos. Se revisa al final, con todos los usos contados. */
+  private checkUnused(program: StaticScope): void {
+    const used = new Set(this.options.used ?? []);
+    for (const symbol of this.symbols) {
+      const { body } = symbol;
+      const outside = (span: Span) =>
+        !body || span.start.offset < body.start.offset || span.start.offset >= body.end.offset;
+      if (symbol.references.some(reference => reference.kind === 'lectura' && outside(reference.span))) continue;
+      if (used.has(symbol.name) && symbol.scope.nodeId === program.node.id) continue;
+      const written = symbol.references.length > 0;
+      const name = `\`${symbol.name}\``;
+      switch (symbol.kind) {
+        case 'parámetro':
+          this.report(
+            'PARÁMETRO_SIN_USO',
+            `El parámetro ${name} no se usa en el procedimiento.`,
+            symbol.span,
+            'Si no hace falta, quítalo de la declaración y de las llamadas.',
+            'advertencia',
+          );
+          break;
+        case 'procedimiento':
+          this.report(
+            'PROCEDIMIENTO_SIN_USO',
+            `El procedimiento ${name} se declara pero nunca se llama.`,
+            symbol.span,
+            `Llámalo con \`${symbol.name}(…)\`, o quítalo si ya no lo necesitas.`,
+            'advertencia',
+          );
+          break;
+        case 'dominio':
+          this.report(
+            'PROCEDIMIENTO_SIN_USO',
+            `El dominio ${name} se declara pero nunca se usa.`,
+            symbol.span,
+            `Usa sus miembros con \`${symbol.name}.miembro\`, o quítalo si ya no lo necesitas.`,
+            'advertencia',
+          );
+          break;
+        case 'variable':
+        case 'constante':
+          if (symbol.loopKind) {
+            const loop = symbol.loopKind;
+            this.report(
+              'VARIABLE_SIN_USO',
+              `La variable ${name} del \`${loop}\` no se usa en el cuerpo.`,
+              symbol.span,
+              loop === 'para'
+                ? 'Si solo quieres repetir algo cierta cantidad de veces, `repetir n veces { … }` lo dice más claro.'
+                : symbol.second
+                  ? `Si solo necesitas las claves, escribe \`para_cada clave en diccionario\`.`
+                  : 'Si solo cuentas las vueltas, `repetir longitud(lista) veces { … }` lo dice más claro.',
+              'sugerencia',
+            );
+          } else if (written) {
+            this.report(
+              'VARIABLE_SIN_USO',
+              `${name} cambia de valor pero nunca se lee.`,
+              symbol.span,
+              `Lo que se guarda en ${name} no se usa después. ¿Faltó imprimirla o usarla en un cálculo?`,
+              'advertencia',
+            );
+          } else {
+            this.report(
+              'VARIABLE_SIN_USO',
+              `${name} se declara pero nunca se usa.`,
+              symbol.span,
+              `Si ya no la necesitas, quita la declaración; si sí, revisa que el nombre esté bien escrito donde la usas.`,
+              'advertencia',
+            );
+          }
+          break;
+      }
+    }
   }
 
   // ── usos ────────────────────────────────────────────────────────────────
@@ -549,9 +813,39 @@ class Analyzer {
       if (statement.kind !== 'FunctionDeclaration') continue;
       this.declare(scope, statement.name, 'procedimiento', {
         params: statement.function.params.map(param => param.name),
+        body: statement.function.body.span,
       });
     }
-    for (const statement of list) this.statement(statement, scope);
+    let exit: Exit | undefined;
+    let unreachable: ast.Statement[] = [];
+    for (const statement of list) {
+      if (exit && statement.kind !== 'FunctionDeclaration') unreachable.push(statement);
+      this.statement(statement, scope);
+      // Un procedimiento con nombre se crea al entrar al bloque, así que no queda fuera de alcance.
+      exit ??= statementExit(statement);
+    }
+    if (unreachable.length > 0) this.unreachable(exit!, unreachable);
+  }
+
+  private unreachable(exit: Exit, statements: ast.Statement[]): void {
+    const line = exit.statement.span.start.line;
+    const because =
+      exit.kind === 'regresa'
+        ? `el \`regresa\` de la línea ${line} sale del procedimiento antes`
+        : exit.kind === 'romper'
+          ? `el \`romper\` de la línea ${line} sale del bucle antes`
+          : exit.kind === 'continuar'
+            ? `el \`continuar\` de la línea ${line} pasa a la siguiente vuelta antes`
+            : exit.kind === 'si'
+              ? `todas las ramas del \`si\` de la línea ${line} salen antes`
+              : `el \`mientras (verdadero)\` de la línea ${line} nunca termina`;
+    this.report(
+      'CÓDIGO_INALCANZABLE',
+      `Este código nunca se ejecuta: ${because}.`,
+      { start: statements[0]!.span.start, end: statements[statements.length - 1]!.span.end },
+      'Si quieres que se ejecute, muévelo antes del salto; si no, quítalo.',
+      'advertencia',
+    );
   }
 
   private block(node: ast.Block, parent: StaticScope): void {
@@ -587,47 +881,58 @@ class Analyzer {
         this.block(node, scope);
         return;
       case 'If':
-        for (const branch of node.branches) {
+        node.branches.forEach((branch, index) => {
           this.expression(branch.condition, scope);
+          this.condition(branch.condition, index === 0 ? 'si' : 'pero_si', node);
           this.block(branch.body, scope);
-        }
+        });
         if (node.alternative) this.block(node.alternative, scope);
         return;
       case 'While':
         this.expression(node.condition, scope);
+        this.condition(node.condition, 'mientras', node);
         this.block(node.body, scope);
         return;
       case 'DoUntil':
         this.block(node.body, scope);
         this.expression(node.condition, scope);
+        this.condition(node.condition, 'hasta_que', node);
         return;
       case 'For': {
         const inner = this.scope(node, 'bloque', node.init ? [node.init] : [], scope);
         if (node.init) this.statement(node.init, inner);
-        if (node.condition) this.expression(node.condition, inner);
+        if (node.condition) {
+          this.expression(node.condition, inner);
+          this.condition(node.condition, 'para', node);
+        }
         this.block(node.body, inner);
         if (node.update) this.statement(node.update, inner);
         return;
       }
       case 'Repeat':
         this.expression(node.count, scope);
+        if (isLiteral(node.count)) this.probe({ ...node, body: EMPTY_BLOCK(node.span) });
         this.block(node.body, scope);
         return;
       case 'ForRange': {
         this.expression(node.from, scope);
         this.expression(node.to, scope);
         if (node.step) this.expression(node.step, scope);
+        if (isLiteral(node.from) && isLiteral(node.to) && (!node.step || isLiteral(node.step))) {
+          this.probe({ ...node, body: EMPTY_BLOCK(node.span) });
+        }
         // La variable es nueva en cada vuelta y comparte alcance con el cuerpo, como en el compilador.
         const inner = this.scope(node, 'bloque', node.body.statements, scope);
-        this.declare(inner, node.variable, 'variable', { loop: true });
+        this.declare(inner, node.variable, 'variable', { loop: true, loopKind: 'para' });
         this.statements(node.body.statements, inner);
         return;
       }
       case 'ForEach': {
         this.expression(node.iterable, scope);
+        if (isLiteral(node.iterable)) this.probe({ ...node, body: EMPTY_BLOCK(node.span) });
         const inner = this.scope(node, 'bloque', node.body.statements, scope);
-        this.declare(inner, node.variable, 'variable');
-        if (node.value) this.declare(inner, node.value, 'variable');
+        this.declare(inner, node.variable, 'variable', { loopKind: 'para_cada' });
+        if (node.value) this.declare(inner, node.value, 'variable', { loopKind: 'para_cada', second: true });
         this.statements(node.body.statements, inner);
         return;
       }
@@ -679,10 +984,12 @@ class Analyzer {
         this.read(node, scope);
         return;
       case 'Unary':
+        if (isLiteral(node)) return this.literal(node);
         this.expression(node.operand, scope);
         return;
       case 'Binary':
       case 'Logical':
+        if (isLiteral(node)) return this.literal(node);
         this.expression(node.left, scope);
         this.expression(node.right, scope);
         return;
@@ -690,6 +997,7 @@ class Analyzer {
         this.call(node, scope);
         return;
       case 'Index':
+        if (isLiteral(node)) return this.literal(node);
         this.expression(node.object, scope);
         this.expression(node.index, scope);
         this.member(node, scope, 'lectura');
@@ -698,6 +1006,11 @@ class Analyzer {
         this.pending.push({ literal: node, parent: scope });
         return;
     }
+  }
+
+  /** Una operación entre literales (`1 / 0`, `"a" - 1`): la máquina dice si falla. */
+  private literal(node: ast.Expression): void {
+    this.probe({ kind: 'ExpressionStatement', id: -2, span: node.span, expression: node });
   }
 
   /** El cuerpo de un procedimiento: los parámetros comparten alcance con el cuerpo. */

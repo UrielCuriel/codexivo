@@ -73,10 +73,17 @@ página) y también mientras una ejecución sigue en curso. La respuesta `análi
 
 - `tokens`, `program` y `errors`, como `cargado`. Con errores de sintaxis el AST es **parcial**: el parser abandona lo que
   no entendió y sigue, así que el diagrama y los símbolos muestran lo que sí se entendió.
-- `diagnostics`: lo que el [análisis estático](./arquitectura.md#análisis-estático-srcanalyzerts) encontró. Cada uno tiene
-  `kind: 'análisis'`, `severity` (`error`, `advertencia` o `sugerencia`), el mismo `code`, `message`, `hint` y `span` que
-  daría la máquina al llegar a esa línea, así el editor los subraya antes de ejecutar. Con errores de sintaxis se omiten los
-  avisos de nombres que no existen, porque la declaración pudo quedar en la parte abandonada.
+- `diagnostics`: lo que el [análisis estático](./arquitectura.md#análisis-estático-srcanalyzerts) encontró, con
+  `kind: 'análisis'`, `code`, `message`, `hint`, `span` y una `severity`:
+  - `error`: lo que la máquina rechazaría al llegar a esa línea (nombres que no existen, constantes reasignadas, cantidad
+    de argumentos, `1 / 0`, `si (1)`…), con el mismo código y mensaje que daría al ejecutar;
+  - `advertencia`: el programa corre, pero algo sobra o no cuadra (`VARIABLE_SIN_USO`, `PARÁMETRO_SIN_USO`,
+    `PROCEDIMIENTO_SIN_USO`, `CÓDIGO_INALCANZABLE`, `CONDICIÓN_CONSTANTE`);
+  - `sugerencia`: una forma más clara de escribir lo mismo (la variable de un `para` que no se usa: `repetir n veces`).
+
+  Con errores de sintaxis se omiten los avisos de nombres que no existen y los de «sin uso», porque la declaración o el uso
+  pudieron quedar en la parte abandonada.
+
 - `symbols`: cada nombre que declara el programa (`variable`, `constante`, `procedimiento`, `parámetro`, `dominio`), el
   `Identifier` que lo declara, el nodo que abre el alcance donde se ve, sus parámetros si es un procedimiento, el dominio
   al que pertenece y cada uso (`lectura`, `escritura` o `actualización`) con su `span`. Sirve para resaltar los usos de
@@ -86,7 +93,8 @@ página) y también mientras una ejecución sigue en curso. La respuesta `análi
   análisis al siguiente en lugar de dibujarlo de cero.
 
 Las opciones son `world` (`true` o el mundo, para que existan `avanzar()` y los demás procedimientos del robot), `natives`
-(nativos adicionales), `globals` (variables que existen fuera del programa), `allowRedeclare` y `flow` (las opciones de
+(nativos adicionales), `globals` (variables que existen fuera del programa), `allowRedeclare`, `used` (nombres que se usan
+desde fuera y no deben avisar «sin uso»: `['resolver']` en un reto estilo `regresa`) y `flow` (las opciones de
 `flowGraph`, o `false` para no generarlo). Si la página manda varios `analizar` seguidos, basta con quedarse con la
 respuesta del `id` más reciente.
 
