@@ -1,6 +1,6 @@
 {
   "name": "codexivo-linux-x64-musl",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Ejecutable nativo de Codexivo para linux-x64-musl.",
   "os": [
     "linux"
