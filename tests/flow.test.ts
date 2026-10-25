@@ -260,3 +260,64 @@ describe('el diagrama cubre la ejecución', () => {
     expect(emitted.filter(id => !ids.has(id))).toEqual([]);
   });
 });
+
+describe('claves estables', () => {
+  const keys = (source: string, options?: FlowOptions) => graphOf(source, options).nodes.map(node => node.key);
+
+  test('cada nodo lleva la ruta de su sentencia', () => {
+    expect(
+      keys(
+        [
+          'variable x = 1',
+          'si (x > 0) { imprimir(x) } pero_si (x < 0) { imprimir(-x) } si_no { imprimir(0) }',
+          'mientras (x < 3) { x++ }',
+          'para (variable i = 0; i < 2; i++) { imprimir(i) }',
+          'regresa x',
+        ].join('\n'),
+      ),
+    ).toEqual([
+      'inicio',
+      '0',
+      '1',
+      '1.r0.0',
+      '1.r1',
+      '1.r1.0',
+      '1.si_no.0',
+      '2',
+      '2.c.0',
+      '3.i',
+      '3',
+      '3.c.0',
+      '3.u',
+      '4',
+      'fin',
+    ]);
+  });
+
+  test('al insertar una sentencia solo cambian las claves de las que le siguen en su bloque', () => {
+    const before = keys('variable x = 1\nmientras (x < 3) {\n  x++\n}\nimprimir(x)');
+    const after = keys('variable x = 1\nvariable w = 2\nmientras (x < 3) {\n  x++\n}\nimprimir(x)');
+    expect(before).toEqual(['inicio', '0', '1', '1.c.0', '2', 'fin']);
+    expect(after).toEqual(['inicio', '0', '1', '2', '2.c.0', '3', 'fin']);
+    // Escribir dentro de una sentencia no cambia su clave ni la de las demás.
+    expect(keys('variable x = 1\nmientras (x < 30) {\n  x += 2\n}\nimprimir(x)')).toEqual(before);
+  });
+
+  test('las sentencias agrupadas llevan la clave de la primera', () => {
+    expect(keys('variable a = 1\nvariable b = 2\nimprimir(a)', { group: true })).toEqual(['inicio', '0', '2', 'fin']);
+  });
+
+  test('el grafo de cada procedimiento tiene sus propias claves', () => {
+    const graph = graphOf('procedimiento f() {\n  imprimir(1)\n}\nf()', { expandProcedures: true });
+    expect(graph.nodes.map(node => node.key)).toEqual(['inicio', '1', 'fin']);
+    expect(graph.procedures![0]!.graph.nodes.map(node => node.key)).toEqual(['inicio', '0', 'fin']);
+  });
+
+  test('las claves son únicas dentro de un grafo', () => {
+    const graph = graphOf(
+      'hacer { imprimir(1) } hasta_que (verdadero)\nrepetir 2 veces { romper }\npara_cada e en [1] { continuar }\n{ imprimir(2) }\ndominio d { variable x = 1 }',
+    );
+    const all = graph.nodes.map(node => node.key);
+    expect(new Set(all).size).toBe(all.length);
+  });
+});

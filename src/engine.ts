@@ -1,3 +1,5 @@
+import { analyzeProgram } from './analyzer';
+import type { Diagnostic } from './analyzer';
 import type { CodexivoError, ErrorInfo } from './errors';
 import type * as ast from './syntax/ast';
 import { parse } from './syntax/parser';
@@ -14,14 +16,23 @@ export interface PreparedProgram {
   tokens: Token[];
   /** Errores léxicos y sintácticos. Si hay alguno, `machine` no existe. */
   errors: CodexivoError[];
+  /** Lo que el análisis estático encontró (ver `analyze`). No impide ejecutar: la máquina da el mismo error al llegar. */
+  diagnostics: Diagnostic[];
   machine?: Machine;
 }
 
 /** Analiza el código y, si no tiene errores, prepara una máquina lista para ejecutarlo paso a paso. */
 export const prepare = (source: string, options: MachineOptions = {}): PreparedProgram => {
   const { program, tokens, errors } = parse(source);
-  if (errors.length > 0) return { program, tokens, errors };
-  return { program, tokens, errors, machine: new Machine(compile(program), options) };
+  const { diagnostics } = analyzeProgram(program, {
+    world: Boolean(options.world),
+    natives: options.natives,
+    globals: options.globals?.variables.keys(),
+    allowRedeclare: options.allowRedeclare,
+    incomplete: errors.length > 0,
+  });
+  if (errors.length > 0) return { program, tokens, errors, diagnostics };
+  return { program, tokens, errors, diagnostics, machine: new Machine(compile(program), options) };
 };
 
 export interface RunOptions extends Omit<MachineOptions, 'onEvent'> {

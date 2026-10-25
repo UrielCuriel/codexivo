@@ -1,5 +1,14 @@
+import type { AnalysisOptions } from './analyzer';
 import type { Challenge, ChallengeResult } from './challenge';
-import type { Loaded, Progress, SandboxOptions, SandboxRequest, SandboxResponse, Stopped } from './sandbox-host';
+import type {
+  Analyzed,
+  Loaded,
+  Progress,
+  SandboxOptions,
+  SandboxRequest,
+  SandboxResponse,
+  Stopped,
+} from './sandbox-host';
 
 /** Lo que `createSandbox` necesita de un worker (un `Worker` del navegador o de Bun). */
 export interface WorkerLike {
@@ -11,6 +20,11 @@ export interface WorkerLike {
 export interface Sandbox {
   /** Analiza el código; si no tiene errores, queda listo para ejecutarse. */
   load(source: string, options?: SandboxOptions): Promise<Loaded>;
+  /**
+   * Analiza sin ejecutar ni cargar: errores de sintaxis, diagnósticos, símbolos y diagrama de flujo, para el editor
+   * mientras se escribe. No afecta al programa cargado ni a la ejecución en curso.
+   */
+  analyze(source: string, options?: AnalysisOptions): Promise<Analyzed>;
   /** Ejecuta hasta terminar, sin detenerse en los puntos de interrupción. */
   run(): Promise<Stopped>;
   /** Ejecuta hasta el siguiente punto de interrupción, o hasta terminar. */
@@ -69,6 +83,7 @@ export const createSandbox = (worker: WorkerLike): Sandbox => {
 
   return {
     load: (source, options) => send<'cargar', Loaded>('cargar', { source, ...(options ? { options } : {}) }),
+    analyze: (source, options) => send<'analizar', Analyzed>('analizar', { source, ...(options ? { options } : {}) }),
     run: () => send<'ejecutar', Stopped>('ejecutar'),
     resume: () => send<'continuar', Stopped>('continuar'),
     step: () => send<'paso', Stopped>('paso'),

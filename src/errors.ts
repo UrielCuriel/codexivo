@@ -1,6 +1,7 @@
 import type { Span } from './syntax/token';
 
-export type ErrorKind = 'léxico' | 'sintaxis' | 'ejecución' | 'límite';
+/** `análisis`: lo encontró el analizador estático antes de ejecutar (ver `Diagnostic`). */
+export type ErrorKind = 'léxico' | 'sintaxis' | 'análisis' | 'ejecución' | 'límite';
 
 export interface ErrorInfo {
   kind: ErrorKind;
@@ -46,9 +47,11 @@ export class CodexivoError extends Error implements ErrorInfo {
 }
 
 /** Texto legible de un error, como lo muestran el REPL y la consola del sandbox. */
-export const formatError = (error: ErrorInfo): string => {
+export const formatError = (error: ErrorInfo & { severity?: string }): string => {
   const where = error.span ? ` en la línea ${error.span.start.line}, columna ${error.span.start.column}` : '';
-  const lines = [`Error de ${error.kind}${where}: ${error.message}`];
+  const what =
+    error.severity === 'advertencia' ? 'Advertencia' : error.severity === 'sugerencia' ? 'Sugerencia' : 'Error';
+  const lines = [`${what} de ${error.kind}${where}: ${error.message}`];
   if (error.hint) {
     lines.push(`Pista: ${error.hint}`);
   }

@@ -624,6 +624,14 @@ Es lo que necesitan el sandbox, los diagramas, la máquina de estados y el modo 
   `{ key, value }` de cada diccionario.
 - El diagrama de flujo se genera desde el AST; la máquina de estados se anima desde los eventos.
   Ninguno de los dos inventa información que el intérprete no produjo.
+- **Análisis estático.** Sin ejecutar, se puede saber de un programa lo que la máquina diría al llegar a cada línea:
+  nombres que no existen, constantes que se cambian, cantidad de argumentos, miembros de dominio. Esos diagnósticos llevan
+  el mismo código, mensaje y pista que el error de ejecución, para que el editor los muestre mientras se escribe; nunca
+  avisan de algo que la máquina no rechazaría (principio 1: un aviso falso enseña mal). El mismo análisis entrega los
+  símbolos del programa (declaraciones, alcances y usos) y funciona con código a medias: el parser conserva lo que
+  entendió y el diagrama de flujo se dibuja con eso, con una clave estable por nodo para animarlo entre versiones.
+  Los avisos que no son errores tienen otra severidad: `advertencia` (nombres sin uso, código que nunca se ejecuta,
+  condiciones que siempre valen lo mismo) y `sugerencia` (una forma más clara de escribir lo mismo).
 
 ## 12. Modo mundo (Karel)
 

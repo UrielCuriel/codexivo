@@ -1,3 +1,5 @@
+import { analyze } from './analyzer';
+import type { Analysis, AnalysisOptions } from './analyzer';
 import { evaluarReto } from './challenge';
 import type { Challenge, ChallengeResult } from './challenge';
 import type { ErrorInfo } from './errors';
@@ -46,6 +48,8 @@ export interface SandboxOptions {
 
 export type SandboxRequest =
   | { type: 'cargar'; id: number; source: string; options?: SandboxOptions }
+  /** Analiza sin ejecutar (ver `analyze`). Se atiende aunque haya una ejecución en curso y no la afecta. */
+  | { type: 'analizar'; id: number; source: string; options?: AnalysisOptions }
   /** Ejecuta hasta terminar, sin detenerse en los puntos de interrupción. */
   | { type: 'ejecutar'; id: number }
   /** Ejecuta hasta el siguiente punto de interrupción, o hasta terminar. */
@@ -101,8 +105,15 @@ export interface Stopped {
   error?: ErrorInfo;
 }
 
+/** Respuesta de `analizar`: tokens, AST, errores, diagnósticos, símbolos y diagrama de flujo. */
+export interface Analyzed extends Analysis {
+  type: 'análisis';
+  id: number;
+}
+
 export type SandboxResponse =
   | Loaded
+  | Analyzed
   | Progress
   | Stopped
   | { type: 'hecho'; id: number }
@@ -140,6 +151,9 @@ export class SandboxHost {
       case 'cargar':
         if (this.running) return this.busy(request.id);
         return this.load(request.id, request.source, request.options ?? {});
+      case 'analizar':
+        this.post({ type: 'análisis', id: request.id, ...analyze(request.source, request.options) });
+        return;
       case 'evaluar_reto':
         this.post({ type: 'reto', id: request.id, result: evaluarReto(request.source, request.challenge) });
         return;
