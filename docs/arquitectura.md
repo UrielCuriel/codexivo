@@ -74,6 +74,15 @@ La traza no cambia nada del análisis: sin `trace`, el parser no la construye; c
 mismo código produce siempre la misma traza, y los eventos se pueden mandar desde un Web Worker (en el sandbox, con la
 opción `parseTrace` de `cargar`).
 
+### Exhaustividad
+
+Cada `switch` sobre `node.kind` (compilador, `childrenOf`, analizador, diagrama de flujo, printer) y sobre `instruction.op`
+(máquina) termina en `default: return assertNever(…)` (`src/assert.ts`). Si se agrega un tipo de nodo o una instrucción y
+falta su caso, `bun check` falla, y si aun así llegara a ejecutarse, falla con «Error interno de Codexivo: … sin caso» en
+lugar de seguir en silencio: es el error que tuvo el evaluador de 2023, cuyo `else` final ignoró los bucles durante dos
+años. `tests/exhaustiveness.test.ts` compila un programa con todos los tipos de nodo y comprueba que cada uno llega a la
+máquina.
+
 ## 3. Compilador (`src/runtime/compiler.ts`)
 
 `compile(program)` traduce el AST a una lista de instrucciones para una máquina de pila. Por ejemplo, `x += 1` se convierte en:

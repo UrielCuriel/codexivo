@@ -1,3 +1,4 @@
+import { assertNever } from './assert';
 import type { ErrorInfo } from './errors';
 import { flowGraph } from './flow';
 import type { FlowGraph, FlowOptions } from './flow';
@@ -947,6 +948,8 @@ class Analyzer {
       case 'Break':
       case 'Continue':
         return;
+      default:
+        return assertNever(node, 'sentencia');
     }
   }
 
@@ -1005,6 +1008,8 @@ class Analyzer {
       case 'FunctionLiteral':
         this.pending.push({ literal: node, parent: scope });
         return;
+      default:
+        return assertNever(node, 'expresión');
     }
   }
 

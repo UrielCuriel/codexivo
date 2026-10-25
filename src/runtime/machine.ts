@@ -1,3 +1,4 @@
+import { assertNever } from '../assert';
 import { CodexivoError } from '../errors';
 import type { ErrorInfo } from '../errors';
 import type * as ast from '../syntax/ast';
@@ -872,6 +873,9 @@ export class Machine {
       case 'halt':
         this.finish(this.lastValue);
         return true;
+
+      default:
+        return assertNever(instruction, 'instrucción');
     }
   }
 
