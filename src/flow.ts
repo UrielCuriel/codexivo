@@ -12,6 +12,12 @@ export type FlowNodeKind = 'inicio' | 'fin' | 'proceso' | 'decisión' | 'llamada
 
 export interface FlowNode {
   id: string;
+  /**
+   * Clave estable entre versiones del código: la ruta de la sentencia en el árbol (`2`, `2.c.0`, `2.r1.3`), no un
+   * número de nodo. Mientras se escribe dentro de una sentencia su nodo conserva la clave, y al insertar una sentencia
+   * solo cambian las que le siguen en su bloque. Sirve para animar el diagrama entre un análisis y el siguiente.
+   */
+  key: string;
   kind: FlowNodeKind;
   /** Texto corto para mostrar, generado desde el AST. Si se agruparon sentencias, una por línea. */
   label: string;
@@ -86,6 +92,48 @@ const path = (node: ast.Expression): string | undefined => {
 const calledName = (node: ast.Expression | undefined): string | undefined =>
   node?.kind === 'Call' ? path(node.callee) : undefined;
 
+/**
+ * La clave de cada nodo del AST que puede encabezar un nodo del grafo: la ruta de la sentencia (`0`, `0.c.1`…). Las
+ * sentencias de un cuerpo llevan `c`; las ramas de un `si`, `r0`, `r1`… y `si_no`; el inicio y la actualización de un
+ * `para`, `i` y `u`. La condición de un `para` y las de `pero_si` llevan la clave de su sentencia o rama.
+ */
+const keysOf = (statements: ast.Statement[]): Map<number, string> => {
+  const keys = new Map<number, string>();
+  const visit = (list: ast.Statement[], prefix: string) => {
+    list.forEach((statement, index) => {
+      const key = `${prefix}${index}`;
+      keys.set(statement.id, key);
+      switch (statement.kind) {
+        case 'If':
+          statement.branches.forEach((branch, branchIndex) => {
+            keys.set(branch.condition.id, `${key}.r${branchIndex}`);
+            visit(branch.body.statements, `${key}.r${branchIndex}.`);
+          });
+          if (statement.alternative) visit(statement.alternative.statements, `${key}.si_no.`);
+          return;
+        case 'For':
+          if (statement.init) keys.set(statement.init.id, `${key}.i`);
+          if (statement.condition) keys.set(statement.condition.id, key);
+          if (statement.update) keys.set(statement.update.id, `${key}.u`);
+          visit(statement.body.statements, `${key}.c.`);
+          return;
+        case 'Block':
+        case 'While':
+        case 'DoUntil':
+        case 'Repeat':
+        case 'ForRange':
+        case 'ForEach':
+          visit(statement.kind === 'Block' ? statement.statements : statement.body.statements, `${key}.c.`);
+          return;
+        default:
+          return;
+      }
+    });
+  };
+  visit(statements, '');
+  return keys;
+};
+
 class Builder {
   readonly nodes: FlowNode[] = [];
   readonly edges: FlowEdge[] = [];
@@ -97,6 +145,7 @@ class Builder {
   constructor(
     private readonly options: FlowOptions,
     private readonly procedures: Set<string>,
+    private readonly keys: Map<number, string>,
   ) {}
 
   private label(text: string): string {
@@ -106,8 +155,11 @@ class Builder {
 
   node(kind: FlowNodeKind, label: string, astNodes: Array<{ id: number; span: Span }>): string {
     const id = `n${this.nodes.length}`;
+    const first = astNodes[0];
+    const key = kind === 'inicio' || kind === 'fin' ? kind : first ? (this.keys.get(first.id) ?? id) : id;
     this.nodes.push({
       id,
+      key,
       kind,
       label: this.label(label),
       astIds: astNodes.map(node => node.id),
@@ -334,7 +386,8 @@ const procedureNames = (statements: ast.Statement[], known: Iterable<string> = [
 };
 
 /**
- * Grafo de flujo de un programa o de un procedimiento. El AST tiene que venir sin errores de sintaxis.
+ * Grafo de flujo de un programa o de un procedimiento. Con errores de sintaxis el AST es parcial (el parser abandona
+ * lo que no entendió) y el grafo muestra lo que sí se entendió.
  */
 export const flowGraph = (
   root: ast.Program | ast.FunctionLiteral | ast.FunctionDeclaration,
@@ -353,7 +406,7 @@ const graphOf = (
         ? root.function.body.statements
         : root.body.statements;
   const names = procedureNames(statements, known);
-  const builder = new Builder(options, names);
+  const builder = new Builder(options, names, keysOf(statements));
   const title =
     root.kind === 'Program'
       ? 'inicio'

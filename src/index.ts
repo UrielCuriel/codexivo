@@ -1,6 +1,19 @@
 export { prepare, run, Session } from './engine';
 export type { PreparedProgram, RunOptions, RunResult } from './engine';
 
+export { analyze, analyzeProgram } from './analyzer';
+export type {
+  Analysis,
+  AnalysisOptions,
+  AnalyzeOptions,
+  Diagnostic,
+  DiagnosticSeverity,
+  ProgramAnalysis,
+  SymbolInfo,
+  SymbolKind,
+  SymbolReference,
+} from './analyzer';
+
 export { CodexivoError, formatError } from './errors';
 export type { ErrorInfo, ErrorKind } from './errors';
 
@@ -75,6 +88,7 @@ export type {
   SandboxResponse,
   EventDetail,
   Loaded,
+  Analyzed,
   Progress,
   Stopped,
   StopReason,

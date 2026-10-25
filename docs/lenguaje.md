@@ -507,6 +507,11 @@ imprimir("Total:", total)
 
 Un error detiene el programa: no hay forma de atraparlo y seguir, porque lo que se busca es verlo.
 
+Algunos errores se ven antes de ejecutar: usar un nombre que no existe (o que se declara más abajo), cambiar una
+constante, llamar a un procedimiento con más o menos valores de los que pide, o pedirle a un dominio un miembro que no
+tiene. El editor del sandbox los subraya mientras se escribe, con el mismo mensaje y la misma pista que daría el programa
+al llegar a esa línea. Son avisos de tipo `análisis`; el programa se puede ejecutar de todas formas, y se detiene ahí.
+
 ## Puente hacia otros lenguajes
 
 Muchos lenguajes (C, Java, JavaScript) cuentan con un `for` de tres partes. Codexivo también lo tiene, para practicar antes de

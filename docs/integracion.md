@@ -33,6 +33,7 @@ respuesta trae el mismo.
 | Método                   | Mensaje                  | Responde con | Qué hace                                                                  |
 | ------------------------ | ------------------------ | ------------ | ------------------------------------------------------------------------- |
 | `load(código, opciones)` | `cargar`                 | `cargado`    | Tokens, AST, errores de sintaxis y la semilla de `aleatorio`              |
+| `analyze(código, opc.)`  | `analizar`               | `análisis`   | Analiza sin ejecutar: diagnósticos, símbolos y diagrama (ver abajo)       |
 | `run()`                  | `ejecutar`               | `detenido`   | Ejecuta hasta terminar, sin detenerse en los puntos de interrupción       |
 | `resume()`               | `continuar`              | `detenido`   | Ejecuta hasta el siguiente punto de interrupción o hasta terminar         |
 | `step()`                 | `paso`                   | `detenido`   | Avanza a la siguiente sentencia o decisión                                |
@@ -63,6 +64,44 @@ promesa se rechaza.
 | `detail`                                     | `decisiones`   | Eventos por tanda: `nada`, `pasos` (`paso` y `robot`), `decisiones` (más `decide`) o `todo` |
 | `batchSize`                                  | 50 000         | Operaciones por tanda                                                                       |
 | `parseTrace`                                 | `false`        | `cargado` trae `parseTrace`: la [traza del parser](./arquitectura.md#traza-del-parser)      |
+
+## Análisis mientras se escribe
+
+`analyze(código, opciones)` (mensaje `analizar`) hace en una sola pasada todo lo que un editor necesita para cada versión
+del código, sin ejecutarlo ni tocar el programa cargado: se puede mandar en cada cambio (con un _debounce_ del lado de la
+página) y también mientras una ejecución sigue en curso. La respuesta `análisis` trae:
+
+- `tokens`, `program` y `errors`, como `cargado`. Con errores de sintaxis el AST es **parcial**: el parser abandona lo que
+  no entendió y sigue, así que el diagrama y los símbolos muestran lo que sí se entendió.
+- `diagnostics`: lo que el [análisis estático](./arquitectura.md#análisis-estático-srcanalyzerts) encontró. Cada uno tiene
+  `kind: 'análisis'`, `severity` (`error`, `advertencia` o `sugerencia`), el mismo `code`, `message`, `hint` y `span` que
+  daría la máquina al llegar a esa línea, así el editor los subraya antes de ejecutar. Con errores de sintaxis se omiten los
+  avisos de nombres que no existen, porque la declaración pudo quedar en la parte abandonada.
+- `symbols`: cada nombre que declara el programa (`variable`, `constante`, `procedimiento`, `parámetro`, `dominio`), el
+  `Identifier` que lo declara, el nodo que abre el alcance donde se ve, sus parámetros si es un procedimiento, el dominio
+  al que pertenece y cada uso (`lectura`, `escritura` o `actualización`) con su `span`. Sirve para resaltar los usos de
+  una variable, ir a su declaración y autocompletar.
+- `flow`: el [diagrama de flujo](./arquitectura.md#diagrama-de-flujo-srcflowts-srcprinterts), ya calculado. Cada nodo
+  trae una `key` estable entre versiones del código (la ruta de su sentencia, como `2.c.0`), para animar el diagrama de un
+  análisis al siguiente en lugar de dibujarlo de cero.
+
+Las opciones son `world` (`true` o el mundo, para que existan `avanzar()` y los demás procedimientos del robot), `natives`
+(nativos adicionales), `globals` (variables que existen fuera del programa), `allowRedeclare` y `flow` (las opciones de
+`flowGraph`, o `false` para no generarlo). Si la página manda varios `analizar` seguidos, basta con quedarse con la
+respuesta del `id` más reciente.
+
+```ts
+editor.onChange(
+  debounce(async código => {
+    const { errors, diagnostics, symbols, flow } = await sandbox.analyze(código, { flow: { group: true } });
+    subrayar([...errors, ...diagnostics]);
+    dibujarDiagrama(flow);
+  }, 150),
+);
+```
+
+`prepare(código, opciones)` y, a través de ella, `run` también calculan `diagnostics`, sin impedir la ejecución: la máquina
+da el mismo error al llegar a esa línea.
 
 ## Tandas
 

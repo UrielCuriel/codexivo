@@ -156,9 +156,33 @@ propios ayudantes no se cobran otra vez.
 
 ## 6. Errores (`src/errors.ts`, `src/error-codes.ts`)
 
-`CodexivoError` tiene `kind` (`léxico`, `sintaxis`, `ejecución` o `límite`), un `code` estable, `message`, `hint`, `span` y la
+`CodexivoError` tiene `kind` (`léxico`, `sintaxis`, `análisis`, `ejecución` o `límite`), un `code` estable, `message`, `hint`, `span` y la
 pila de llamadas. `formatError` lo convierte en el texto que muestran el REPL y la consola. `error-codes.ts` lista todos los
 códigos con una explicación larga; una prueba revisa que no falte ni sobre ninguno.
+
+## Análisis estático (`src/analyzer.ts`)
+
+`analyzeProgram(programa, opciones)` recorre el AST sin ejecutarlo y regresa `diagnostics` y `symbols`; `analyze(código,
+opciones)` lo junta con `parse` y `flowGraph` en una sola llamada para el editor (es lo que responde el mensaje `analizar`
+del sandbox, ver [`integracion.md`](./integracion.md#análisis-mientras-se-escribe)).
+
+- **Las mismas reglas que la máquina.** Sigue el alcance tal como lo compila `compiler.ts`: los procedimientos con nombre
+  existen desde el inicio de su bloque, las variables desde su declaración (el valor se evalúa antes), cada bloque abre un
+  alcance, la variable de `para … desde … hasta` y las de `para_cada` comparten alcance con el cuerpo, y el nombre de un
+  dominio se declara al cerrar su bloque. Los nombres que el programa no declara se buscan en la biblioteca en el mismo
+  orden que la máquina (nativos, incluidos los del mundo si se pide, prelude, constantes), y una variable propia los oculta.
+- **Nunca inventa un error.** Cada diagnóstico es un error que la máquina daría al llegar a esa línea, con el mismo `code`,
+  mensaje y rango: nombres que no existen (con la misma sugerencia, o la pista «se declara más abajo»), asignar a una
+  variable no declarada o a un nombre de la biblioteca, cambiar una constante, la variable de un `para` o un miembro de
+  solo lectura, declarar dos veces, miembros de dominio que no existen, cantidad de argumentos y llamar a algo que no es un
+  procedimiento. Cuando no puede saberlo, calla: los cuerpos de los procedimientos se recorren al final, cuando los alcances
+  de afuera están completos, porque un procedimiento puede usar una variable global declarada después de él; una `variable`
+  que guarda un procedimiento no se revisa, porque puede cambiar. Una prueba compara el mensaje del analizador con el de la
+  máquina caso por caso, y otra pasa todos los ejemplos de la documentación y del catálogo exigiendo cero diagnósticos.
+- **Código a medias.** Con errores de sintaxis el parser abandona lo que no entendió, así que una declaración puede faltar:
+  con `incomplete: true` (lo pone `analyze` sola) se omiten los avisos de nombres que no existen y se conservan los demás.
+- **Símbolos.** Cada declaración con su `Identifier`, el nodo que abre su alcance, sus parámetros, su dominio y cada uso
+  (`lectura`, `escritura`, `actualización`); todo serializable. De aquí saldrán los avisos de «sin uso».
 
 ## Catálogo (`src/catalog.ts`)
 
@@ -181,7 +205,9 @@ biblioteca en Markdown.
 
 - `run(código, opciones)` ejecuta un programa completo y regresa resultado, salida, errores, operaciones y, con `trace: true`,
   los eventos.
-- `prepare(código, opciones)` analiza el código y regresa una `Machine` lista para ejecutar paso a paso.
+- `prepare(código, opciones)` analiza el código y regresa una `Machine` lista para ejecutar paso a paso, junto con los
+  `diagnostics` del análisis estático (que no impiden ejecutar).
+- `analyze(código, opciones)` analiza sin ejecutar: errores, diagnósticos, símbolos y diagrama de flujo.
 - `Session` comparte variables entre ejecuciones; la usa el REPL.
 
 ## Diagrama de flujo (`src/flow.ts`, `src/printer.ts`)
@@ -191,8 +217,12 @@ existen vive aquí, probada; el sitio solo calcula coordenadas (con ELK o dagre)
 
 - **Nodos:** `inicio`, `fin`, `proceso`, `decisión` (`si`, `pero_si`, condiciones de bucles, `hasta_que`, `repetir`,
   `para_cada`), `llamada`, `entrada` (`leer`), `salida` (`imprimir`) y `retorno`. Cada uno trae los `astIds` y `spans` de
-  los nodos del AST que representa, un texto corto (`suma += i`, `i <= 10`) y un `rank` sugerido: la distancia más larga
-  desde el inicio sin contar las vueltas.
+  los nodos del AST que representa, un texto corto (`suma += i`, `i <= 10`), un `rank` sugerido (la distancia más larga
+  desde el inicio sin contar las vueltas) y una `key` estable entre versiones del código: la ruta de su sentencia en el
+  árbol (`2`, `2.c.0` para la primera del cuerpo, `1.r1.3` para la cuarta de un `pero_si`, `3.i` y `3.u` para el inicio y
+  la actualización de un `para`). Mientras se escribe dentro de una sentencia su nodo conserva la clave, y al insertar una
+  sentencia solo cambian las que le siguen en su bloque; con ella el sitio anima el diagrama de un análisis al siguiente.
+  Con errores de sintaxis el grafo muestra lo que el parser sí entendió.
 - **Aristas:** `kind` (`normal`, `vuelta`, `romper`, `continuar`, `regresa`) y, al salir de una decisión, `label` (`sí`/`no`
   en condiciones, `repetir`/`salir` en `repetir` y `para_cada`). Un `si` sin `si_no` lleva por el `no` a la sentencia
   siguiente.

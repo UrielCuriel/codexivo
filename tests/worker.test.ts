@@ -265,3 +265,33 @@ describe('retos', () => {
     );
   });
 });
+
+describe('analizar', () => {
+  test('regresa errores, diagnósticos, símbolos y diagrama sin cargar nada', async () => {
+    const sandbox = open();
+    const analysis = await sandbox.analyze('variable x = 1\nimprimir(w)');
+    expect(analysis.type).toBe('análisis');
+    expect(analysis.errors).toEqual([]);
+    expect(analysis.diagnostics.map(diagnostic => diagnostic.code)).toEqual(['NOMBRE_DESCONOCIDO']);
+    expect(analysis.symbols.map(symbol => symbol.name)).toEqual(['x']);
+    expect(analysis.flow!.nodes.map(node => node.key)).toEqual(['inicio', '0', '1', 'fin']);
+    expect(await rejection(sandbox.run())).toContain('No hay un programa cargado');
+  });
+
+  test('acepta las opciones del análisis y del diagrama', async () => {
+    const sandbox = open();
+    const analysis = await sandbox.analyze('avanzar()', { world: true, flow: false });
+    expect(analysis.diagnostics).toEqual([]);
+    expect(analysis.flow).toBeUndefined();
+  });
+
+  test('se atiende mientras una ejecución sigue en curso', async () => {
+    const sandbox = open();
+    await sandbox.load('mientras (verdadero) { }', { batchSize: 1000 });
+    const running = sandbox.run();
+    const analysis = await sandbox.analyze('imprimir(1)');
+    expect(analysis.diagnostics).toEqual([]);
+    await sandbox.pause();
+    expect((await running).reason).toBe('pausa');
+  });
+});

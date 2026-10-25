@@ -1,6 +1,7 @@
 import type { Span } from './syntax/token';
 
-export type ErrorKind = 'léxico' | 'sintaxis' | 'ejecución' | 'límite';
+/** `análisis`: lo encontró el analizador estático antes de ejecutar (ver `Diagnostic`). */
+export type ErrorKind = 'léxico' | 'sintaxis' | 'análisis' | 'ejecución' | 'límite';
 
 export interface ErrorInfo {
   kind: ErrorKind;
